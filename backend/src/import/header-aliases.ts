@@ -1,0 +1,25 @@
+import type { CanonicalField } from "../domain/types";
+
+export const HEADER_ALIASES: Record<CanonicalField, string[]> = {
+  offer_code: ["код предложения"],
+  status: ["статус"],
+  brand: ["марка"],
+  model: ["модель"],
+  modification: ["модификация"],
+  vehicle_type: ["тип тс", "типтс"],
+  year: ["год выпуска"],
+  mileage_km: ["пробег"],
+  key_count: ["кол-во ключей", "кол во ключей", "количество ключей"],
+  pts_type: ["птс/эптс", "птс эптс"],
+  has_encumbrance: ["наличие обременения"],
+  is_deregistered: ["снят с учета"],
+  responsible_person: ["ответсвенный за тс", "ответственный за тс"],
+  storage_address: ["андрес места хранения", "адрес места хранения"],
+  days_on_sale: ["количество дней реализации"],
+  price: ["стоимость"],
+  yandex_disk_url: ["яндекс диск"],
+  booking_status: ["статус бронирования"],
+  external_id: ["id"],
+  crm_ref: ["crm"],
+  website_url: ["ссылка на сайт"],
+};

@@ -1,0 +1,242 @@
+import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { clearImports, getImportBatches, uploadImport } from "../api/client";
+import type { ImportBatchListItem, ImportResponse } from "../types/api";
+
+function getStatusTone(
+  status: ImportResponse["status"],
+): "good" | "warn" | "bad" {
+  if (status === "completed") {
+    return "good";
+  }
+  if (status === "completed_with_errors") {
+    return "warn";
+  }
+  return "bad";
+}
+
+function getStatusLabel(status: ImportResponse["status"]): string {
+  if (status === "completed") {
+    return "Завершен";
+  }
+  if (status === "completed_with_errors") {
+    return "Завершен с ошибками";
+  }
+  return "Ошибка";
+}
+
+export function UploadPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [result, setResult] = useState<ImportResponse | null>(null);
+  const [history, setHistory] = useState<ImportBatchListItem[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  async function loadHistory() {
+    try {
+      setHistoryError(null);
+      const response = await getImportBatches(20);
+      setHistory(response.items);
+    } catch {
+      setHistoryError("Не удалось загрузить историю импортов");
+    }
+  }
+
+  useEffect(() => {
+    void loadHistory();
+  }, []);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!file) {
+      setError("Выберите файл .xlsx");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    setResult(null);
+
+    try {
+      const response = await uploadImport(file);
+      setResult(response);
+      if (response.summary.importedRows > 0) {
+        setSuccess(
+          `Файл «${file.name}» загружен. Данные добавлены в витрину.`,
+        );
+      } else {
+        setSuccess(
+          `Файл «${file.name}» обработан, но записи в витрину не добавлены.`,
+        );
+      }
+      await loadHistory();
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+      } else {
+        setError("Загрузка не удалась");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleClearImports(): Promise<void> {
+    const confirmed = window.confirm(
+      "Удалить все импортированные данные? Будут очищены записи каталога и история импортов.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsClearing(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await clearImports();
+      setResult(null);
+      await loadHistory();
+      setSuccess(
+        `Удалено: предложений ${response.vehicleOffersDeleted}, импортов ${response.importBatchesDeleted}, ошибок ${response.importErrorsDeleted}.`,
+      );
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+      } else {
+        setError("Не удалось очистить импортированные данные");
+      }
+    } finally {
+      setIsClearing(false);
+    }
+  }
+
+  return (
+    <section>
+      <h1>Загрузите excel-файл с лотами</h1>
+      <form className="panel upload-form" onSubmit={handleSubmit}>
+        <input
+          type="file"
+          accept=".xlsx"
+          onChange={(event) => {
+            const selected = event.target.files?.[0] ?? null;
+            setFile(selected);
+          }}
+        />
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Загрузка..." : "Загрузить"}
+        </button>
+        <button
+          type="button"
+          className="secondary-button danger-button"
+          disabled={isClearing}
+          onClick={() => {
+            void handleClearImports();
+          }}
+        >
+          {isClearing ? "Очистка..." : "Очистить импортированные данные"}
+        </button>
+      </form>
+
+      {error && <p className="error">{error}</p>}
+      {success && <p className="success">{success}</p>}
+
+      {result && (
+        <div className="panel import-summary">
+          <div className="summary-head">
+            <h2>Сводка импорта</h2>
+            <span className={`status-pill ${getStatusTone(result.status)}`}>
+              {getStatusLabel(result.status)}
+            </span>
+          </div>
+
+          <div className="summary-grid">
+            <div className="summary-item">
+              <span>Всего</span>
+              <strong>{result.summary.totalRows}</strong>
+            </div>
+            <div className="summary-item">
+              <span>Импортировано</span>
+              <strong>{result.summary.importedRows}</strong>
+            </div>
+            <div className="summary-item">
+              <span>Пропущено</span>
+              <strong>{result.summary.skippedRows}</strong>
+            </div>
+          </div>
+
+          <p>
+            <Link className="summary-link" to="/catalog">
+              Открыть каталог
+            </Link>
+          </p>
+
+          {result.errors.length > 0 && (
+            <>
+              <h3>Ошибки</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Строка</th>
+                    <th>Поле</th>
+                    <th>Сообщение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.errors.map((item, index) => (
+                    <tr key={`${item.rowNumber}-${item.field}-${index}`}>
+                      <td>{item.rowNumber}</td>
+                      <td>{item.field ?? "-"}</td>
+                      <td>{item.message}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="panel recent-imports">
+        <h2>Загруженные файлы</h2>
+        {historyError && <p className="error">{historyError}</p>}
+        {history.length === 0 ? (
+          <p className="empty">Импортов пока нет.</p>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Файл</th>
+                  <th>Статус</th>
+                  <th>Всего</th>
+                  <th>Импортировано</th>
+                  <th>Пропущено</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.created_at}</td>
+                    <td>{item.filename}</td>
+                    <td>{getStatusLabel(item.status)}</td>
+                    <td>{item.total_rows}</td>
+                    <td>{item.imported_rows}</td>
+                    <td>{item.skipped_rows}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}

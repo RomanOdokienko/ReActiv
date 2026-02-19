@@ -1,0 +1,65 @@
+import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
+import multipart from "@fastify/multipart";
+import Fastify from "fastify";
+import { initializeSchema } from "./db/schema";
+import { registerAuthRoutes } from "./routes/auth-routes";
+import { registerCatalogRoutes } from "./routes/catalog-routes";
+import { registerImportRoutes } from "./routes/import-routes";
+import { registerMediaRoutes } from "./routes/media-routes";
+import { authenticateRequest, ensureBaseAdminCredentials } from "./services/auth-service";
+
+const app = Fastify({ logger: true });
+
+app.get("/health", async () => {
+  return { status: "ok" };
+});
+
+const port = Number(process.env.PORT ?? 3001);
+const host = process.env.HOST ?? "0.0.0.0";
+
+initializeSchema();
+ensureBaseAdminCredentials();
+
+async function startServer(): Promise<void> {
+  await app.register(cors, {
+    origin: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
+  });
+  await app.register(cookie);
+  await app.register(multipart);
+  await registerAuthRoutes(app);
+
+  app.addHook("preHandler", async (request, reply) => {
+    if (request.method === "OPTIONS") {
+      return;
+    }
+
+    const requestPath = request.raw.url?.split("?")[0] ?? "";
+    if (requestPath === "/health" || requestPath === "/api/auth/login") {
+      return;
+    }
+
+    const authUser = authenticateRequest(request);
+    if (!authUser) {
+      return reply.code(401).send({ message: "Требуется авторизация" });
+    }
+
+    request.authUser = authUser;
+  });
+
+  await registerImportRoutes(app);
+  await registerCatalogRoutes(app);
+  await registerMediaRoutes(app);
+
+  try {
+    await app.listen({ port, host });
+    app.log.info({ port, host }, "Server started");
+  } catch (error) {
+    app.log.error(error, "Failed to start server");
+    process.exit(1);
+  }
+}
+
+void startServer();
