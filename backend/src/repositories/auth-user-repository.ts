@@ -104,3 +104,20 @@ export function upsertUserByLogin(input: UpsertUserInput): PublicAuthUser {
 
   return mapPublicAuthUser(user);
 }
+
+export function updateUserPasswordByLogin(
+  login: string,
+  passwordHash: string,
+): boolean {
+  const result = db
+    .prepare(
+      `
+        UPDATE users
+        SET password_hash = ?, is_active = 1
+        WHERE login = ?
+      `,
+    )
+    .run(passwordHash, login);
+
+  return result.changes > 0;
+}
