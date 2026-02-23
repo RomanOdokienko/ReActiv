@@ -113,7 +113,8 @@ Frontend defaults:
 
 Open:
 - `http://127.0.0.1:5173/login`
-- Base credentials: `admin / admin`
+- Create a user first:
+  `cd backend && npm run create-user -- --login admin --password <strong-password> --name "Admin"`
 
 ## Environment
 
@@ -133,6 +134,7 @@ Backend (`backend/package.json`):
 - `npm run start` - run compiled server from `dist/server.js`
 - `npm run typecheck` - TypeScript checks without emit
 - `npm run create-user -- --login <login> --password <password> [--name "Display Name"]` - create user credentials
+- `npm run set-user-password -- --login <login> --password <password>` - update password for existing user
 
 Frontend (`frontend/package.json`):
 - `npm run dev` - start Vite dev server
@@ -230,3 +232,37 @@ Schema is initialized on backend startup.
 
 - `Architecture.md` - architecture and domain model.
 - `task.md` / `tasks.md` - granular execution plan (T001..T051).
+
+## Session Status (2026-02-19)
+
+This section is a checkpoint to continue work later without losing context.
+
+Completed and verified:
+- Auth screen styling updates (brand block, spacing, buttons, RU copy, `admin/admin` credentials).
+- Upload page and showcase visual refinements (RU labels, spacing, filter layout updates, sort controls, pagination styling).
+- Showcase cards redesign (4-column look, adjusted typography, market badges, no-buy button in preview cards).
+- Detail page (`/showcase/:itemId`) implemented:
+  - open from showcase card click;
+  - left specs + right gallery layout;
+  - full-screen image viewer with next/prev and close;
+  - thumbnail strip with `+N photo` button;
+  - contact block with email and Telegram CTA links (prefilled message includes lot code).
+- Yandex media behavior improved:
+  - main image loading kept stable;
+  - thumbnail/lightbox flow works from available links.
+- Filters logic improved in showcase:
+  - dependent brand/model behavior;
+  - type/status pills;
+  - year quick presets;
+  - number inputs formatting for price/mileage.
+- Display order adjusted so lots with photos are listed before lots without photos.
+
+Known open issue (not resolved yet):
+- Returning from detail page to showcase restores filters/page, but exact scroll position is still not reliably restored in all cases.
+- Attempted fixes already tested:
+  - sessionStorage-based scroll restore loop in `frontend/src/pages/ShowcasePage.tsx`;
+  - back navigation via browser history (`navigate(-1)`) from `frontend/src/pages/ShowcaseItemPage.tsx`.
+- Current user-reported result: filters + page restore works, scroll restore does not.
+
+Suggested next step when resuming:
+- Rework showcase scroll restoration using a route-level scroll state strategy tied to history entry key (instead of timeout retries), then retest with real navigation flows.

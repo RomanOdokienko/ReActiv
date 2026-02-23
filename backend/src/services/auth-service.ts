@@ -10,7 +10,6 @@ import {
 import {
   findUserByLogin,
   mapPublicAuthUser,
-  upsertUserByLogin,
   type PublicAuthUser,
 } from "../repositories/auth-user-repository";
 
@@ -73,14 +72,6 @@ export function buildPasswordHash(password: string): string {
     throw new Error("Password must be at least 4 characters long");
   }
   return createPasswordHash(normalized);
-}
-
-export function ensureBaseAdminCredentials(): void {
-  upsertUserByLogin({
-    login: "admin",
-    password_hash: createPasswordHash("admin"),
-    display_name: "Администратор",
-  });
 }
 
 export function loginWithPassword(login: string, password: string): AuthLoginResult | null {

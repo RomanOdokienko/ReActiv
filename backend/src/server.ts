@@ -7,7 +7,7 @@ import { registerAuthRoutes } from "./routes/auth-routes";
 import { registerCatalogRoutes } from "./routes/catalog-routes";
 import { registerImportRoutes } from "./routes/import-routes";
 import { registerMediaRoutes } from "./routes/media-routes";
-import { authenticateRequest, ensureBaseAdminCredentials } from "./services/auth-service";
+import { authenticateRequest } from "./services/auth-service";
 
 const app = Fastify({ logger: true });
 
@@ -19,7 +19,6 @@ const port = Number(process.env.PORT ?? 3001);
 const host = process.env.HOST ?? "0.0.0.0";
 
 initializeSchema();
-ensureBaseAdminCredentials();
 
 async function startServer(): Promise<void> {
   await app.register(cors, {
