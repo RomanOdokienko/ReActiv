@@ -1,5 +1,5 @@
 ﻿import { Link } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getCatalogFilters,
   getCatalogItems,
@@ -18,6 +18,62 @@ const BOOKING_PRESETS: BookingPreset[] = [
   "Забронирован",
   "На согласовании",
 ];
+
+type ViewMode = "grid" | "list";
+type SortDirection = "asc" | "desc";
+
+interface ShowcaseUiState {
+  bookingPreset: "" | BookingPreset;
+  city: string;
+  selectedVehicleTypes: string[];
+  brand: string;
+  model: string;
+  priceMin: string;
+  priceMax: string;
+  yearMin: string;
+  yearMax: string;
+  mileageMin: string;
+  mileageMax: string;
+  sortBy: string;
+  sortDir: string;
+  dateSortDir: SortDirection;
+  priceSortDir: SortDirection;
+  viewMode: ViewMode;
+  page: number;
+}
+
+const SHOWCASE_UI_STATE_KEY = "showcase_ui_state_v1";
+const SHOWCASE_RETURN_FLAG_KEY = "showcase_return_pending_v1";
+const SHOWCASE_SCROLL_Y_KEY = "showcase_scroll_y_v1";
+
+function readShowcaseUiState(): Partial<ShowcaseUiState> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(SHOWCASE_UI_STATE_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Partial<ShowcaseUiState>;
+    return parsed ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function writeShowcaseUiState(state: ShowcaseUiState): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(SHOWCASE_UI_STATE_KEY, JSON.stringify(state));
+  } catch {
+    // ignore storage errors
+  }
+}
 
 function formatPrice(price: number): string {
   return `${price.toLocaleString("ru-RU")} ₽`;
@@ -85,30 +141,128 @@ function formatIntegerWithSpaces(value: string): string {
   return parsed.toLocaleString("ru-RU");
 }
 
+function sortUniqueValues(values: Iterable<string>): string[] {
+  return Array.from(new Set(values)).sort((left, right) =>
+    left.localeCompare(right, "ru", { sensitivity: "base" }),
+  );
+}
+
 export function ShowcasePage() {
   const pageSize = 20;
+  const restoredState = useMemo(readShowcaseUiState, []);
+  const hasRestoredScrollRef = useRef(false);
+  const restoreAttemptsRef = useRef(0);
+  const restoreTimeoutRef = useRef<number | null>(null);
+  const initialBookingPreset =
+    restoredState.bookingPreset && BOOKING_PRESETS.includes(restoredState.bookingPreset)
+      ? restoredState.bookingPreset
+      : "";
 
   const [filters, setFilters] = useState<CatalogFiltersResponse | null>(null);
   const [itemsResponse, setItemsResponse] = useState<CatalogItemsResponse | null>(
     null,
   );
-  const [bookingPreset, setBookingPreset] = useState<"" | BookingPreset>("");
-  const [city, setCity] = useState("");
-  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>([]);
-  const [brand, setBrand] = useState("");
-  const [model, setModel] = useState("");
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
-  const [yearMin, setYearMin] = useState("");
-  const [yearMax, setYearMax] = useState("");
-  const [mileageMin, setMileageMin] = useState("");
-  const [mileageMax, setMileageMax] = useState("");
-  const [sortBy, setSortBy] = useState("created_at");
-  const [sortDir, setSortDir] = useState("desc");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [page, setPage] = useState(1);
+  const [bookingPreset, setBookingPreset] = useState<"" | BookingPreset>(initialBookingPreset);
+  const [city, setCity] = useState(restoredState.city ?? "");
+  const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>(
+    Array.isArray(restoredState.selectedVehicleTypes)
+      ? restoredState.selectedVehicleTypes
+      : [],
+  );
+  const [brand, setBrand] = useState(restoredState.brand ?? "");
+  const [model, setModel] = useState(restoredState.model ?? "");
+  const [priceMin, setPriceMin] = useState(restoredState.priceMin ?? "");
+  const [priceMax, setPriceMax] = useState(restoredState.priceMax ?? "");
+  const [yearMin, setYearMin] = useState(restoredState.yearMin ?? "");
+  const [yearMax, setYearMax] = useState(restoredState.yearMax ?? "");
+  const [mileageMin, setMileageMin] = useState(restoredState.mileageMin ?? "");
+  const [mileageMax, setMileageMax] = useState(restoredState.mileageMax ?? "");
+  const [sortBy, setSortBy] = useState(restoredState.sortBy ?? "created_at");
+  const [sortDir, setSortDir] = useState(restoredState.sortDir ?? "desc");
+  const [dateSortDir, setDateSortDir] = useState<SortDirection>(
+    restoredState.dateSortDir ?? "desc",
+  );
+  const [priceSortDir, setPriceSortDir] = useState<SortDirection>(
+    restoredState.priceSortDir ?? "asc",
+  );
+  const [viewMode, setViewMode] = useState<ViewMode>(restoredState.viewMode ?? "grid");
+  const [page, setPage] = useState(
+    Number.isInteger(restoredState.page) && (restoredState.page ?? 0) > 0
+      ? (restoredState.page as number)
+      : 1,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      if (restoreTimeoutRef.current !== null) {
+        window.clearTimeout(restoreTimeoutRef.current);
+        restoreTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const syncViewportState = () => {
+      setIsMobileViewport(window.innerWidth <= 760);
+    };
+
+    syncViewportState();
+    window.addEventListener("resize", syncViewportState);
+
+    return () => {
+      window.removeEventListener("resize", syncViewportState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport && isMobileFiltersOpen) {
+      setIsMobileFiltersOpen(false);
+    }
+  }, [isMobileFiltersOpen, isMobileViewport]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    if (isMobileViewport && isMobileFiltersOpen) {
+      document.body.classList.add("showcase-mobile-lock");
+      return () => {
+        document.body.classList.remove("showcase-mobile-lock");
+      };
+    }
+
+    document.body.classList.remove("showcase-mobile-lock");
+  }, [isMobileFiltersOpen, isMobileViewport]);
+
+  useEffect(() => {
+    if (!isMobileViewport || !isMobileFiltersOpen || typeof window === "undefined") {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMobileFiltersOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileFiltersOpen, isMobileViewport]);
 
   useEffect(() => {
     async function loadFilters() {
@@ -200,11 +354,150 @@ export function ShowcasePage() {
     void loadItems();
   }, [query]);
 
+  useEffect(() => {
+    writeShowcaseUiState({
+      bookingPreset,
+      city,
+      selectedVehicleTypes,
+      brand,
+      model,
+      priceMin,
+      priceMax,
+      yearMin,
+      yearMax,
+      mileageMin,
+      mileageMax,
+      sortBy,
+      sortDir,
+      dateSortDir,
+      priceSortDir,
+      viewMode,
+      page,
+    });
+  }, [
+    bookingPreset,
+    city,
+    selectedVehicleTypes,
+    brand,
+    model,
+    priceMin,
+    priceMax,
+    yearMin,
+    yearMax,
+    mileageMin,
+    mileageMax,
+    sortBy,
+    sortDir,
+    dateSortDir,
+    priceSortDir,
+    viewMode,
+    page,
+  ]);
+
   const items: CatalogItem[] = itemsResponse?.items ?? [];
   const total = itemsResponse?.pagination.total ?? 0;
   const hasImportedData = total > 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const vehicleTypeOptions = filters?.vehicleType ?? [];
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (bookingPreset) {
+      count += 1;
+    }
+    if (city) {
+      count += 1;
+    }
+    if (selectedVehicleTypes.length > 0) {
+      count += 1;
+    }
+    if (brand) {
+      count += 1;
+    }
+    if (model) {
+      count += 1;
+    }
+    if (priceMin) {
+      count += 1;
+    }
+    if (priceMax) {
+      count += 1;
+    }
+    if (yearMin) {
+      count += 1;
+    }
+    if (yearMax) {
+      count += 1;
+    }
+    if (mileageMin) {
+      count += 1;
+    }
+    if (mileageMax) {
+      count += 1;
+    }
+    return count;
+  }, [
+    bookingPreset,
+    brand,
+    city,
+    mileageMax,
+    mileageMin,
+    model,
+    priceMax,
+    priceMin,
+    selectedVehicleTypes,
+    yearMax,
+    yearMin,
+  ]);
+
+  useEffect(() => {
+    if (hasRestoredScrollRef.current || isLoading || !itemsResponse) {
+      return;
+    }
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (restoreTimeoutRef.current !== null) {
+      return;
+    }
+
+    const returnPending = window.sessionStorage.getItem(SHOWCASE_RETURN_FLAG_KEY);
+    if (returnPending !== "1") {
+      return;
+    }
+
+    const rawScrollY = window.sessionStorage.getItem(SHOWCASE_SCROLL_Y_KEY);
+    const scrollY = Number(rawScrollY);
+    const targetY = Number.isFinite(scrollY) ? Math.max(0, scrollY) : 0;
+
+    const maxAttempts = 40;
+
+    const restoreScrollPosition = () => {
+      window.scrollTo({ top: targetY, behavior: "auto" });
+
+      const reachedTarget = Math.abs(window.scrollY - targetY) <= 2;
+      if (reachedTarget || restoreAttemptsRef.current >= maxAttempts) {
+        hasRestoredScrollRef.current = true;
+        restoreAttemptsRef.current = 0;
+        window.sessionStorage.removeItem(SHOWCASE_RETURN_FLAG_KEY);
+        restoreTimeoutRef.current = null;
+        return;
+      }
+
+      restoreAttemptsRef.current += 1;
+      restoreTimeoutRef.current = window.setTimeout(restoreScrollPosition, 120);
+    };
+
+    window.requestAnimationFrame(restoreScrollPosition);
+
+    return () => {
+      if (restoreTimeoutRef.current !== null) {
+        window.clearTimeout(restoreTimeoutRef.current);
+        restoreTimeoutRef.current = null;
+      }
+    };
+  }, [isLoading, itemsResponse, items.length]);
 
   useEffect(() => {
     if (vehicleTypeOptions.length === 0) {
@@ -216,17 +509,115 @@ export function ShowcasePage() {
     );
   }, [vehicleTypeOptions]);
 
-  const availableModels = useMemo(() => {
+  const availableBrands = useMemo(() => {
     if (!filters) {
       return [];
     }
 
-    if (!brand) {
-      return filters.model;
+    if (selectedVehicleTypes.length === 0) {
+      return filters.brand;
     }
 
-    return filters.modelsByBrand?.[brand] ?? [];
-  }, [brand, filters]);
+    const brandsByVehicleType = filters.brandsByVehicleType ?? {};
+    const modelsByBrandAndVehicleType = filters.modelsByBrandAndVehicleType ?? {};
+    const hasVehicleTypeMetadata =
+      Object.keys(brandsByVehicleType).length > 0 ||
+      Object.keys(modelsByBrandAndVehicleType).length > 0;
+
+    if (!hasVehicleTypeMetadata) {
+      return filters.brand;
+    }
+
+    const selectedVehicleTypeKeys = new Set(
+      selectedVehicleTypes.map((value) => value.trim().toLowerCase()),
+    );
+    const union = new Set<string>();
+
+    Object.entries(brandsByVehicleType).forEach(([vehicleType, brands]) => {
+      if (!selectedVehicleTypeKeys.has(vehicleType.trim().toLowerCase())) {
+        return;
+      }
+
+      brands.forEach((value) => {
+        union.add(value);
+      });
+    });
+
+    if (union.size === 0) {
+      Object.entries(modelsByBrandAndVehicleType).forEach(
+        ([vehicleType, modelsByBrand]) => {
+          if (!selectedVehicleTypeKeys.has(vehicleType.trim().toLowerCase())) {
+            return;
+          }
+
+          Object.keys(modelsByBrand).forEach((value) => {
+            union.add(value);
+          });
+        },
+      );
+    }
+
+    return sortUniqueValues(union);
+  }, [filters, selectedVehicleTypes]);
+
+  const availableModels = useMemo(() => {
+    if (!filters || !brand) {
+      return [];
+    }
+
+    if (selectedVehicleTypes.length === 0) {
+      return filters.modelsByBrand?.[brand] ?? [];
+    }
+
+    const modelsByBrandAndVehicleType = filters.modelsByBrandAndVehicleType ?? {};
+    const hasVehicleTypeMetadata = Object.keys(modelsByBrandAndVehicleType).length > 0;
+
+    if (!hasVehicleTypeMetadata) {
+      return filters.modelsByBrand?.[brand] ?? [];
+    }
+
+    const selectedVehicleTypeKeys = new Set(
+      selectedVehicleTypes.map((value) => value.trim().toLowerCase()),
+    );
+    const union = new Set<string>();
+
+    Object.entries(modelsByBrandAndVehicleType).forEach(
+      ([vehicleType, modelsByBrand]) => {
+        if (!selectedVehicleTypeKeys.has(vehicleType.trim().toLowerCase())) {
+          return;
+        }
+
+        (modelsByBrand[brand] ?? []).forEach((value) => {
+          union.add(value);
+        });
+      },
+    );
+
+    return sortUniqueValues(union);
+  }, [brand, filters, selectedVehicleTypes]);
+
+  useEffect(() => {
+    if (!brand) {
+      return;
+    }
+
+    if (!availableBrands.includes(brand)) {
+      setBrand("");
+      setModel("");
+      setPage(1);
+    }
+  }, [availableBrands, brand]);
+
+  useEffect(() => {
+    if (!model) {
+      return;
+    }
+
+    if (!availableModels.includes(model)) {
+      setModel("");
+      setPage(1);
+    }
+  }, [availableModels, model]);
 
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -258,37 +649,18 @@ export function ShowcasePage() {
     return pages;
   }, [page, totalPages]);
 
-  const sortSelection = useMemo(() => {
-    if (sortBy === "price") {
-      return sortDir === "asc" ? "price_asc" : "price_desc";
-    }
-
-    return sortDir === "asc" ? "created_at_asc" : "created_at_desc";
-  }, [sortBy, sortDir]);
-
-  function applySortSelection(value: string): void {
+  function applyDateSortSelection(value: "asc" | "desc"): void {
     setPage(1);
-
-    if (value === "price_asc") {
-      setSortBy("price");
-      setSortDir("asc");
-      return;
-    }
-
-    if (value === "price_desc") {
-      setSortBy("price");
-      setSortDir("desc");
-      return;
-    }
-
-    if (value === "created_at_asc") {
-      setSortBy("created_at");
-      setSortDir("asc");
-      return;
-    }
-
+    setDateSortDir(value);
     setSortBy("created_at");
-    setSortDir("desc");
+    setSortDir(value);
+  }
+
+  function applyPriceSortSelection(value: "asc" | "desc"): void {
+    setPage(1);
+    setPriceSortDir(value);
+    setSortBy("price");
+    setSortDir(value);
   }
 
   function clearFilters(): void {
@@ -367,226 +739,303 @@ export function ShowcasePage() {
       {error && <p className="error">{error}</p>}
 
       <main className="showcase-main">
-        <div className="showcase-filter-panel">
-          <div className="showcase-presets">
-            {BOOKING_PRESETS.map((preset) => (
+        <div className="showcase-mobile-filter-bar">
+          <button
+            type="button"
+            className="showcase-mobile-filter-toggle"
+            onClick={() => setIsMobileFiltersOpen(true)}
+            aria-expanded={isMobileFiltersOpen}
+            aria-controls="showcase-filter-panel"
+          >
+            <span>Фильтры</span>
+            {activeFiltersCount > 0 && (
+              <span className="showcase-mobile-filter-count">{activeFiltersCount}</span>
+            )}
+          </button>
+        </div>
+
+        <div
+          className={
+            isMobileFiltersOpen
+              ? "showcase-filter-drawer showcase-filter-drawer--open"
+              : "showcase-filter-drawer"
+          }
+        >
+          <button
+            type="button"
+            className="showcase-filter-drawer__backdrop"
+            aria-label="Закрыть фильтры"
+            onClick={() => setIsMobileFiltersOpen(false)}
+          />
+
+          <div
+            className="showcase-filter-panel"
+            id="showcase-filter-panel"
+            role={isMobileViewport ? "dialog" : undefined}
+            aria-modal={isMobileViewport ? "true" : undefined}
+            aria-label={isMobileViewport ? "Фильтры витрины" : undefined}
+          >
+            <div className="showcase-filter-mobile-header">
+              <strong>Фильтры</strong>
               <button
-                key={preset}
                 type="button"
-                className={getBookingPresetChipClassName(preset)}
-                onClick={() => toggleBookingPreset(preset)}
+                className="secondary-button showcase-filter-mobile-close"
+                onClick={() => setIsMobileFiltersOpen(false)}
               >
-                {preset}
+                Закрыть
               </button>
-            ))}
-          </div>
+            </div>
 
-          <div className="showcase-filter-grid showcase-filter-grid--type">
-            <div className="vehicle-type-picker">
-              <div className="vehicle-type-picker__chips">
-                <button
-                  type="button"
-                  className={selectedVehicleTypes.length === 0 ? "vehicle-type-chip active" : "vehicle-type-chip"}
-                  onClick={clearVehicleTypeSelection}
-                >
-                  Все виды техники
-                </button>
-
-                {vehicleTypeOptions.map((value) => (
+            <div className="showcase-filter-group">
+              <p className="showcase-filter-group-title">Статус техники</p>
+              <div className="showcase-presets">
+                {BOOKING_PRESETS.map((preset) => (
                   <button
-                    key={value}
+                    key={preset}
                     type="button"
-                    className={selectedVehicleTypes.includes(value) ? "vehicle-type-chip active" : "vehicle-type-chip"}
-                    onClick={() => toggleVehicleType(value)}
-                    title={value}
+                    className={getBookingPresetChipClassName(preset)}
+                    onClick={() => toggleBookingPreset(preset)}
                   >
-                    {getVehicleTypeLabel(value)}
+                    {preset}
                   </button>
                 ))}
               </div>
             </div>
-          </div>
 
-          <div className="showcase-filter-grid showcase-filter-grid--triple">
-            <select
-              className={`${city ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
-              value={city}
-              onChange={(event) => {
-                setPage(1);
-                setCity(event.target.value);
-              }}
-            >
-              <option value="">Регион</option>
-              {(filters?.city ?? []).map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
+            <div className="showcase-filter-grid showcase-filter-grid--type">
+              <div className="vehicle-type-picker">
+                <div className="vehicle-type-picker__row">
+                  <div className="vehicle-type-picker__chips">
+                    <button
+                      type="button"
+                      className={selectedVehicleTypes.length === 0 ? "vehicle-type-chip active" : "vehicle-type-chip"}
+                      onClick={clearVehicleTypeSelection}
+                    >
+                      Все виды техники
+                    </button>
 
-            <select
-              className={`${brand ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
-              value={brand}
-              onChange={(event) => {
-                setPage(1);
-                const nextBrand = event.target.value;
-                setBrand(nextBrand);
-
-                const nextModels = nextBrand
-                  ? filters?.modelsByBrand?.[nextBrand] ?? []
-                  : filters?.model ?? [];
-                if (model && !nextModels.includes(model)) {
-                  setModel("");
-                }
-              }}
-            >
-              <option value="">Марка</option>
-              {(filters?.brand ?? []).map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-
-            <select
-              className={`${model ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
-              value={model}
-              disabled={brand !== "" && availableModels.length === 0}
-              onChange={(event) => {
-                setPage(1);
-                setModel(event.target.value);
-              }}
-            >
-              <option value="">
-                {brand !== "" && availableModels.length === 0
-                  ? "Нет моделей"
-                  : "Модель"}
-              </option>
-              {availableModels.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="showcase-filter-grid showcase-filter-grid--paired">
-            <div className="showcase-filter-pair">
-              <input
-                type="text"
-                inputMode="numeric"
-                className={priceMin ? "showcase-filter is-active" : "showcase-filter"}
-                placeholder="Цена от, ₽"
-                value={formatIntegerWithSpaces(priceMin)}
-                onChange={(event) => {
-                  setPage(1);
-                  setPriceMin(normalizeIntegerInput(event.target.value));
-                }}
-              />
-
-              <input
-                type="text"
-                inputMode="numeric"
-                className={priceMax ? "showcase-filter is-active" : "showcase-filter"}
-                placeholder="Цена до, ₽"
-                value={formatIntegerWithSpaces(priceMax)}
-                onChange={(event) => {
-                  setPage(1);
-                  setPriceMax(normalizeIntegerInput(event.target.value));
-                }}
-              />
+                    {vehicleTypeOptions.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={selectedVehicleTypes.includes(value) ? "vehicle-type-chip active" : "vehicle-type-chip"}
+                        onClick={() => toggleVehicleType(value)}
+                        title={value}
+                      >
+                        {getVehicleTypeLabel(value)}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="secondary-button showcase-reset-button"
+                    onClick={clearFilters}
+                  >
+                    Сбросить фильтры
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div className="showcase-filter-pair">
+            <div className="showcase-filter-grid showcase-filter-grid--triple">
               <select
-                className={`${yearMin ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
-                value={yearMin}
+                className={`${city ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
+                value={city}
                 onChange={(event) => {
                   setPage(1);
-                  const nextYearMin = event.target.value;
-                  setYearMin(nextYearMin);
-                  if (nextYearMin && yearMax && Number(nextYearMin) > Number(yearMax)) {
-                    setYearMax(nextYearMin);
-                  }
+                  setCity(event.target.value);
                 }}
               >
-                <option value="">Год от</option>
-                {yearOptions.map((yearValue) => (
-                  <option key={`year-min-${yearValue}`} value={yearValue}>
-                    {yearValue}
+                <option value="">Регион</option>
+                {(filters?.city ?? []).map((value) => (
+                  <option key={value} value={value}>
+                    {value}
                   </option>
                 ))}
               </select>
 
               <select
-                className={`${yearMax ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
-                value={yearMax}
+                className={`${brand ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
+                value={brand}
+                disabled={availableBrands.length === 0}
                 onChange={(event) => {
                   setPage(1);
-                  const nextYearMax = event.target.value;
-                  setYearMax(nextYearMax);
-                  if (nextYearMax && yearMin && Number(nextYearMax) < Number(yearMin)) {
-                    setYearMin(nextYearMax);
-                  }
+                  setBrand(event.target.value);
                 }}
               >
-                <option value="">Год до</option>
-                {yearOptions.map((yearValue) => (
-                  <option key={`year-max-${yearValue}`} value={yearValue}>
-                    {yearValue}
+                <option value="">
+                  {availableBrands.length === 0 ? "Нет марок" : "Марка"}
+                </option>
+                {availableBrands.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className={`${model ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
+                value={model}
+                disabled={brand === "" || availableModels.length === 0}
+                onChange={(event) => {
+                  setPage(1);
+                  setModel(event.target.value);
+                }}
+              >
+                <option value="">
+                  {brand === ""
+                    ? "Сначала выберите марку"
+                    : availableModels.length === 0
+                      ? "Нет моделей"
+                      : "Модель"}
+                </option>
+                {availableModels.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="showcase-filter-pair">
-              <input
-                type="text"
-                inputMode="numeric"
-                className={mileageMin ? "showcase-filter is-active" : "showcase-filter"}
-                placeholder="Пробег от, км"
-                value={formatIntegerWithSpaces(mileageMin)}
-                onChange={(event) => {
-                  setPage(1);
-                  setMileageMin(normalizeIntegerInput(event.target.value));
-                }}
-              />
+            <div className="showcase-filter-grid showcase-filter-grid--paired">
+              <div className="showcase-filter-pair">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className={priceMin ? "showcase-filter is-active" : "showcase-filter"}
+                  placeholder="Цена от, ₽"
+                  value={formatIntegerWithSpaces(priceMin)}
+                  onChange={(event) => {
+                    setPage(1);
+                    setPriceMin(normalizeIntegerInput(event.target.value));
+                  }}
+                />
 
-              <input
-                type="text"
-                inputMode="numeric"
-                className={mileageMax ? "showcase-filter is-active" : "showcase-filter"}
-                placeholder="Пробег до, км"
-                value={formatIntegerWithSpaces(mileageMax)}
-                onChange={(event) => {
-                  setPage(1);
-                  setMileageMax(normalizeIntegerInput(event.target.value));
-                }}
-              />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className={priceMax ? "showcase-filter is-active" : "showcase-filter"}
+                  placeholder="Цена до, ₽"
+                  value={formatIntegerWithSpaces(priceMax)}
+                  onChange={(event) => {
+                    setPage(1);
+                    setPriceMax(normalizeIntegerInput(event.target.value));
+                  }}
+                />
+              </div>
+
+              <div className="showcase-filter-pair">
+                <select
+                  className={`${yearMin ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
+                  value={yearMin}
+                  onChange={(event) => {
+                    setPage(1);
+                    const nextYearMin = event.target.value;
+                    setYearMin(nextYearMin);
+                    if (nextYearMin && yearMax && Number(nextYearMin) > Number(yearMax)) {
+                      setYearMax(nextYearMin);
+                    }
+                  }}
+                >
+                  <option value="">Год от</option>
+                  {yearOptions.map((yearValue) => (
+                    <option key={`year-min-${yearValue}`} value={yearValue}>
+                      {yearValue}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className={`${yearMax ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
+                  value={yearMax}
+                  onChange={(event) => {
+                    setPage(1);
+                    const nextYearMax = event.target.value;
+                    setYearMax(nextYearMax);
+                    if (nextYearMax && yearMin && Number(nextYearMax) < Number(yearMin)) {
+                      setYearMin(nextYearMax);
+                    }
+                  }}
+                >
+                  <option value="">Год до</option>
+                  {yearOptions.map((yearValue) => (
+                    <option key={`year-max-${yearValue}`} value={yearValue}>
+                      {yearValue}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="showcase-filter-pair">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className={mileageMin ? "showcase-filter is-active" : "showcase-filter"}
+                  placeholder="Пробег от, км"
+                  value={formatIntegerWithSpaces(mileageMin)}
+                  onChange={(event) => {
+                    setPage(1);
+                    setMileageMin(normalizeIntegerInput(event.target.value));
+                  }}
+                />
+
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className={mileageMax ? "showcase-filter is-active" : "showcase-filter"}
+                  placeholder="Пробег до, км"
+                  value={formatIntegerWithSpaces(mileageMax)}
+                  onChange={(event) => {
+                    setPage(1);
+                    setMileageMax(normalizeIntegerInput(event.target.value));
+                  }}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="showcase-filter-actions">
-            <button type="button" className="secondary-button" onClick={clearFilters}>
-              Сбросить фильтры
-            </button>
+            <div className="showcase-filter-mobile-footer">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={clearFilters}
+              >
+                Сбросить все
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsMobileFiltersOpen(false)}
+              >
+                Показать {total.toLocaleString("ru-RU")}
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="showcase-meta">
           <strong>Найдено {total.toLocaleString("ru-RU")} позиций</strong>
           <div className="showcase-meta-controls">
-            <div className="showcase-sort">
+            <div className="showcase-sort showcase-sort--split">
               <select
                 className="showcase-filter showcase-filter--select showcase-sort-select"
-                value={sortSelection}
-                onChange={(event) => applySortSelection(event.target.value)}
-                aria-label="Сортировка"
+                value={dateSortDir}
+                onChange={(event) =>
+                  applyDateSortSelection(event.target.value as "asc" | "desc")
+                }
+                aria-label="Сортировка по дате"
               >
-                <option value="created_at_desc">Сначала новые</option>
-                <option value="created_at_asc">Сначала старые</option>
-                <option value="price_asc">Сначала дешевле</option>
-                <option value="price_desc">Сначала дороже</option>
+                <option value="desc">Сначала новые</option>
+                <option value="asc">Сначала старые</option>
+              </select>
+              <select
+                className="showcase-filter showcase-filter--select showcase-sort-select"
+                value={priceSortDir}
+                onChange={(event) =>
+                  applyPriceSortSelection(event.target.value as "asc" | "desc")
+                }
+                aria-label="Сортировка по цене"
+              >
+                <option value="asc">Сначала дешевле</option>
+                <option value="desc">Сначала дороже</option>
               </select>
             </div>
 
@@ -595,15 +1044,28 @@ export function ShowcasePage() {
                 type="button"
                 className={viewMode === "grid" ? "active" : ""}
                 onClick={() => setViewMode("grid")}
+                aria-label="Сетка"
+                title="Сетка"
               >
-                Сетка
+                <svg viewBox="0 0 20 20" role="presentation" focusable="false">
+                  <rect x="2.5" y="2.5" width="6" height="6" rx="1.2" />
+                  <rect x="11.5" y="2.5" width="6" height="6" rx="1.2" />
+                  <rect x="2.5" y="11.5" width="6" height="6" rx="1.2" />
+                  <rect x="11.5" y="11.5" width="6" height="6" rx="1.2" />
+                </svg>
               </button>
               <button
                 type="button"
                 className={viewMode === "list" ? "active" : ""}
                 onClick={() => setViewMode("list")}
+                aria-label="По порядку"
+                title="По порядку"
               >
-                По порядку
+                <svg viewBox="0 0 20 20" role="presentation" focusable="false">
+                  <rect x="2.5" y="3" width="15" height="3" rx="1.2" />
+                  <rect x="2.5" y="8.5" width="15" height="3" rx="1.2" />
+                  <rect x="2.5" y="14" width="15" height="3" rx="1.2" />
+                </svg>
               </button>
             </div>
           </div>
@@ -630,8 +1092,16 @@ export function ShowcasePage() {
                   <Link
                     key={item.id}
                     to={`/showcase/${item.id}`}
+                    state={{ fromShowcase: true }}
                     className="vehicle-card vehicle-card-link"
                     style={{ animationDelay: `${Math.min(index, 11) * 40}ms` }}
+                    onClick={() => {
+                      if (typeof window === "undefined") {
+                        return;
+                      }
+                      window.sessionStorage.setItem(SHOWCASE_RETURN_FLAG_KEY, "1");
+                      window.sessionStorage.setItem(SHOWCASE_SCROLL_Y_KEY, String(window.scrollY));
+                    }}
                   >
                     <div className="vehicle-card__image">
                       <span className={marketTag.className}>{marketTag.label}</span>
