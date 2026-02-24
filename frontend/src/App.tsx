@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { getCurrentUser, logActivityEvent, logout } from "./api/client";
 import { CatalogPage } from "./pages/CatalogPage";
+import { AdminActivityPage } from "./pages/AdminActivityPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { LoginPage } from "./pages/LoginPage";
-import { ShowcasePage } from "./pages/ShowcasePage";
 import { ShowcaseItemPage } from "./pages/ShowcaseItemPage";
+import { ShowcasePage } from "./pages/ShowcasePage";
 import { UploadPage } from "./pages/UploadPage";
 import type { AuthUser } from "./types/api";
 
@@ -127,10 +128,17 @@ export function App() {
           {isAdmin && (
             <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>Пользователи</NavLink>
           )}
+          {isAdmin && (
+            <NavLink to="/admin/activity" className={({ isActive }) => (isActive ? "active" : "")}>Активность</NavLink>
+          )}
         </nav>
         <div className="nav-actions">
           <span className="nav-user">{authUser?.displayName ?? authUser?.login}</span>
-          <button type="button" className="secondary-button nav-logout" onClick={() => void handleLogout()}>
+          <button
+            type="button"
+            className="secondary-button nav-logout"
+            onClick={() => void handleLogout()}
+          >
             Выйти
           </button>
         </div>
@@ -153,6 +161,10 @@ export function App() {
         <Route
           path="/admin/users"
           element={isAdmin ? <AdminUsersPage /> : <Navigate to="/showcase" replace />}
+        />
+        <Route
+          path="/admin/activity"
+          element={isAdmin ? <AdminActivityPage /> : <Navigate to="/showcase" replace />}
         />
         <Route
           path="/login"

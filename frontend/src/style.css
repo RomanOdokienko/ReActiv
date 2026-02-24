@@ -400,6 +400,23 @@ a {
   font-weight: 600;
 }
 
+.activity-toolbar input,
+.activity-toolbar select {
+  flex: 1 1 190px;
+  min-width: 160px;
+}
+
+.activity-payload {
+  display: inline-block;
+  max-width: 520px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #435a75;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .catalog-layout {
   display: grid;
   grid-template-columns: 310px 1fr;
