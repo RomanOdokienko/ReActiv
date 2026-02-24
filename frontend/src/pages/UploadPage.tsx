@@ -184,24 +184,48 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
           {result.errors.length > 0 && (
             <>
               <h3>Ошибки</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Строка</th>
-                    <th>Поле</th>
-                    <th>Сообщение</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.errors.map((item, index) => (
-                    <tr key={`${item.rowNumber}-${item.field}-${index}`}>
-                      <td>{item.rowNumber}</td>
-                      <td>{item.field ?? "-"}</td>
-                      <td>{item.message}</td>
+              <div className="table-wrap desktop-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Строка</th>
+                      <th>Поле</th>
+                      <th>Сообщение</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {result.errors.map((item, index) => (
+                      <tr key={`${item.rowNumber}-${item.field}-${index}`}>
+                        <td>{item.rowNumber}</td>
+                        <td>{item.field ?? "-"}</td>
+                        <td>{item.message}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mobile-cards">
+                {result.errors.map((item, index) => (
+                  <article
+                    key={`mobile-${item.rowNumber}-${item.field}-${index}`}
+                    className="mobile-card"
+                  >
+                    <div className="mobile-card__head">
+                      <strong>Ошибка в строке {item.rowNumber}</strong>
+                    </div>
+                    <dl className="mobile-card__list">
+                      <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Поле</dt>
+                        <dd className="mobile-card__value">{item.field ?? "-"}</dd>
+                      </div>
+                      <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Сообщение</dt>
+                        <dd className="mobile-card__value">{item.message}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                ))}
+              </div>
             </>
           )}
         </div>
@@ -213,7 +237,8 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
         {history.length === 0 ? (
           <p className="empty">Импортов пока нет.</p>
         ) : (
-          <div className="table-wrap">
+          <>
+          <div className="table-wrap desktop-table">
             <table>
               <thead>
                 <tr>
@@ -239,6 +264,35 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
               </tbody>
             </table>
           </div>
+          <div className="mobile-cards">
+            {history.map((item) => (
+              <article key={`mobile-${item.id}`} className="mobile-card">
+                <div className="mobile-card__head">
+                  <strong>{item.filename}</strong>
+                  <span className="mobile-card__meta">{item.created_at}</span>
+                </div>
+                <dl className="mobile-card__list">
+                  <div className="mobile-card__row">
+                    <dt className="mobile-card__label">Статус</dt>
+                    <dd className="mobile-card__value">{getStatusLabel(item.status)}</dd>
+                  </div>
+                  <div className="mobile-card__row">
+                    <dt className="mobile-card__label">Всего</dt>
+                    <dd className="mobile-card__value">{item.total_rows}</dd>
+                  </div>
+                  <div className="mobile-card__row">
+                    <dt className="mobile-card__label">Импортировано</dt>
+                    <dd className="mobile-card__value">{item.imported_rows}</dd>
+                  </div>
+                  <div className="mobile-card__row">
+                    <dt className="mobile-card__label">Пропущено</dt>
+                    <dd className="mobile-card__value">{item.skipped_rows}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+          </>
         )}
       </div>
     </section>

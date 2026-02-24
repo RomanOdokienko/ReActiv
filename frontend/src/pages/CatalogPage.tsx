@@ -308,7 +308,7 @@ export function CatalogPage() {
 
           {!isLoading && items.length > 0 && (
             <>
-              <div className="table-wrap">
+              <div className="table-wrap desktop-table">
                 <table>
                   <thead>
                     <tr>
@@ -339,6 +339,45 @@ export function CatalogPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              <div className="mobile-cards">
+                {items.map((item) => (
+                  <article key={`mobile-${item.id}`} className="mobile-card">
+                    <div className="mobile-card__head">
+                      <strong>
+                        {item.brand} {item.model}
+                      </strong>
+                      <span className="mobile-card__meta">Код: {item.offerCode}</span>
+                    </div>
+                    <dl className="mobile-card__list">
+                      <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Статус</dt>
+                        <dd className="mobile-card__value">{item.status}</dd>
+                      </div>
+                      <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Год</dt>
+                        <dd className="mobile-card__value">{item.year}</dd>
+                      </div>
+                      <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Пробег</dt>
+                        <dd className="mobile-card__value">{item.mileageKm}</dd>
+                      </div>
+                      <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Цена</dt>
+                        <dd className="mobile-card__value">{item.price}</dd>
+                      </div>
+                      <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Бронь</dt>
+                        <dd className="mobile-card__value">{item.bookingStatus}</dd>
+                      </div>
+                      <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Место хранения</dt>
+                        <dd className="mobile-card__value">{item.storageAddress}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                ))}
               </div>
 
               <div className="pager">

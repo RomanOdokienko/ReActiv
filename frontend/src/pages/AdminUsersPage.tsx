@@ -262,7 +262,8 @@ export function AdminUsersPage() {
         ) : users.length === 0 ? (
           <p className="empty">Пользователей пока нет.</p>
         ) : (
-          <div className="table-wrap">
+          <>
+          <div className="table-wrap desktop-table">
             <table>
               <thead>
                 <tr>
@@ -286,6 +287,33 @@ export function AdminUsersPage() {
               </tbody>
             </table>
           </div>
+          <div className="mobile-cards">
+            {users.map((user) => (
+              <article key={`mobile-${user.id}`} className="mobile-card">
+                <div className="mobile-card__head">
+                  <strong>{user.login}</strong>
+                  <span className="mobile-card__meta">{user.createdAt}</span>
+                </div>
+                <dl className="mobile-card__list">
+                  <div className="mobile-card__row">
+                    <dt className="mobile-card__label">Имя</dt>
+                    <dd className="mobile-card__value">{user.displayName}</dd>
+                  </div>
+                  <div className="mobile-card__row">
+                    <dt className="mobile-card__label">Роль</dt>
+                    <dd className="mobile-card__value">{roleLabel(user.role)}</dd>
+                  </div>
+                  <div className="mobile-card__row">
+                    <dt className="mobile-card__label">Статус</dt>
+                    <dd className="mobile-card__value">
+                      {user.isActive ? "Активен" : "Отключен"}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+          </>
         )}
       </div>
     </section>
