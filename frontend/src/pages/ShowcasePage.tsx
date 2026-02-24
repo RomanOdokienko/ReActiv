@@ -399,6 +399,7 @@ export function ShowcasePage() {
   const hasImportedData = total > 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const vehicleTypeOptions = filters?.vehicleType ?? [];
+  const effectiveViewMode: ViewMode = isMobileViewport ? "list" : viewMode;
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (bookingPreset) {
@@ -1042,7 +1043,7 @@ export function ShowcasePage() {
             <div className="view-switch showcase-view-switch">
               <button
                 type="button"
-                className={viewMode === "grid" ? "active" : ""}
+                className={effectiveViewMode === "grid" ? "active" : ""}
                 onClick={() => setViewMode("grid")}
                 aria-label="Сетка"
                 title="Сетка"
@@ -1056,7 +1057,7 @@ export function ShowcasePage() {
               </button>
               <button
                 type="button"
-                className={viewMode === "list" ? "active" : ""}
+                className={effectiveViewMode === "list" ? "active" : ""}
                 onClick={() => setViewMode("list")}
                 aria-label="По порядку"
                 title="По порядку"
@@ -1083,7 +1084,7 @@ export function ShowcasePage() {
 
         {!isLoading && items.length > 0 && (
           <>
-            <div className={viewMode === "list" ? "cards-grid cards-grid--list" : "cards-grid"}>
+            <div className={effectiveViewMode === "list" ? "cards-grid cards-grid--list" : "cards-grid"}>
               {items.map((item, index) => {
                 const marketTag = getMarketTag(item.daysOnSale);
                 const primaryMediaUrl = extractMediaUrls(item.yandexDiskUrl)[0];

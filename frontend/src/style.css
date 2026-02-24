@@ -2190,6 +2190,10 @@ tbody tr:nth-child(even) {
     min-width: 0;
   }
 
+  .showcase-view-switch {
+    display: none;
+  }
+
   .summary-grid {
     grid-template-columns: 1fr;
   }
