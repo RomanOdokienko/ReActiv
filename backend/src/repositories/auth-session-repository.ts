@@ -15,6 +15,7 @@ interface SessionUserRow {
   id: number;
   login: string;
   display_name: string;
+  role: string;
   is_active: number;
 }
 
@@ -46,6 +47,7 @@ export function findSessionUserByTokenHash(tokenHash: string): SessionUser | nul
           u.id,
           u.login,
           u.display_name,
+          u.role,
           u.is_active
         FROM auth_sessions s
         JOIN users u ON u.id = s.user_id

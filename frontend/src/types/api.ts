@@ -1,3 +1,5 @@
+export type UserRole = "admin" | "manager";
+
 export interface ImportErrorItem {
   rowNumber: number;
   field: string | null;
@@ -8,10 +10,24 @@ export interface AuthUser {
   id: number;
   login: string;
   displayName: string;
+  role: UserRole;
 }
 
 export interface AuthResponse {
   user: AuthUser;
+}
+
+export interface AdminUserListItem {
+  id: number;
+  login: string;
+  displayName: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AdminUsersResponse {
+  items: AdminUserListItem[];
 }
 
 export interface ImportResponse {
@@ -102,6 +118,8 @@ export interface CatalogFiltersResponse {
   websiteUrl: string[];
   yandexDiskUrl: string[];
   modelsByBrand?: Record<string, string[]>;
+  brandsByVehicleType?: Record<string, string[]>;
+  modelsByBrandAndVehicleType?: Record<string, Record<string, string[]>>;
   priceMin: number | null;
   priceMax: number | null;
   yearMin: number | null;

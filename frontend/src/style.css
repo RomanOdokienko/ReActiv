@@ -307,6 +307,13 @@ a {
   font: inherit;
 }
 
+.admin-users-form input[type="text"],
+.admin-users-form input[type="password"],
+.admin-users-form select {
+  flex: 1 1 210px;
+  min-width: 180px;
+}
+
 .import-summary {
   display: grid;
   gap: 14px;
@@ -493,6 +500,20 @@ button:disabled {
   margin-bottom: 10px;
 }
 
+.showcase-filter-group {
+  display: grid;
+  gap: 8px;
+}
+
+.showcase-filter-group-title {
+  margin: 0;
+  color: #5f7088;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
 .showcase-presets {
   display: flex;
   flex-wrap: wrap;
@@ -558,10 +579,23 @@ button:disabled {
   width: 100%;
 }
 
+.vehicle-type-picker__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
 .vehicle-type-picker__chips {
+  flex: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.showcase-reset-button {
+  min-height: 40px;
+  white-space: nowrap;
+  align-self: flex-start;
 }
 
 .vehicle-type-chip {
@@ -705,6 +739,11 @@ button:disabled {
   min-width: 210px;
 }
 
+.showcase-sort--split {
+  gap: 8px;
+  min-width: 370px;
+}
+
 .showcase-sort-select {
   min-height: 36px;
   width: 100%;
@@ -713,18 +752,36 @@ button:disabled {
   color: #415871;
 }
 
+.showcase-sort--split .showcase-sort-select {
+  min-width: 180px;
+}
+
 .showcase-view-switch {
   margin-left: 0;
 }
 
 .showcase-view-switch button {
-  min-height: 34px;
-  padding: 6px 12px;
+  min-height: 36px;
+  min-width: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 13px;
   background: #fff;
   color: #405874;
   border-right-color: #d0daea;
   box-shadow: none;
+}
+
+.showcase-view-switch button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.showcase-view-switch button svg rect,
+.showcase-view-switch button svg path {
+  fill: currentColor;
 }
 
 .showcase-view-switch button:hover:not(:disabled) {
@@ -886,17 +943,28 @@ tbody tr:nth-child(even) {
 .cards-grid--list .vehicle-card {
   display: grid;
   grid-template-columns: 380px 1fr;
+  min-height: 260px;
 }
 
 .cards-grid--list .vehicle-card__image {
-  height: 100%;
+  height: 260px;
   min-height: 260px;
+  align-self: stretch;
   border-right: 0;
   border-bottom: 0;
 }
 
 .cards-grid--list .vehicle-card__content {
   padding: 20px 22px 18px;
+  min-height: 260px;
+}
+
+.cards-grid--list .vehicle-card__content h3 {
+  min-height: 48px;
+}
+
+.cards-grid--list .vehicle-card__subtitle {
+  min-height: 48px;
 }
 
 .vehicle-card {
@@ -1016,9 +1084,9 @@ tbody tr:nth-child(even) {
 .vehicle-card__content h3 {
   margin: 0;
   color: #151a21;
-  font-size: clamp(16px, 1.02vw, 23px);
+  font-size: 18px;
   font-weight: 700;
-  line-height: 1.18;
+  line-height: 24px;
   letter-spacing: -0.01em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1029,9 +1097,9 @@ tbody tr:nth-child(even) {
 .vehicle-card__subtitle {
   margin: 0;
   color: #818b98;
-  font-size: clamp(13px, 0.8vw, 17px);
+  font-size: 16px;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 24px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1050,7 +1118,8 @@ tbody tr:nth-child(even) {
 .vehicle-card__price {
   margin: 0;
   font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
-  font-size: clamp(20px, 1.2vw, 30px);
+  font-size: 20px;
+  line-height: 24px;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
@@ -1119,10 +1188,10 @@ tbody tr:nth-child(even) {
 .detail-market-tag {
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 6px 12px;
+  min-height: 24px;
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: -0.01em;
   text-transform: lowercase;
@@ -1145,17 +1214,17 @@ tbody tr:nth-child(even) {
 
 .detail-top-cards {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 10px;
   align-items: stretch;
 }
 
 .detail-trust-card {
-  display: grid;
-  grid-template-columns: 52px 1fr;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px 18px;
   border-radius: 16px;
   border: 1px solid #d9e3f1;
   background: #ffffff;
@@ -1177,20 +1246,22 @@ tbody tr:nth-child(even) {
 
 .detail-trust-content {
   min-width: 0;
+  display: grid;
+  gap: 10px;
 }
 
 .detail-trust-title {
   margin: 0;
   color: #1a2c44;
-  font-size: 19px;
+  font-size: 24px;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .detail-trust-meta {
-  margin: 4px 0 0;
+  margin: 0;
   color: #667a93;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1198,17 +1269,37 @@ tbody tr:nth-child(even) {
   overflow: hidden;
 }
 
+.detail-trust-price-wrap {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
+.detail-trust-price {
+  margin: 0;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  color: #142c49;
+}
+
 .detail-cta-card {
   position: relative;
   min-height: 102px;
-  padding: 10px 14px 12px;
+  padding: 12px 14px;
   border-radius: 16px;
   border: 1px solid #5fca83;
   background: linear-gradient(135deg, #2fa95b, #3ec26f);
   color: #f3fff7;
   display: grid;
   align-content: center;
-  gap: 8px;
+  justify-items: center;
+  gap: 10px;
 }
 
 .detail-cta-badge {
@@ -1231,25 +1322,60 @@ tbody tr:nth-child(even) {
   font-size: 13px;
   line-height: 1.25;
   color: rgba(243, 255, 247, 0.92);
+  text-align: center;
 }
 
 .detail-cta-button {
-  min-height: 38px;
+  min-height: 40px;
   border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(14, 44, 25, 0.24);
+  border: 0;
+  background: rgba(243, 255, 247, 0.18);
   color: #fff;
   font-weight: 700;
   font-size: 14px;
+  padding: 8px 12px;
+  text-align: center;
+  width: 100%;
+  gap: 8px;
+  text-align: center;
 }
 
 .detail-cta-button:disabled {
   opacity: 0.8;
   cursor: default;
+}
+
+.detail-cta-button--telegram {
+  justify-content: center;
+  background: rgba(11, 40, 25, 0.2);
+}
+
+.detail-cta-button__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f70c6;
+  color: #ffffff;
+}
+
+.detail-cta-button__icon svg {
+  width: 13px;
+  height: 13px;
+}
+
+.detail-cta-button__icon svg path {
+  fill: currentColor;
+}
+
+.detail-cta-button__text {
+  line-height: 1.2;
 }
 
 .detail-layout {
@@ -1320,7 +1446,7 @@ tbody tr:nth-child(even) {
 
 .detail-spec-row dt {
   color: #6d7f95;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.3;
 }
@@ -1329,7 +1455,7 @@ tbody tr:nth-child(even) {
   margin: 0;
   color: #1d2e44;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
   word-break: break-word;
 }
@@ -1714,6 +1840,16 @@ tbody tr:nth-child(even) {
 
   .cards-grid--list .vehicle-card {
     grid-template-columns: 260px 1fr;
+    min-height: 220px;
+  }
+
+  .cards-grid--list .vehicle-card__image {
+    height: 220px;
+    min-height: 220px;
+  }
+
+  .cards-grid--list .vehicle-card__content {
+    min-height: 220px;
   }
 }
 
@@ -1734,6 +1870,14 @@ tbody tr:nth-child(even) {
   .showcase-filter-grid--triple,
   .showcase-filter-grid--paired {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vehicle-type-picker__row {
+    flex-direction: column;
+  }
+
+  .showcase-reset-button {
+    width: 100%;
   }
 
   .cards-grid {
@@ -1823,6 +1967,14 @@ tbody tr:nth-child(even) {
     max-width: none;
   }
 
+  .showcase-sort--split {
+    min-width: 0;
+  }
+
+  .showcase-sort--split .showcase-sort-select {
+    min-width: 0;
+  }
+
   .summary-grid {
     grid-template-columns: 1fr;
   }
@@ -1837,8 +1989,10 @@ tbody tr:nth-child(even) {
   }
 
   .detail-trust-card {
-    grid-template-columns: 42px 1fr;
+    flex-direction: column;
+    align-items: stretch;
     padding: 12px;
+    gap: 6px;
   }
 
   .detail-trust-icon {
@@ -1848,11 +2002,19 @@ tbody tr:nth-child(even) {
   }
 
   .detail-trust-title {
-    font-size: 17px;
+    font-size: 20px;
   }
 
   .detail-trust-meta {
-    font-size: 14px;
+    font-size: 15px;
+  }
+
+  .detail-trust-price-wrap {
+    justify-items: start;
+  }
+
+  .detail-trust-price {
+    font-size: clamp(28px, 7vw, 36px);
   }
 
   .detail-cta-card {

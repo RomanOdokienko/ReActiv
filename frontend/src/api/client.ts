@@ -1,4 +1,5 @@
 import type {
+  AdminUsersResponse,
   AuthResponse,
   CatalogItem,
   ClearImportsResponse,
@@ -6,6 +7,7 @@ import type {
   CatalogFiltersResponse,
   CatalogItemsResponse,
   ImportResponse,
+  UserRole,
 } from "../types/api";
 
 const API_BASE_URL =
@@ -88,6 +90,80 @@ export async function logout(): Promise<void> {
       method: "POST",
       credentials: "include",
     });
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export interface CreateAdminUserInput {
+  login: string;
+  password: string;
+  displayName: string;
+  role?: UserRole;
+}
+
+export async function getAdminUsers(): Promise<AdminUsersResponse> {
+  try {
+    const response = await fetch(buildUrl("/admin/users"), {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить пользователей");
+    }
+
+    return (await response.json()) as AdminUsersResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function createAdminUser(
+  input: CreateAdminUserInput,
+): Promise<AuthResponse> {
+  try {
+    const response = await fetch(buildUrl("/admin/users"), {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (response.status === 409) {
+      throw new Error("Пользователь с таким логином уже существует");
+    }
+
+    if (!response.ok) {
+      let errorMessage = "Не удалось создать пользователя";
+      try {
+        const errorPayload = (await response.json()) as { message?: string };
+        if (errorPayload.message) {
+          errorMessage = errorPayload.message;
+        }
+      } catch {
+        // keep default message
+      }
+      throw new Error(errorMessage);
+    }
+
+    return (await response.json()) as AuthResponse;
   } catch (error) {
     if (error instanceof TypeError) {
       throw backendUnavailableError();
@@ -222,6 +298,7 @@ export async function getCatalogItems(
   try {
     const response = await fetch(buildUrl(`/catalog/items?${params.toString()}`), {
       credentials: "include",
+      cache: "no-store",
     });
     if (!response.ok) {
       throw new Error("Не удалось загрузить позиции каталога");
@@ -240,6 +317,7 @@ export async function getCatalogFilters(): Promise<CatalogFiltersResponse> {
   try {
     const response = await fetch(buildUrl("/catalog/filters"), {
       credentials: "include",
+      cache: "no-store",
     });
     if (!response.ok) {
       throw new Error("Не удалось загрузить фильтры");

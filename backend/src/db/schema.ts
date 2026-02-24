@@ -56,6 +56,7 @@ export function initializeSchema(): void {
       login TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       display_name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'manager',
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -93,8 +94,25 @@ export function initializeSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_days_on_sale ON vehicle_offers(days_on_sale);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_created_at ON vehicle_offers(created_at);
     CREATE INDEX IF NOT EXISTS idx_users_login ON users(login);
+    CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_token_hash ON auth_sessions(token_hash);
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
   `);
+
+  const userColumns = db
+    .prepare(`PRAGMA table_info(users)`)
+    .all() as Array<{ name: string }>;
+  const hasRoleColumn = userColumns.some((column) => column.name === "role");
+  if (!hasRoleColumn) {
+    db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'manager';`);
+  }
+
+  db.prepare(
+    `
+      UPDATE users
+      SET role = 'admin'
+      WHERE lower(login) = 'admin'
+    `,
+  ).run();
 }
