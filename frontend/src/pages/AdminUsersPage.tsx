@@ -1,25 +1,66 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { createAdminUser, getAdminUsers } from "../api/client";
+import {
+  createAdminUser,
+  deleteAdminUser,
+  getAdminUsers,
+  getCurrentUser,
+} from "../api/client";
 import type { AdminUserListItem, UserRole } from "../types/api";
+
+function roleLabel(role: UserRole): string {
+  if (role === "admin") {
+    return "Администратор";
+  }
+  if (role === "stock_owner") {
+    return "Владелец стока";
+  }
+  return "Менеджер";
+}
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState("");
 
   const [login, setLogin] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("manager");
 
+  const selectedUser = useMemo(
+    () => users.find((item) => String(item.id) === selectedUserId) ?? null,
+    [selectedUserId, users],
+  );
+
   async function loadUsers() {
+    const response = await getAdminUsers();
+    setUsers(response.items);
+    setSelectedUserId((prev) => {
+      if (prev && response.items.some((item) => String(item.id) === prev)) {
+        return prev;
+      }
+      return response.items.length > 0 ? String(response.items[0].id) : "";
+    });
+  }
+
+  async function initializePage() {
     try {
       setError(null);
-      const response = await getAdminUsers();
-      setUsers(response.items);
+      const [usersResponse, meResponse] = await Promise.all([
+        getAdminUsers(),
+        getCurrentUser(),
+      ]);
+
+      setUsers(usersResponse.items);
+      setCurrentUserId(meResponse.user.id);
+      setSelectedUserId(usersResponse.items.length > 0 ? String(usersResponse.items[0].id) : "");
     } catch (caughtError) {
       if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
         setError("Доступ к управлению пользователями разрешен только администратору.");
@@ -38,7 +79,7 @@ export function AdminUsersPage() {
   }
 
   useEffect(() => {
-    void loadUsers();
+    void initializePage();
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -87,6 +128,55 @@ export function AdminUsersPage() {
     }
   }
 
+  async function handleDeleteSelectedUser() {
+    if (!selectedUser) {
+      setError("Выберите пользователя для удаления.");
+      return;
+    }
+
+    if (selectedUser.id === currentUserId) {
+      setError("Нельзя удалить текущего пользователя.");
+      return;
+    }
+
+    const isConfirmed = window.confirm(
+      `Удалить пользователя ${selectedUser.login}?`,
+    );
+    if (!isConfirmed) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await deleteAdminUser(selectedUser.id);
+      setSuccess(`Пользователь ${selectedUser.login} удален.`);
+      await loadUsers();
+    } catch (caughtError) {
+      if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
+        setError("Доступ к управлению пользователями разрешен только администратору.");
+        return;
+      }
+
+      if (caughtError instanceof Error && caughtError.message === "USER_NOT_FOUND") {
+        setError("Пользователь уже удален.");
+        await loadUsers();
+        return;
+      }
+
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+        return;
+      }
+
+      setError("Не удалось удалить пользователя");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <section>
       <h1>Пользователи</h1>
@@ -118,12 +208,49 @@ export function AdminUsersPage() {
           onChange={(event) => setRole(event.target.value as UserRole)}
         >
           <option value="manager">Менеджер</option>
+          <option value="stock_owner">Владелец стока</option>
           <option value="admin">Администратор</option>
         </select>
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Создание..." : "Создать пользователя"}
         </button>
       </form>
+
+      <div className="panel admin-users-delete">
+        <h2>Удаление пользователя</h2>
+        <div className="upload-form">
+          <select
+            value={selectedUserId}
+            onChange={(event) => setSelectedUserId(event.target.value)}
+            disabled={users.length === 0}
+          >
+            {users.length === 0 ? (
+              <option value="">Пользователей нет</option>
+            ) : (
+              users.map((user) => (
+                <option key={user.id} value={String(user.id)}>
+                  {user.login} - {roleLabel(user.role)}
+                </option>
+              ))
+            )}
+          </select>
+          <button
+            type="button"
+            className="danger-button"
+            disabled={
+              isDeleting ||
+              !selectedUser ||
+              selectedUser.id === currentUserId
+            }
+            onClick={() => void handleDeleteSelectedUser()}
+          >
+            {isDeleting ? "Удаление..." : "Удалить выбранного"}
+          </button>
+        </div>
+        {selectedUser && selectedUser.id === currentUserId && (
+          <p className="empty">Текущего пользователя удалить нельзя.</p>
+        )}
+      </div>
 
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
@@ -151,7 +278,7 @@ export function AdminUsersPage() {
                   <tr key={user.id}>
                     <td>{user.login}</td>
                     <td>{user.displayName}</td>
-                    <td>{user.role === "admin" ? "Администратор" : "Менеджер"}</td>
+                    <td>{roleLabel(user.role)}</td>
                     <td>{user.isActive ? "Активен" : "Отключен"}</td>
                     <td>{user.createdAt}</td>
                   </tr>

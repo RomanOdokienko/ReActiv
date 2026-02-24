@@ -1,13 +1,19 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z, ZodError } from "zod";
-import { createUser, listUsersForAdmin } from "../repositories/auth-user-repository";
+import {
+  countUsersByRole,
+  createUser,
+  deleteUserById,
+  findUserById,
+  listUsersForAdmin,
+} from "../repositories/auth-user-repository";
 import { buildPasswordHash, normalizeLogin } from "../services/auth-service";
 
 const createUserBodySchema = z.object({
   login: z.string().trim().min(1),
   password: z.string().min(8),
   displayName: z.string().trim().min(1).max(100),
-  role: z.enum(["admin", "manager"]).optional(),
+  role: z.enum(["admin", "manager", "stock_owner"]).optional(),
 });
 
 function rejectIfNotAdmin(
@@ -61,5 +67,37 @@ export async function registerAdminUserRoutes(app: FastifyInstance): Promise<voi
 
       return reply.code(500).send({ message: "Failed to create user" });
     }
+  });
+
+  app.delete("/api/admin/users/:id", async (request, reply) => {
+    if (rejectIfNotAdmin(request, reply)) {
+      return;
+    }
+
+    const { id } = request.params as { id: string };
+    const parsedId = Number(id);
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      return reply.code(400).send({ message: "Invalid user id" });
+    }
+
+    if (request.authUser?.id === parsedId) {
+      return reply.code(400).send({ message: "Cannot delete current user" });
+    }
+
+    const targetUser = findUserById(parsedId);
+    if (!targetUser) {
+      return reply.code(404).send({ message: "User not found" });
+    }
+
+    if (targetUser.role === "admin" && countUsersByRole("admin") <= 1) {
+      return reply.code(400).send({ message: "Cannot delete last admin user" });
+    }
+
+    const deleted = deleteUserById(parsedId);
+    if (!deleted) {
+      return reply.code(404).send({ message: "User not found" });
+    }
+
+    return reply.code(200).send({ message: "User deleted" });
   });
 }

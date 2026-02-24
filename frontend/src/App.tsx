@@ -11,16 +11,14 @@ import type { AuthUser } from "./types/api";
 
 type AuthState = "checking" | "authorized" | "unauthorized";
 
-const CATALOG_RESTRICTED_LOGINS = new Set(["alexey"]);
-
 export function App() {
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
-  const canAccessCatalog = authUser
-    ? !CATALOG_RESTRICTED_LOGINS.has(authUser.login.trim().toLowerCase())
-    : false;
   const isAdmin = authUser?.role === "admin";
+  const canAccessUpload =
+    authUser?.role === "admin" || authUser?.role === "stock_owner";
+  const canAccessCatalog = isAdmin;
 
   useEffect(() => {
     async function checkSession() {
@@ -81,8 +79,10 @@ export function App() {
     <div className="app">
       <div className="nav-wrap">
         <nav className="nav">
-          <NavLink to="/upload" className={({ isActive }) => (isActive ? "active" : "")}>Загрузка</NavLink>
-          {canAccessCatalog && (
+          {canAccessUpload && (
+            <NavLink to="/upload" className={({ isActive }) => (isActive ? "active" : "")}>Загрузка</NavLink>
+          )}
+          {isAdmin && (
             <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Каталог</NavLink>
           )}
           <NavLink to="/showcase" className={({ isActive }) => (isActive ? "active" : "")}>Витрина</NavLink>
@@ -98,19 +98,28 @@ export function App() {
         </div>
       </div>
       <Routes>
-        <Route path="/" element={<Navigate to="/upload" replace />} />
-        <Route path="/upload" element={<UploadPage canAccessCatalog={canAccessCatalog} />} />
+        <Route
+          path="/"
+          element={<Navigate to={canAccessUpload ? "/upload" : "/showcase"} replace />}
+        />
+        <Route
+          path="/upload"
+          element={canAccessUpload ? <UploadPage canAccessCatalog={canAccessCatalog} /> : <Navigate to="/showcase" replace />}
+        />
         <Route
           path="/catalog"
-          element={canAccessCatalog ? <CatalogPage /> : <Navigate to="/upload" replace />}
+          element={isAdmin ? <CatalogPage /> : <Navigate to="/showcase" replace />}
         />
         <Route path="/showcase" element={<ShowcasePage />} />
         <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
         <Route
           path="/admin/users"
-          element={isAdmin ? <AdminUsersPage /> : <Navigate to="/upload" replace />}
+          element={isAdmin ? <AdminUsersPage /> : <Navigate to="/showcase" replace />}
         />
-        <Route path="/login" element={<Navigate to="/upload" replace />} />
+        <Route
+          path="/login"
+          element={<Navigate to={canAccessUpload ? "/upload" : "/showcase"} replace />}
+        />
       </Routes>
     </div>
   );

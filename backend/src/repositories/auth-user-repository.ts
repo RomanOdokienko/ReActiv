@@ -1,6 +1,6 @@
 import { db } from "../db/connection";
 
-export type UserRole = "admin" | "manager";
+export type UserRole = "admin" | "manager" | "stock_owner";
 
 export interface AuthUserRecord {
   id: number;
@@ -43,7 +43,13 @@ interface UpsertUserInput {
 }
 
 function normalizeRole(role: string | null | undefined): UserRole {
-  return role === "admin" ? "admin" : "manager";
+  if (role === "admin") {
+    return "admin";
+  }
+  if (role === "stock_owner") {
+    return "stock_owner";
+  }
+  return "manager";
 }
 
 export function mapPublicAuthUser(record: {
@@ -191,4 +197,38 @@ export function listUsersForAdmin(): AdminUserListItem[] {
   }>;
 
   return rows.map(mapAdminUserListItem);
+}
+
+export function deleteUserById(id: number): boolean {
+  db.prepare(
+    `
+      DELETE FROM auth_sessions
+      WHERE user_id = ?
+    `,
+  ).run(id);
+
+  const result = db
+    .prepare(
+      `
+        DELETE FROM users
+        WHERE id = ?
+      `,
+    )
+    .run(id);
+
+  return result.changes > 0;
+}
+
+export function countUsersByRole(role: UserRole): number {
+  const row = db
+    .prepare(
+      `
+        SELECT COUNT(*) AS total
+        FROM users
+        WHERE role = ?
+      `,
+    )
+    .get(role) as { total: number };
+
+  return row.total;
 }

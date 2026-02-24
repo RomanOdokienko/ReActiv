@@ -172,6 +172,41 @@ export async function createAdminUser(
   }
 }
 
+export async function deleteAdminUser(userId: number): Promise<void> {
+  try {
+    const response = await fetch(buildUrl(`/admin/users/${userId}`), {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (response.status === 404) {
+      throw new Error("USER_NOT_FOUND");
+    }
+
+    if (!response.ok) {
+      let errorMessage = "Не удалось удалить пользователя";
+      try {
+        const errorPayload = (await response.json()) as { message?: string };
+        if (errorPayload.message) {
+          errorMessage = errorPayload.message;
+        }
+      } catch {
+        // keep default message
+      }
+      throw new Error(errorMessage);
+    }
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
 export async function uploadImport(file: File): Promise<ImportResponse> {
   const formData = new FormData();
   formData.append("file", file);

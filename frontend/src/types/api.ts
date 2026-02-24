@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "manager";
+export type UserRole = "admin" | "manager" | "stock_owner";
 
 export interface ImportErrorItem {
   rowNumber: number;

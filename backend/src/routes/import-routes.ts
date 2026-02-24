@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   clearImportedData,
   getImportBatchById,
@@ -9,8 +9,24 @@ import { importWorkbook } from "../services/import-service";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
+function rejectIfNoImportAccess(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): boolean {
+  if (request.authUser?.role === "admin" || request.authUser?.role === "stock_owner") {
+    return false;
+  }
+
+  void reply.code(403).send({ message: "Forbidden" });
+  return true;
+}
+
 export async function registerImportRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/imports", async (request, reply) => {
+    if (rejectIfNoImportAccess(request, reply)) {
+      return;
+    }
+
     const query = request.query as { limit?: string | number };
     const parsedLimit = Number(query.limit ?? 20);
     const limit =
@@ -23,6 +39,10 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
   });
 
   app.post("/api/imports", async (request, reply) => {
+    if (rejectIfNoImportAccess(request, reply)) {
+      return;
+    }
+
     const file = await request.file();
     if (!file) {
       return reply.code(400).send({ message: "File is required" });
@@ -68,6 +88,10 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
   });
 
   app.delete("/api/imports", async (_request, reply) => {
+    if (rejectIfNoImportAccess(_request, reply)) {
+      return;
+    }
+
     try {
       const deleted = clearImportedData();
 
@@ -89,6 +113,10 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
   });
 
   app.get("/api/imports/:id", async (request, reply) => {
+    if (rejectIfNoImportAccess(request, reply)) {
+      return;
+    }
+
     const params = request.params as { id: string };
     const importBatch = getImportBatchById(params.id);
 
