@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { login } from "../api/client";
+import { logActivityEvent, login } from "../api/client";
 import type { AuthUser } from "../types/api";
 
 interface LoginPageProps {
@@ -27,6 +27,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     try {
       const response = await login(loginValue.trim(), password);
       onLoginSuccess(response.user);
+      void logActivityEvent({
+        eventType: "login_success",
+        page: "/login",
+        payload: {
+          login: response.user.login,
+          role: response.user.role,
+        },
+      });
     } catch (caughtError) {
       if (caughtError instanceof Error) {
         setError(caughtError.message);

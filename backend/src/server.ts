@@ -4,6 +4,7 @@ import multipart from "@fastify/multipart";
 import Fastify from "fastify";
 import { initializeSchema } from "./db/schema";
 import { registerAdminUserRoutes } from "./routes/admin-user-routes";
+import { registerActivityRoutes } from "./routes/activity-routes";
 import { registerAuthRoutes } from "./routes/auth-routes";
 import { registerCatalogRoutes } from "./routes/catalog-routes";
 import { registerImportRoutes } from "./routes/import-routes";
@@ -55,6 +56,7 @@ async function startServer(): Promise<void> {
   await registerCatalogRoutes(app);
   await registerMediaRoutes(app);
   await registerAdminUserRoutes(app);
+  await registerActivityRoutes(app);
 
   try {
     await app.listen({ port, host });

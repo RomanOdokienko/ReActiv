@@ -71,6 +71,20 @@ export function initializeSchema(): void {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS user_activity_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      login TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      page TEXT,
+      entity_type TEXT,
+      entity_id TEXT,
+      payload_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_offer_code ON vehicle_offers(offer_code);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_status ON vehicle_offers(status);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_brand ON vehicle_offers(brand);
@@ -97,6 +111,9 @@ export function initializeSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_token_hash ON auth_sessions(token_hash);
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_activity_user_id_created_at ON user_activity_events(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_activity_event_type_created_at ON user_activity_events(event_type, created_at);
+    CREATE INDEX IF NOT EXISTS idx_activity_session_id_created_at ON user_activity_events(session_id, created_at);
   `);
 
   const userColumns = db

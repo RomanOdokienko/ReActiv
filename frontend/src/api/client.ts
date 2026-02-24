@@ -1,5 +1,7 @@
 import type {
   AdminUsersResponse,
+  ActivityEventType,
+  ActivityEventsResponse,
   AuthResponse,
   CatalogItem,
   ClearImportsResponse,
@@ -12,9 +14,37 @@ import type {
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:3001/api";
+const ACTIVITY_SESSION_KEY = "activity_session_id_v1";
 
 function buildUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
+}
+
+function createActivitySessionId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getActivitySessionId(): string {
+  if (typeof window === "undefined") {
+    return "server-session";
+  }
+
+  try {
+    const existing = window.sessionStorage.getItem(ACTIVITY_SESSION_KEY);
+    if (existing) {
+      return existing;
+    }
+
+    const created = createActivitySessionId();
+    window.sessionStorage.setItem(ACTIVITY_SESSION_KEY, created);
+    return created;
+  } catch {
+    return createActivitySessionId();
+  }
 }
 
 function backendUnavailableError(): Error {
@@ -387,4 +417,86 @@ export async function getCatalogItemById(id: number): Promise<CatalogItem> {
     }
     throw error;
   }
+}
+
+export interface ActivityEventInput {
+  eventType: ActivityEventType;
+  page?: string;
+  entityType?: string;
+  entityId?: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface GetAdminActivityInput {
+  page?: number;
+  pageSize?: number;
+  userId?: number;
+  login?: string;
+  eventType?: ActivityEventType;
+  from?: string;
+  to?: string;
+}
+
+export async function logActivityEvent(input: ActivityEventInput): Promise<void> {
+  try {
+    await fetch(buildUrl("/activity/events"), {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      keepalive: true,
+      body: JSON.stringify({
+        ...input,
+        sessionId: getActivitySessionId(),
+      }),
+    });
+  } catch {
+    // analytics logging must never break the user flow
+  }
+}
+
+export async function getAdminActivity(
+  input: GetAdminActivityInput = {},
+): Promise<ActivityEventsResponse> {
+  const params = new URLSearchParams();
+
+  if (input.page) {
+    params.set("page", String(input.page));
+  }
+  if (input.pageSize) {
+    params.set("pageSize", String(input.pageSize));
+  }
+  if (input.userId) {
+    params.set("userId", String(input.userId));
+  }
+  if (input.login) {
+    params.set("login", input.login);
+  }
+  if (input.eventType) {
+    params.set("eventType", input.eventType);
+  }
+  if (input.from) {
+    params.set("from", input.from);
+  }
+  if (input.to) {
+    params.set("to", input.to);
+  }
+
+  const query = params.toString();
+  const path = query ? `/admin/activity?${query}` : "/admin/activity";
+  const response = await fetch(buildUrl(path), {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (response.status === 403) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!response.ok) {
+    throw new Error("Не удалось загрузить активность пользователей");
+  }
+
+  return (await response.json()) as ActivityEventsResponse;
 }

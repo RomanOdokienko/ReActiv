@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
-import { getCurrentUser, logout } from "./api/client";
+import { getCurrentUser, logActivityEvent, logout } from "./api/client";
 import { CatalogPage } from "./pages/CatalogPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -14,6 +14,7 @@ type AuthState = "checking" | "authorized" | "unauthorized";
 export function App() {
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const hasLoggedSessionStartRef = useRef(false);
 
   const isAdmin = authUser?.role === "admin";
   const canAccessUpload =
@@ -35,8 +36,45 @@ export function App() {
     void checkSession();
   }, []);
 
+  useEffect(() => {
+    if (authState !== "authorized" || hasLoggedSessionStartRef.current) {
+      return;
+    }
+
+    hasLoggedSessionStartRef.current = true;
+    void logActivityEvent({
+      eventType: "session_start",
+      page: typeof window !== "undefined" ? window.location.pathname : "/",
+      payload: {
+        role: authUser?.role ?? null,
+      },
+    });
+  }, [authState, authUser?.role]);
+
+  useEffect(() => {
+    if (authState !== "authorized") {
+      hasLoggedSessionStartRef.current = false;
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void logActivityEvent({
+        eventType: "session_heartbeat",
+        page: window.location.pathname,
+      });
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [authState]);
+
   async function handleLogout(): Promise<void> {
     try {
+      void logActivityEvent({
+        eventType: "logout",
+        page: typeof window !== "undefined" ? window.location.pathname : "/",
+      });
       await logout();
     } finally {
       setAuthUser(null);

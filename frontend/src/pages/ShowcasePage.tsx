@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getCatalogFilters,
   getCatalogItems,
+  logActivityEvent,
   getMediaPreviewImageUrl,
 } from "../api/client";
 import type {
@@ -153,6 +154,9 @@ export function ShowcasePage() {
   const hasRestoredScrollRef = useRef(false);
   const restoreAttemptsRef = useRef(0);
   const restoreTimeoutRef = useRef<number | null>(null);
+  const hasLoggedShowcaseOpenRef = useRef(false);
+  const hasLoggedInitialFiltersRef = useRef(false);
+  const hasLoggedInitialPageRef = useRef(false);
   const initialBookingPreset =
     restoredState.bookingPreset && BOOKING_PRESETS.includes(restoredState.bookingPreset)
       ? restoredState.bookingPreset
@@ -275,6 +279,18 @@ export function ShowcasePage() {
     }
 
     void loadFilters();
+  }, []);
+
+  useEffect(() => {
+    if (hasLoggedShowcaseOpenRef.current) {
+      return;
+    }
+
+    hasLoggedShowcaseOpenRef.current = true;
+    void logActivityEvent({
+      eventType: "showcase_open",
+      page: "/showcase",
+    });
   }, []);
 
   const query = useMemo(() => {
@@ -449,6 +465,69 @@ export function ShowcasePage() {
     yearMax,
     yearMin,
   ]);
+
+  useEffect(() => {
+    if (!hasLoggedInitialFiltersRef.current) {
+      hasLoggedInitialFiltersRef.current = true;
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void logActivityEvent({
+        eventType: "showcase_filters_apply",
+        page: "/showcase",
+        payload: {
+          bookingPreset: bookingPreset || null,
+          city: city || null,
+          vehicleTypes: selectedVehicleTypes,
+          brand: brand || null,
+          model: model || null,
+          priceMin: priceMin ? Number(priceMin) : null,
+          priceMax: priceMax ? Number(priceMax) : null,
+          yearMin: yearMin ? Number(yearMin) : null,
+          yearMax: yearMax ? Number(yearMax) : null,
+          mileageMin: mileageMin ? Number(mileageMin) : null,
+          mileageMax: mileageMax ? Number(mileageMax) : null,
+          sortBy,
+          sortDir,
+        },
+      });
+    }, 600);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    bookingPreset,
+    brand,
+    city,
+    mileageMax,
+    mileageMin,
+    model,
+    priceMax,
+    priceMin,
+    selectedVehicleTypes,
+    sortBy,
+    sortDir,
+    yearMax,
+    yearMin,
+  ]);
+
+  useEffect(() => {
+    if (!hasLoggedInitialPageRef.current) {
+      hasLoggedInitialPageRef.current = true;
+      return;
+    }
+
+    void logActivityEvent({
+      eventType: "showcase_page_change",
+      page: "/showcase",
+      payload: {
+        page,
+        totalPages,
+      },
+    });
+  }, [page, totalPages]);
 
   useEffect(() => {
     if (hasRestoredScrollRef.current || isLoading || !itemsResponse) {
@@ -1100,6 +1179,16 @@ export function ShowcasePage() {
                       if (typeof window === "undefined") {
                         return;
                       }
+                      void logActivityEvent({
+                        eventType: "showcase_item_open",
+                        page: "/showcase",
+                        entityType: "catalog_item",
+                        entityId: String(item.id),
+                        payload: {
+                          brand: item.brand,
+                          model: item.model,
+                        },
+                      });
                       window.sessionStorage.setItem(SHOWCASE_RETURN_FLAG_KEY, "1");
                       window.sessionStorage.setItem(SHOWCASE_SCROLL_Y_KEY, String(window.scrollY));
                     }}

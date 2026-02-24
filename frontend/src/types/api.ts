@@ -131,3 +131,35 @@ export interface CatalogFiltersResponse {
   daysOnSaleMin: number | null;
   daysOnSaleMax: number | null;
 }
+
+export type ActivityEventType =
+  | "login_success"
+  | "logout"
+  | "session_start"
+  | "session_heartbeat"
+  | "showcase_open"
+  | "showcase_filters_apply"
+  | "showcase_page_change"
+  | "showcase_item_open";
+
+export interface ActivityEventItem {
+  id: number;
+  userId: number;
+  login: string;
+  sessionId: string;
+  eventType: ActivityEventType;
+  page: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  payload: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface ActivityEventsResponse {
+  items: ActivityEventItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+  };
+}
