@@ -1156,50 +1156,78 @@ export function ShowcasePage() {
               })}
             </div>
 
-            <div className="pager">
-              <button
-                className="pager-button pager-button--nav"
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                aria-label="Предыдущая страница"
-                title="Предыдущая страница"
-              >
-                ←
-              </button>
-              <div className="pager-pages">
-                {visiblePages.map((item, index) => {
-                  if (item === "ellipsis") {
-                    return (
-                      <span key={`ellipsis-${index}`} className="pager-ellipsis">
-                        ...
-                      </span>
-                    );
-                  }
-
-                  return (
-                    <button
-                      key={item}
-                      type="button"
-                      className={item === page ? "pager-page active" : "pager-page"}
-                      onClick={() => setPage(item)}
-                    >
-                      {item}
-                    </button>
-                  );
-                })}
+            {isMobileViewport ? (
+              <div className="pager pager--compact">
+                <button
+                  className="pager-button pager-button--nav"
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  aria-label="Предыдущая страница"
+                  title="Предыдущая страница"
+                >
+                  ←
+                </button>
+                <span className="pager-mobile-status">
+                  Стр. {page} из {totalPages}
+                </span>
+                <button
+                  className="pager-button pager-button--nav"
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  aria-label="Следующая страница"
+                  title="Следующая страница"
+                >
+                  →
+                </button>
               </div>
-              <button
-                className="pager-button pager-button--nav"
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                aria-label="Следующая страница"
-                title="Следующая страница"
-              >
-                →
-              </button>
-            </div>
+            ) : (
+              <div className="pager">
+                <button
+                  className="pager-button pager-button--nav"
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  aria-label="Предыдущая страница"
+                  title="Предыдущая страница"
+                >
+                  ←
+                </button>
+                <div className="pager-pages">
+                  {visiblePages.map((item, index) => {
+                    if (item === "ellipsis") {
+                      return (
+                        <span key={`ellipsis-${index}`} className="pager-ellipsis">
+                          ...
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        className={item === page ? "pager-page active" : "pager-page"}
+                        onClick={() => setPage(item)}
+                      >
+                        {item}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  className="pager-button pager-button--nav"
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  aria-label="Следующая страница"
+                  title="Следующая страница"
+                >
+                  →
+                </button>
+              </div>
+            )}
           </>
         )}
       </main>

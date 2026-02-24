@@ -1034,6 +1034,27 @@ tbody tr:nth-child(even) {
   font-weight: 700;
 }
 
+.pager--compact {
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+}
+
+.pager-mobile-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  min-width: 130px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #d5dfeb;
+  background: #f7faff;
+  color: #425976;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2063,6 +2084,7 @@ tbody tr:nth-child(even) {
     inset: 0;
     z-index: 1200;
     pointer-events: none;
+    overflow-x: hidden;
   }
 
   .showcase-filter-drawer--open {
@@ -2098,6 +2120,10 @@ tbody tr:nth-child(even) {
     box-shadow: 0 -14px 34px rgba(16, 31, 62, 0.22);
     max-height: 88vh;
     overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
     transform: translateY(104%);
     transition: transform 220ms ease;
   }
@@ -2112,7 +2138,7 @@ tbody tr:nth-child(even) {
     justify-content: space-between;
     gap: 10px;
     position: sticky;
-    top: -14px;
+    top: 0;
     padding: 0 0 8px;
     background: #ffffff;
     border-bottom: 1px solid #d7e1ef;
@@ -2128,9 +2154,9 @@ tbody tr:nth-child(even) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     position: sticky;
-    bottom: calc(-14px - env(safe-area-inset-bottom));
-    margin: 4px -12px 0;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    bottom: 0;
+    margin: 4px 0 0;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
     background: #ffffff;
     border-top: 1px solid #d7e1ef;
   }
@@ -2162,9 +2188,33 @@ tbody tr:nth-child(even) {
   }
 
   .cards-grid--list .vehicle-card__image {
-    min-height: 190px;
+    min-height: 220px;
+    height: 220px;
     border-right: 0;
     border-bottom: 1px solid #e3eaf4;
+  }
+
+  .cards-grid--list .vehicle-card__content {
+    min-height: 0;
+    padding: 12px 12px 10px;
+    gap: 6px;
+  }
+
+  .cards-grid--list .vehicle-card__content h3 {
+    min-height: 0;
+    font-size: 17px;
+    line-height: 22px;
+  }
+
+  .cards-grid--list .vehicle-card__subtitle {
+    min-height: 0;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .cards-grid--list .vehicle-card__bottom {
+    margin-top: 2px;
+    padding-top: 0;
   }
 
   .showcase-meta {
@@ -2174,7 +2224,8 @@ tbody tr:nth-child(even) {
 
   .showcase-meta-controls {
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .showcase-sort {
