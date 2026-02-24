@@ -40,18 +40,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
   return (
     <section className="auth-layout">
-      <span
-        style={{
-          position: "absolute",
-          top: 8,
-          left: 12,
-          zIndex: 2,
-          fontWeight: 700,
-          letterSpacing: "0.04em",
-        }}
-      >
-        test
-      </span>
       <div className="panel auth-panel">
         <div className="auth-brand">
           <p className="auth-brand__name">
