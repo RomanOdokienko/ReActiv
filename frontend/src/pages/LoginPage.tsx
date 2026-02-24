@@ -47,50 +47,63 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   }
 
   return (
-    <section className="auth-layout">
-      <div className="panel auth-panel">
-        <div className="auth-brand">
-          <p className="auth-brand__name">
-            Ре<span>Актив</span>
-          </p>
-          <p className="auth-brand__tagline">
-            Доступ к лизинговым лотам для профессионалов
-          </p>
+    <section className="auth-layout auth-layout--landing">
+      <div className="auth-shell">
+        <p className="auth-top-logo">
+          Ре<span>Актив</span>
+        </p>
+
+        <div className="auth-landing-grid">
+          <div className="panel auth-panel auth-panel--landing">
+            <h1>Личный кабинет</h1>
+            <form className="auth-form auth-form--landing" onSubmit={handleSubmit}>
+              <label className="field">
+                <span>Логин</span>
+                <input
+                  type="text"
+                  autoComplete="username"
+                  value={loginValue}
+                  onChange={(event) => setLoginValue(event.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span>Пароль</span>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </label>
+              <button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Вход..." : "Войти"}
+              </button>
+              <a
+                className="auth-request-button auth-request-button--landing"
+                href="https://t.me/romanodokienko"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Запросить доступ к платформе
+              </a>
+            </form>
+            {error && <p className="error">{error}</p>}
+          </div>
+
+          <aside className="auth-promo-card" aria-label="Преимущества платформы">
+            <h2>Единый агрегатор изъятой лизинговой техники</h2>
+            <ul className="auth-promo-list">
+              <li>
+                <strong>Лизинговым компаниям</strong>
+                <p>Витрина для размещения и реализации стока</p>
+              </li>
+              <li>
+                <strong>Дилерам, юрлицам и агентам</strong>
+                <p>Прямой доступ к актуальной базе изъятой техники от крупных компаний РФ</p>
+              </li>
+            </ul>
+          </aside>
         </div>
-        <h1>Вход в кабинет</h1>
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label className="field">
-            <span>Логин</span>
-            <input
-              type="text"
-              autoComplete="username"
-              value={loginValue}
-              onChange={(event) => setLoginValue(event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>Пароль</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Входим..." : "Войти"}
-          </button>
-          <a
-            className="auth-request-button"
-            href="https://t.me/romanodokienko"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Запросить доступ на платформу
-          </a>
-        </form>
-        <p className="auth-note">Только для авторизованных партнеров и сотрудников.</p>
-        {error && <p className="error">{error}</p>}
       </div>
     </section>
   );
