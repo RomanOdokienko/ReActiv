@@ -115,4 +115,22 @@ export function initializeSchema(): void {
       WHERE lower(login) = 'admin'
     `,
   ).run();
+
+  const adminCountRow = db
+    .prepare(`SELECT COUNT(*) AS total FROM users WHERE role = 'admin'`)
+    .get() as { total: number };
+  if (adminCountRow.total === 0) {
+    db.prepare(
+      `
+        UPDATE users
+        SET role = 'admin'
+        WHERE id = (
+          SELECT id
+          FROM users
+          ORDER BY created_at ASC, id ASC
+          LIMIT 1
+        )
+      `,
+    ).run();
+  }
 }
