@@ -1,8 +1,12 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { clearImports, getImportBatches, uploadImport } from "../api/client";
 import type { ImportBatchListItem, ImportResponse } from "../types/api";
+
+interface UploadPageProps {
+  canAccessCatalog?: boolean;
+}
 
 function getStatusTone(
   status: ImportResponse["status"],
@@ -26,7 +30,7 @@ function getStatusLabel(status: ImportResponse["status"]): string {
   return "Ошибка";
 }
 
-export function UploadPage() {
+export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
@@ -172,8 +176,8 @@ export function UploadPage() {
           </div>
 
           <p>
-            <Link className="summary-link" to="/catalog">
-              Открыть каталог
+            <Link className="summary-link" to={canAccessCatalog ? "/catalog" : "/showcase"}>
+              {canAccessCatalog ? "Открыть каталог" : "Открыть витрину"}
             </Link>
           </p>
 
