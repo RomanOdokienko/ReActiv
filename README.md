@@ -126,6 +126,24 @@ Backend:
 - `PORT` (optional, default `3001`)
 - `HOST` (optional, default `0.0.0.0`)
 
+## Production (2026-02-24)
+
+- Frontend app: `https://reactiv.pro`
+- Frontend mirror: `https://www.reactiv.pro`
+- Backend API: `https://api.reactiv.pro/api`
+- Backend health check: `https://api.reactiv.pro/health`
+
+Hosting:
+- Frontend: Timeweb Cloud App Platform
+- Backend: Railway
+- Data store: SQLite on Railway persistent volume (`/app/data/lease-platform.db`)
+
+DNS (current target setup):
+- `A @ -> 92.246.76.92` (frontend, Timeweb)
+- `A www -> 92.246.76.92` (frontend, Timeweb)
+- `CNAME api -> 7kjdju0m.up.railway.app` (backend, Railway)
+- `TXT _railway-verify.api -> railway-verify=...` (Railway domain verification)
+
 ## NPM Scripts
 
 Backend (`backend/package.json`):
