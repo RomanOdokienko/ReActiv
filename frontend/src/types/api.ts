@@ -30,6 +30,11 @@ export interface AdminUsersResponse {
   items: AdminUserListItem[];
 }
 
+export interface ResetAdminPasswordResponse {
+  user: AuthUser;
+  temporaryPassword: string;
+}
+
 export interface ImportResponse {
   importBatchId: string;
   status: "completed" | "completed_with_errors" | "failed";

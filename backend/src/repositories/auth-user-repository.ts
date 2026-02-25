@@ -178,6 +178,34 @@ export function updateUserPasswordByLogin(
   return result.changes > 0;
 }
 
+export function updateUserPasswordById(
+  userId: number,
+  passwordHash: string,
+): boolean {
+  const result = db
+    .prepare(
+      `
+        UPDATE users
+        SET password_hash = ?, is_active = 1
+        WHERE id = ?
+      `,
+    )
+    .run(passwordHash, userId);
+
+  if (result.changes === 0) {
+    return false;
+  }
+
+  db.prepare(
+    `
+      DELETE FROM auth_sessions
+      WHERE user_id = ?
+    `,
+  ).run(userId);
+
+  return true;
+}
+
 export function listUsersForAdmin(): AdminUserListItem[] {
   const rows = db
     .prepare(

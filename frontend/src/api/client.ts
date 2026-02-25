@@ -9,6 +9,7 @@ import type {
   CatalogFiltersResponse,
   CatalogItemsResponse,
   ImportResponse,
+  ResetAdminPasswordResponse,
   UserRole,
 } from "../types/api";
 
@@ -229,6 +230,45 @@ export async function deleteAdminUser(userId: number): Promise<void> {
       }
       throw new Error(errorMessage);
     }
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function resetAdminUserPassword(
+  userId: number,
+): Promise<ResetAdminPasswordResponse> {
+  try {
+    const response = await fetch(buildUrl(`/admin/users/${userId}/reset-password`), {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (response.status === 404) {
+      throw new Error("USER_NOT_FOUND");
+    }
+
+    if (!response.ok) {
+      let errorMessage = "Не удалось сбросить пароль";
+      try {
+        const errorPayload = (await response.json()) as { message?: string };
+        if (errorPayload.message) {
+          errorMessage = errorPayload.message;
+        }
+      } catch {
+        // keep default message
+      }
+      throw new Error(errorMessage);
+    }
+
+    return (await response.json()) as ResetAdminPasswordResponse;
   } catch (error) {
     if (error instanceof TypeError) {
       throw backendUnavailableError();

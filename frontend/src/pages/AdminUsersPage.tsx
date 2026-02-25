@@ -5,6 +5,7 @@ import {
   deleteAdminUser,
   getAdminUsers,
   getCurrentUser,
+  resetAdminUserPassword,
 } from "../api/client";
 import type { AdminUserListItem, UserRole } from "../types/api";
 
@@ -23,6 +24,7 @@ export function AdminUsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -177,6 +179,57 @@ export function AdminUsersPage() {
     }
   }
 
+  async function handleResetSelectedUserPassword() {
+    if (!selectedUser) {
+      setError("Выберите пользователя для сброса пароля.");
+      return;
+    }
+
+    if (selectedUser.id === currentUserId) {
+      setError("Нельзя сбросить пароль текущего пользователя через эту форму.");
+      return;
+    }
+
+    const isConfirmed = window.confirm(
+      `Сбросить пароль пользователя ${selectedUser.login}?`,
+    );
+    if (!isConfirmed) {
+      return;
+    }
+
+    setIsResetting(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await resetAdminUserPassword(selectedUser.id);
+      setSuccess(
+        `Новый временный пароль для ${response.user.login}: ${response.temporaryPassword}`,
+      );
+      await loadUsers();
+    } catch (caughtError) {
+      if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
+        setError("Доступ к управлению пользователями разрешен только администратору.");
+        return;
+      }
+
+      if (caughtError instanceof Error && caughtError.message === "USER_NOT_FOUND") {
+        setError("Пользователь уже удален.");
+        await loadUsers();
+        return;
+      }
+
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+        return;
+      }
+
+      setError("Не удалось сбросить пароль пользователя");
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
   return (
     <section>
       <h1>Пользователи</h1>
@@ -236,9 +289,22 @@ export function AdminUsersPage() {
           </select>
           <button
             type="button"
+            disabled={
+              isResetting ||
+              isDeleting ||
+              !selectedUser ||
+              selectedUser.id === currentUserId
+            }
+            onClick={() => void handleResetSelectedUserPassword()}
+          >
+            {isResetting ? "Сброс пароля..." : "Сбросить пароль выбранного"}
+          </button>
+          <button
+            type="button"
             className="danger-button"
             disabled={
               isDeleting ||
+              isResetting ||
               !selectedUser ||
               selectedUser.id === currentUserId
             }
