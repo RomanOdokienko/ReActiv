@@ -1045,19 +1045,6 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     return value;
   }
 
-  function getMarketTag(daysOnSale: number | null): { label: string; className: string } | null {
-    if (daysOnSale === null) {
-      return null;
-    }
-    if (daysOnSale <= 30) {
-      return { label: "цена в рынке", className: "badge-market market" };
-    }
-    if (daysOnSale <= 90) {
-      return { label: "ниже рынка", className: "badge-market good" };
-    }
-    return { label: "выше рынка", className: "badge-market bad" };
-  }
-
   return (
     <section className={publicMode ? "showcase-page showcase-page--public" : "showcase-page"}>
       {!publicMode && <h1>Витрина</h1>}
@@ -1410,7 +1397,6 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
           <>
             <div className={effectiveViewMode === "list" ? "cards-grid cards-grid--list" : "cards-grid"}>
               {items.map((item, index) => {
-                const marketTag = getMarketTag(item.daysOnSale);
                 const primaryMediaUrl = extractMediaUrls(item.yandexDiskUrl)[0];
 
                 return (
@@ -1439,7 +1425,6 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
                     }}
                   >
                     <div className="vehicle-card__image">
-                      {marketTag && <span className={marketTag.className}>{marketTag.label}</span>}
                       {primaryMediaUrl ? (
                         <>
                           <img

@@ -108,21 +108,6 @@ interface DetailSpec {
   value: string;
 }
 
-function getMarketTag(
-  daysOnSale: number | null,
-): { label: string; tone: "market" | "good" | "bad" } | null {
-  if (daysOnSale === null) {
-    return null;
-  }
-  if (daysOnSale <= 30) {
-    return { label: "цена в рынке", tone: "market" };
-  }
-  if (daysOnSale <= 90) {
-    return { label: "ниже рынка", tone: "good" };
-  }
-  return { label: "выше рынка", tone: "bad" };
-}
-
 export function ShowcaseItemPage() {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
@@ -245,7 +230,6 @@ export function ShowcaseItemPage() {
   const firstHiddenThumbnailUrl = hasHiddenThumbnails
     ? mediaUrls[visibleThumbnails.length]
     : null;
-  const marketTag = item ? getMarketTag(item.daysOnSale) : null;
   const contactMessage = item
     ? `Добрый день. Вопрос по лоту *${item.offerCode}`
     : "Добрый день. Вопрос по лоту";
@@ -433,11 +417,6 @@ export function ShowcaseItemPage() {
               </div>
               <div className="detail-trust-price-wrap">
                 <p className="detail-trust-price">{formatPrice(item.price)}</p>
-                {marketTag && (
-                  <span className={`detail-market-tag detail-market-tag--${marketTag.tone}`}>
-                    {marketTag.label}
-                  </span>
-                )}
               </div>
             </article>
 
