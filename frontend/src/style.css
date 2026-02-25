@@ -278,7 +278,7 @@ a {
   z-index: 0;
   background:
     linear-gradient(180deg, rgba(18, 24, 33, 0.5) 0%, rgba(16, 23, 35, 0.66) 56%, rgba(14, 20, 30, 0.8) 100%),
-    url("/auth-login-side.jpg");
+    url("/auth-login-side.png");
   background-size: cover;
   background-position: center;
 }
