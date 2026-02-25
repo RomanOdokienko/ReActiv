@@ -1,12 +1,41 @@
 import { useEffect, useRef, useState } from "react";
 
 export function FeedbackWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isTouchMode, setIsTouchMode] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isOpenByClick, setIsOpenByClick] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
+  const isOpen = isTouchMode ? isOpenByClick : isHovered;
+
   useEffect(() => {
-    if (!isOpen) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const updateInteractionMode = () => {
+      const nextIsTouchMode = !mediaQuery.matches;
+      setIsTouchMode(nextIsTouchMode);
+
+      if (nextIsTouchMode) {
+        setIsHovered(false);
+      } else {
+        setIsOpenByClick(false);
+      }
+    };
+
+    updateInteractionMode();
+    mediaQuery.addEventListener("change", updateInteractionMode);
+
+    return () => {
+      mediaQuery.removeEventListener("change", updateInteractionMode);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isTouchMode || !isOpenByClick) {
       return;
     }
 
@@ -17,13 +46,13 @@ export function FeedbackWidget() {
         !panelRef.current?.contains(target) &&
         !buttonRef.current?.contains(target)
       ) {
-        setIsOpen(false);
+        setIsOpenByClick(false);
       }
     }
 
     function handleEscape(event: KeyboardEvent): void {
       if (event.key === "Escape") {
-        setIsOpen(false);
+        setIsOpenByClick(false);
       }
     }
 
@@ -34,10 +63,22 @@ export function FeedbackWidget() {
       document.removeEventListener("pointerdown", handleOutsideClick);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [isOpen]);
+  }, [isOpenByClick, isTouchMode]);
 
   return (
-    <div className="feedback-widget">
+    <div
+      className="feedback-widget"
+      onMouseEnter={() => {
+        if (!isTouchMode) {
+          setIsHovered(true);
+        }
+      }}
+      onMouseLeave={() => {
+        if (!isTouchMode) {
+          setIsHovered(false);
+        }
+      }}
+    >
       {isOpen && (
         <div
           id="feedback-widget-panel"
@@ -66,7 +107,11 @@ export function FeedbackWidget() {
         aria-haspopup="dialog"
         aria-controls="feedback-widget-panel"
         aria-expanded={isOpen}
-        onClick={() => setIsOpen((value) => !value)}
+        onClick={() => {
+          if (isTouchMode) {
+            setIsOpenByClick((value) => !value);
+          }
+        }}
       >
         <img src="/message-square-question.svg" alt="" aria-hidden="true" />
       </button>
