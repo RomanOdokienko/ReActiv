@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { logActivityEvent, login } from "../api/client";
 import type { AuthUser } from "../types/api";
@@ -12,6 +12,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const feedbackPanelRef = useRef<HTMLDivElement | null>(null);
+  const feedbackButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     document.body.classList.add("auth-page");
@@ -19,6 +22,37 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       document.body.classList.remove("auth-page");
     };
   }, []);
+
+  useEffect(() => {
+    if (!isFeedbackOpen) {
+      return;
+    }
+
+    function handleOutsideClick(event: PointerEvent): void {
+      const target = event.target as Node | null;
+      if (
+        target &&
+        !feedbackPanelRef.current?.contains(target) &&
+        !feedbackButtonRef.current?.contains(target)
+      ) {
+        setIsFeedbackOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent): void {
+      if (event.key === "Escape") {
+        setIsFeedbackOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isFeedbackOpen]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -112,6 +146,41 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </ul>
           </aside>
         </div>
+      </div>
+
+      <div className="auth-feedback-widget">
+        {isFeedbackOpen && (
+          <div
+            id="auth-feedback-panel"
+            ref={feedbackPanelRef}
+            className="auth-feedback-widget__panel"
+            role="dialog"
+            aria-label="Обратная связь"
+          >
+            <p>
+              Мы строим продукт для вас и внимательно читаем каждое сообщение. Если есть проблема или пожелание —
+              просто напишите нам на почту{" "}
+              <a href="mailto:romanodokienko@gmail.com">romanodokienko@gmail.com</a> или в{" "}
+              <a href="https://t.me/romanodokienko" target="_blank" rel="noreferrer">
+                Telegram
+              </a>
+              .
+            </p>
+          </div>
+        )}
+
+        <button
+          ref={feedbackButtonRef}
+          type="button"
+          className="auth-feedback-widget__button"
+          aria-label="Открыть обратную связь"
+          aria-haspopup="dialog"
+          aria-controls="auth-feedback-panel"
+          aria-expanded={isFeedbackOpen}
+          onClick={() => setIsFeedbackOpen((value) => !value)}
+        >
+          <img src="/message-square-question.svg" alt="" aria-hidden="true" />
+        </button>
       </div>
     </section>
   );
