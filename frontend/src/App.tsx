@@ -166,7 +166,7 @@ export function App() {
 
       return (
         <>
-          <div className="app app--public-showcase">
+          <div className="app">
             {shouldShowPublicHeader && (
               <div className="public-showcase-topbar">
                 <div className="public-showcase-topbar__left">

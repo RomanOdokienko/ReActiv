@@ -113,11 +113,6 @@ a {
   gap: 8px;
 }
 
-.app.app--public-showcase {
-  max-width: none;
-  margin-top: 8px;
-}
-
 .public-showcase-topbar {
   display: flex;
   align-items: center;
