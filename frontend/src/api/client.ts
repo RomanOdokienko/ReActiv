@@ -5,6 +5,7 @@ import type {
   AuthResponse,
   CatalogItem,
   ClearImportsResponse,
+  GuestActivityEventsResponse,
   ImportBatchesResponse,
   CatalogFiltersResponse,
   CatalogItemsResponse,
@@ -630,6 +631,15 @@ export interface GetAdminActivityInput {
   to?: string;
 }
 
+export interface GetAdminGuestActivityInput {
+  page?: number;
+  pageSize?: number;
+  sessionId?: string;
+  eventType?: ActivityEventType;
+  from?: string;
+  to?: string;
+}
+
 export async function logActivityEvent(input: ActivityEventInput): Promise<void> {
   try {
     const response = await fetch(buildUrl("/activity/events"), {
@@ -696,4 +706,46 @@ export async function getAdminActivity(
   }
 
   return (await response.json()) as ActivityEventsResponse;
+}
+
+export async function getAdminGuestActivity(
+  input: GetAdminGuestActivityInput = {},
+): Promise<GuestActivityEventsResponse> {
+  const params = new URLSearchParams();
+
+  if (input.page) {
+    params.set("page", String(input.page));
+  }
+  if (input.pageSize) {
+    params.set("pageSize", String(input.pageSize));
+  }
+  if (input.sessionId) {
+    params.set("sessionId", input.sessionId);
+  }
+  if (input.eventType) {
+    params.set("eventType", input.eventType);
+  }
+  if (input.from) {
+    params.set("from", input.from);
+  }
+  if (input.to) {
+    params.set("to", input.to);
+  }
+
+  const query = params.toString();
+  const path = query ? `/admin/activity/guests?${query}` : "/admin/activity/guests";
+  const response = await fetch(buildUrl(path), {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (response.status === 403) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!response.ok) {
+    throw new Error("Не удалось загрузить гостевую активность");
+  }
+
+  return (await response.json()) as GuestActivityEventsResponse;
 }

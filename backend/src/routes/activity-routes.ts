@@ -6,6 +6,7 @@ import {
   createActivityEvent,
   createGuestActivityEvent,
   searchActivityEvents,
+  searchGuestActivityEvents,
 } from "../repositories/activity-event-repository";
 import { normalizeLogin } from "../services/auth-service";
 
@@ -46,6 +47,15 @@ const searchActivityEventsQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
   userId: z.coerce.number().int().positive().optional(),
   login: z.string().trim().min(1).max(120).optional(),
+  eventType: z.enum(ACTIVITY_EVENT_TYPES).optional(),
+  from: z.string().trim().min(1).optional(),
+  to: z.string().trim().min(1).optional(),
+});
+
+const searchGuestActivityEventsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+  sessionId: z.string().trim().min(1).max(120).optional(),
   eventType: z.enum(ACTIVITY_EVENT_TYPES).optional(),
   from: z.string().trim().min(1).optional(),
   to: z.string().trim().min(1).optional(),
@@ -270,6 +280,50 @@ export async function registerActivityRoutes(app: FastifyInstance): Promise<void
 
       request.log.error({ error }, "activity_events_search_failed");
       return reply.code(500).send({ message: "Failed to fetch activity events" });
+    }
+  });
+
+  app.get("/api/admin/activity/guests", async (request, reply) => {
+    if (rejectIfNotAdmin(request, reply)) {
+      return;
+    }
+
+    try {
+      const query = searchGuestActivityEventsQuerySchema.parse(request.query);
+      const normalizedFrom = normalizeDateInput(query.from);
+      const normalizedTo = normalizeDateInput(query.to);
+
+      const result = searchGuestActivityEvents({
+        page: query.page,
+        pageSize: query.pageSize,
+        sessionId: query.sessionId,
+        eventType: query.eventType,
+        from: normalizedFrom,
+        to: normalizedTo,
+      });
+
+      return reply.code(200).send({
+        items: result.items,
+        pagination: {
+          page: query.page,
+          pageSize: query.pageSize,
+          total: result.total,
+        },
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return reply.code(400).send({
+          message: "Invalid query",
+          errors: error.flatten(),
+        });
+      }
+
+      if (error instanceof Error && error.message === "Invalid datetime") {
+        return reply.code(400).send({ message: "Invalid datetime filter" });
+      }
+
+      request.log.error({ error }, "guest_activity_events_search_failed");
+      return reply.code(500).send({ message: "Failed to fetch guest activity events" });
     }
   });
 }

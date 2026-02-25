@@ -185,3 +185,31 @@ export interface ActivityEventsResponse {
     total: number;
   };
 }
+
+export interface GuestActivityEventItem {
+  id: number;
+  sessionId: string;
+  eventType: ActivityEventType;
+  page: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  payload: Record<string, unknown> | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmTerm: string | null;
+  utmContent: string | null;
+  referrer: string | null;
+  userAgent: string | null;
+  ipHash: string | null;
+  createdAt: string;
+}
+
+export interface GuestActivityEventsResponse {
+  items: GuestActivityEventItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+  };
+}

@@ -68,6 +68,25 @@ interface ActivityEventRow {
   created_at: string;
 }
 
+interface GuestActivityEventRow {
+  id: number;
+  session_id: string;
+  event_type: ActivityEventType;
+  page: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  payload_json: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_term: string | null;
+  utm_content: string | null;
+  referrer: string | null;
+  user_agent: string | null;
+  ip_hash: string | null;
+  created_at: string;
+}
+
 export interface ActivityEventListItem {
   id: number;
   userId: number;
@@ -78,6 +97,25 @@ export interface ActivityEventListItem {
   entityType: string | null;
   entityId: string | null;
   payload: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface GuestActivityEventListItem {
+  id: number;
+  sessionId: string;
+  eventType: ActivityEventType;
+  page: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  payload: Record<string, unknown> | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmTerm: string | null;
+  utmContent: string | null;
+  referrer: string | null;
+  userAgent: string | null;
+  ipHash: string | null;
   createdAt: string;
 }
 
@@ -93,6 +131,20 @@ export interface ActivityEventSearchQuery {
 
 export interface ActivityEventSearchResult {
   items: ActivityEventListItem[];
+  total: number;
+}
+
+export interface GuestActivityEventSearchQuery {
+  page: number;
+  pageSize: number;
+  sessionId?: string;
+  eventType?: ActivityEventType;
+  from?: string;
+  to?: string;
+}
+
+export interface GuestActivityEventSearchResult {
+  items: GuestActivityEventListItem[];
   total: number;
 }
 
@@ -121,6 +173,37 @@ function mapRowToListItem(row: ActivityEventRow): ActivityEventListItem {
   };
 }
 
+function mapGuestRowToListItem(row: GuestActivityEventRow): GuestActivityEventListItem {
+  let payload: Record<string, unknown> | null = null;
+  if (row.payload_json) {
+    try {
+      const parsed = JSON.parse(row.payload_json) as Record<string, unknown>;
+      payload = parsed;
+    } catch {
+      payload = null;
+    }
+  }
+
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    eventType: row.event_type,
+    page: row.page,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    payload,
+    utmSource: row.utm_source,
+    utmMedium: row.utm_medium,
+    utmCampaign: row.utm_campaign,
+    utmTerm: row.utm_term,
+    utmContent: row.utm_content,
+    referrer: row.referrer,
+    userAgent: row.user_agent,
+    ipHash: row.ip_hash,
+    createdAt: row.created_at,
+  };
+}
+
 function buildWhereClause(filters: ActivityEventSearchQuery): {
   whereClause: string;
   params: unknown[];
@@ -136,6 +219,43 @@ function buildWhereClause(filters: ActivityEventSearchQuery): {
   if (filters.login) {
     conditions.push("login = ?");
     params.push(filters.login);
+  }
+
+  if (filters.eventType) {
+    conditions.push("event_type = ?");
+    params.push(filters.eventType);
+  }
+
+  if (filters.from) {
+    conditions.push("datetime(created_at) >= datetime(?)");
+    params.push(filters.from);
+  }
+
+  if (filters.to) {
+    conditions.push("datetime(created_at) <= datetime(?)");
+    params.push(filters.to);
+  }
+
+  if (conditions.length === 0) {
+    return { whereClause: "", params };
+  }
+
+  return {
+    whereClause: `WHERE ${conditions.join(" AND ")}`,
+    params,
+  };
+}
+
+function buildGuestWhereClause(filters: GuestActivityEventSearchQuery): {
+  whereClause: string;
+  params: unknown[];
+} {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (filters.sessionId) {
+    conditions.push("session_id = ?");
+    params.push(filters.sessionId);
   }
 
   if (filters.eventType) {
@@ -269,6 +389,56 @@ export function searchActivityEvents(
 
   return {
     items: rows.map(mapRowToListItem),
+    total: totalRow.total,
+  };
+}
+
+export function searchGuestActivityEvents(
+  query: GuestActivityEventSearchQuery,
+): GuestActivityEventSearchResult {
+  const { whereClause, params } = buildGuestWhereClause(query);
+  const offset = (query.page - 1) * query.pageSize;
+
+  const totalRow = db
+    .prepare(
+      `
+        SELECT COUNT(*) AS total
+        FROM guest_activity_events
+        ${whereClause}
+      `,
+    )
+    .get(...params) as { total: number };
+
+  const rows = db
+    .prepare(
+      `
+        SELECT
+          id,
+          session_id,
+          event_type,
+          page,
+          entity_type,
+          entity_id,
+          payload_json,
+          utm_source,
+          utm_medium,
+          utm_campaign,
+          utm_term,
+          utm_content,
+          referrer,
+          user_agent,
+          ip_hash,
+          created_at
+        FROM guest_activity_events
+        ${whereClause}
+        ORDER BY datetime(created_at) DESC, id DESC
+        LIMIT ? OFFSET ?
+      `,
+    )
+    .all(...params, query.pageSize, offset) as GuestActivityEventRow[];
+
+  return {
+    items: rows.map(mapGuestRowToListItem),
     total: totalRow.total,
   };
 }
