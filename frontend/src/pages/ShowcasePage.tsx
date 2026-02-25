@@ -12,6 +12,10 @@ import type {
   CatalogItemsResponse,
 } from "../types/api";
 
+interface ShowcasePageProps {
+  publicMode?: boolean;
+}
+
 type BookingPreset = "Свободен" | "Забронирован" | "На согласовании";
 
 const BOOKING_PRESETS: BookingPreset[] = [
@@ -204,7 +208,7 @@ function createFilterTrackingSnapshot(input: {
   };
 }
 
-export function ShowcasePage() {
+export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
   const pageSize = 20;
   const restoredState = useMemo(readShowcaseUiState, []);
   const hasRestoredScrollRef = useRef(false);
@@ -1055,8 +1059,8 @@ export function ShowcasePage() {
   }
 
   return (
-    <section className="showcase-page">
-      <h1>Витрина</h1>
+    <section className={publicMode ? "showcase-page showcase-page--public" : "showcase-page"}>
+      {!publicMode && <h1>Витрина</h1>}
       {error && <p className="error">{error}</p>}
 
       <main className="showcase-main">

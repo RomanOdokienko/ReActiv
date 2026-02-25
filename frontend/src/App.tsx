@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import {
   getCurrentUser,
   getPlatformMode,
@@ -161,15 +161,34 @@ export function App() {
     );
 
     if (platformMode === "open") {
+      const shouldShowPublicHeader =
+        location.pathname === "/" || location.pathname === "/showcase";
+
       return (
         <>
-          <div className="app">
+          <div className="app app--public-showcase">
+            {shouldShowPublicHeader && (
+              <div className="public-showcase-topbar">
+                <div className="public-showcase-topbar__left">
+                  <Link to="/showcase" className="public-showcase-brand">
+                    <span>ре</span>Актив
+                  </Link>
+                  <div className="public-showcase-tagline">
+                    единый агрегатор изъятой лизинговой техники
+                  </div>
+                </div>
+                <Link to="/login" className="public-showcase-login-link">
+                  Вход / Регистрация
+                </Link>
+              </div>
+            )}
+
             <Routes>
               <Route path="/" element={<Navigate to="/showcase" replace />} />
-              <Route path="/showcase" element={<ShowcasePage />} />
+              <Route path="/showcase" element={<ShowcasePage publicMode />} />
               <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
               <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
-              <Route path="/login" element={<Navigate to="/showcase" replace />} />
+              <Route path="/login" element={loginElement} />
               <Route path="*" element={<Navigate to="/showcase" replace />} />
             </Routes>
           </div>

@@ -113,6 +113,83 @@ a {
   gap: 8px;
 }
 
+.app.app--public-showcase {
+  max-width: none;
+  margin-top: 8px;
+}
+
+.public-showcase-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d5deea;
+  border-radius: 14px;
+  background: #e3e8ef;
+}
+
+.public-showcase-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.public-showcase-brand,
+.public-showcase-tagline,
+.public-showcase-login-link {
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid #dbe3ef;
+  background: #f6f8fb;
+}
+
+.public-showcase-brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: #1a232e;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.public-showcase-brand span {
+  color: #1f70d4;
+}
+
+.public-showcase-tagline {
+  display: inline-flex;
+  align-items: center;
+  color: #2c3948;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.public-showcase-login-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: #1f70d4;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.showcase-page--public {
+  margin-top: 0;
+}
+
 .nav-user {
   display: inline-flex;
   align-items: center;
@@ -2305,6 +2382,29 @@ tbody tr:nth-child(even) {
   .detail-side-panel {
     position: static;
   }
+
+  .public-showcase-topbar {
+    padding: 8px 10px;
+  }
+
+  .public-showcase-brand,
+  .public-showcase-tagline,
+  .public-showcase-login-link {
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+
+  .public-showcase-brand {
+    font-size: 16px;
+  }
+
+  .public-showcase-tagline {
+    font-size: 13px;
+  }
+
+  .public-showcase-login-link {
+    font-size: 14px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -2321,6 +2421,26 @@ tbody tr:nth-child(even) {
   .nav-wrap {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .public-showcase-topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .public-showcase-topbar__left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .public-showcase-brand,
+  .public-showcase-tagline,
+  .public-showcase-login-link {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
   }
 
   .nav-actions {
