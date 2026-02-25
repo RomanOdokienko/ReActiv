@@ -21,6 +21,9 @@ export interface AdminUserListItem {
   id: number;
   login: string;
   displayName: string;
+  company: string | null;
+  phone: string | null;
+  notes: string | null;
   role: UserRole;
   isActive: boolean;
   createdAt: string;

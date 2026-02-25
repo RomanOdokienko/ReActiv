@@ -6,6 +6,7 @@ import {
   getAdminUsers,
   getCurrentUser,
   resetAdminUserPassword,
+  updateAdminUserMeta,
 } from "../api/client";
 import type { AdminUserListItem, UserRole } from "../types/api";
 
@@ -19,12 +20,22 @@ function roleLabel(role: UserRole): string {
   return "Менеджер";
 }
 
+function optionalValue(value: string): string | undefined {
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function textOrDash(value: string | null): string {
+  return value && value.trim().length > 0 ? value : "-";
+}
+
 export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isSavingMeta, setIsSavingMeta] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -35,6 +46,13 @@ export function AdminUsersPage() {
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("manager");
+  const [company, setCompany] = useState("");
+  const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const [editCompany, setEditCompany] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editNotes, setEditNotes] = useState("");
 
   const selectedUser = useMemo(
     () => users.find((item) => String(item.id) === selectedUserId) ?? null,
@@ -84,6 +102,19 @@ export function AdminUsersPage() {
     void initializePage();
   }, []);
 
+  useEffect(() => {
+    if (!selectedUser) {
+      setEditCompany("");
+      setEditPhone("");
+      setEditNotes("");
+      return;
+    }
+
+    setEditCompany(selectedUser.company ?? "");
+    setEditPhone(selectedUser.phone ?? "");
+    setEditNotes(selectedUser.notes ?? "");
+  }, [selectedUser]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -104,6 +135,9 @@ export function AdminUsersPage() {
         login: normalizedLogin,
         password,
         displayName: normalizedDisplayName,
+        company: optionalValue(company),
+        phone: optionalValue(phone),
+        notes: optionalValue(notes),
         role,
       });
 
@@ -112,6 +146,9 @@ export function AdminUsersPage() {
       setDisplayName("");
       setPassword("");
       setRole("manager");
+      setCompany("");
+      setPhone("");
+      setNotes("");
       await loadUsers();
     } catch (caughtError) {
       if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
@@ -230,6 +267,49 @@ export function AdminUsersPage() {
     }
   }
 
+  async function handleSaveSelectedUserMeta(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedUser) {
+      setError("Выберите пользователя.");
+      return;
+    }
+
+    setIsSavingMeta(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await updateAdminUserMeta(selectedUser.id, {
+        company: optionalValue(editCompany),
+        phone: optionalValue(editPhone),
+        notes: optionalValue(editNotes),
+      });
+      setSuccess(`Данные пользователя ${selectedUser.login} сохранены.`);
+      await loadUsers();
+    } catch (caughtError) {
+      if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
+        setError("Доступ к управлению пользователями разрешен только администратору.");
+        return;
+      }
+
+      if (caughtError instanceof Error && caughtError.message === "USER_NOT_FOUND") {
+        setError("Пользователь уже удален.");
+        await loadUsers();
+        return;
+      }
+
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+        return;
+      }
+
+      setError("Не удалось сохранить данные пользователя");
+    } finally {
+      setIsSavingMeta(false);
+    }
+  }
+
   return (
     <section>
       <h1>Пользователи</h1>
@@ -264,13 +344,32 @@ export function AdminUsersPage() {
           <option value="stock_owner">Владелец стока</option>
           <option value="admin">Администратор</option>
         </select>
+        <input
+          type="text"
+          placeholder="Компания (опционально)"
+          autoComplete="off"
+          value={company}
+          onChange={(event) => setCompany(event.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Телефон (опционально)"
+          autoComplete="off"
+          value={phone}
+          onChange={(event) => setPhone(event.target.value)}
+        />
+        <textarea
+          placeholder="Свободное поле (опционально)"
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+        />
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Создание..." : "Создать пользователя"}
         </button>
       </form>
 
       <div className="panel admin-users-delete">
-        <h2>Удаление пользователя</h2>
+        <h2>Действия с пользователем</h2>
         <div className="upload-form">
           <select
             value={selectedUserId}
@@ -318,6 +417,35 @@ export function AdminUsersPage() {
         )}
       </div>
 
+      <form className="panel upload-form admin-users-meta-form" onSubmit={handleSaveSelectedUserMeta}>
+        <h2>Данные пользователя</h2>
+        <input
+          type="text"
+          placeholder="Компания"
+          autoComplete="off"
+          value={editCompany}
+          onChange={(event) => setEditCompany(event.target.value)}
+          disabled={!selectedUser}
+        />
+        <input
+          type="text"
+          placeholder="Телефон"
+          autoComplete="off"
+          value={editPhone}
+          onChange={(event) => setEditPhone(event.target.value)}
+          disabled={!selectedUser}
+        />
+        <textarea
+          placeholder="Свободное поле"
+          value={editNotes}
+          onChange={(event) => setEditNotes(event.target.value)}
+          disabled={!selectedUser}
+        />
+        <button type="submit" disabled={isSavingMeta || !selectedUser}>
+          {isSavingMeta ? "Сохранение..." : "Сохранить данные пользователя"}
+        </button>
+      </form>
+
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
 
@@ -329,56 +457,74 @@ export function AdminUsersPage() {
           <p className="empty">Пользователей пока нет.</p>
         ) : (
           <>
-          <div className="table-wrap desktop-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Логин</th>
-                  <th>Имя</th>
-                  <th>Роль</th>
-                  <th>Статус</th>
-                  <th>Создан</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td>{user.login}</td>
-                    <td>{user.displayName}</td>
-                    <td>{roleLabel(user.role)}</td>
-                    <td>{user.isActive ? "Активен" : "Отключен"}</td>
-                    <td>{user.createdAt}</td>
+            <div className="table-wrap desktop-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Логин</th>
+                    <th>Имя</th>
+                    <th>Роль</th>
+                    <th>Компания</th>
+                    <th>Телефон</th>
+                    <th>Свободное поле</th>
+                    <th>Статус</th>
+                    <th>Создан</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="mobile-cards">
-            {users.map((user) => (
-              <article key={`mobile-${user.id}`} className="mobile-card">
-                <div className="mobile-card__head">
-                  <strong>{user.login}</strong>
-                  <span className="mobile-card__meta">{user.createdAt}</span>
-                </div>
-                <dl className="mobile-card__list">
-                  <div className="mobile-card__row">
-                    <dt className="mobile-card__label">Имя</dt>
-                    <dd className="mobile-card__value">{user.displayName}</dd>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id}>
+                      <td>{user.login}</td>
+                      <td>{user.displayName}</td>
+                      <td>{roleLabel(user.role)}</td>
+                      <td>{textOrDash(user.company)}</td>
+                      <td>{textOrDash(user.phone)}</td>
+                      <td>{textOrDash(user.notes)}</td>
+                      <td>{user.isActive ? "Активен" : "Отключен"}</td>
+                      <td>{user.createdAt}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mobile-cards">
+              {users.map((user) => (
+                <article key={`mobile-${user.id}`} className="mobile-card">
+                  <div className="mobile-card__head">
+                    <strong>{user.login}</strong>
+                    <span className="mobile-card__meta">{user.createdAt}</span>
                   </div>
-                  <div className="mobile-card__row">
-                    <dt className="mobile-card__label">Роль</dt>
-                    <dd className="mobile-card__value">{roleLabel(user.role)}</dd>
-                  </div>
-                  <div className="mobile-card__row">
-                    <dt className="mobile-card__label">Статус</dt>
-                    <dd className="mobile-card__value">
-                      {user.isActive ? "Активен" : "Отключен"}
-                    </dd>
-                  </div>
-                </dl>
-              </article>
-            ))}
-          </div>
+                  <dl className="mobile-card__list">
+                    <div className="mobile-card__row">
+                      <dt className="mobile-card__label">Имя</dt>
+                      <dd className="mobile-card__value">{user.displayName}</dd>
+                    </div>
+                    <div className="mobile-card__row">
+                      <dt className="mobile-card__label">Роль</dt>
+                      <dd className="mobile-card__value">{roleLabel(user.role)}</dd>
+                    </div>
+                    <div className="mobile-card__row">
+                      <dt className="mobile-card__label">Компания</dt>
+                      <dd className="mobile-card__value">{textOrDash(user.company)}</dd>
+                    </div>
+                    <div className="mobile-card__row">
+                      <dt className="mobile-card__label">Телефон</dt>
+                      <dd className="mobile-card__value">{textOrDash(user.phone)}</dd>
+                    </div>
+                    <div className="mobile-card__row">
+                      <dt className="mobile-card__label">Свободное поле</dt>
+                      <dd className="mobile-card__value">{textOrDash(user.notes)}</dd>
+                    </div>
+                    <div className="mobile-card__row">
+                      <dt className="mobile-card__label">Статус</dt>
+                      <dd className="mobile-card__value">
+                        {user.isActive ? "Активен" : "Отключен"}
+                      </dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
           </>
         )}
       </div>

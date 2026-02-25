@@ -133,7 +133,16 @@ export interface CreateAdminUserInput {
   login: string;
   password: string;
   displayName: string;
+  company?: string;
+  phone?: string;
+  notes?: string;
   role?: UserRole;
+}
+
+export interface UpdateAdminUserMetaInput {
+  company?: string;
+  phone?: string;
+  notes?: string;
 }
 
 export async function getAdminUsers(): Promise<AdminUsersResponse> {
@@ -269,6 +278,48 @@ export async function resetAdminUserPassword(
     }
 
     return (await response.json()) as ResetAdminPasswordResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function updateAdminUserMeta(
+  userId: number,
+  input: UpdateAdminUserMetaInput,
+): Promise<void> {
+  try {
+    const response = await fetch(buildUrl(`/admin/users/${userId}/meta`), {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (response.status === 404) {
+      throw new Error("USER_NOT_FOUND");
+    }
+
+    if (!response.ok) {
+      let errorMessage = "Не удалось обновить данные пользователя";
+      try {
+        const errorPayload = (await response.json()) as { message?: string };
+        if (errorPayload.message) {
+          errorMessage = errorPayload.message;
+        }
+      } catch {
+        // keep default message
+      }
+      throw new Error(errorMessage);
+    }
   } catch (error) {
     if (error instanceof TypeError) {
       throw backendUnavailableError();

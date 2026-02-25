@@ -7,6 +7,9 @@ export interface AuthUserRecord {
   login: string;
   password_hash: string;
   display_name: string;
+  company: string | null;
+  phone: string | null;
+  notes: string | null;
   role: UserRole;
   is_active: number;
   created_at: string;
@@ -23,6 +26,9 @@ export interface AdminUserListItem {
   id: number;
   login: string;
   displayName: string;
+  company: string | null;
+  phone: string | null;
+  notes: string | null;
   role: UserRole;
   isActive: boolean;
   createdAt: string;
@@ -32,6 +38,9 @@ interface CreateUserInput {
   login: string;
   password_hash: string;
   display_name: string;
+  company?: string | null;
+  phone?: string | null;
+  notes?: string | null;
   role?: UserRole;
 }
 
@@ -52,6 +61,15 @@ function normalizeRole(role: string | null | undefined): UserRole {
   return "manager";
 }
 
+function normalizeOptionalText(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 export function mapPublicAuthUser(record: {
   id: number;
   login: string;
@@ -70,6 +88,9 @@ function mapAdminUserListItem(record: {
   id: number;
   login: string;
   display_name: string;
+  company: string | null;
+  phone: string | null;
+  notes: string | null;
   role: string;
   is_active: number;
   created_at: string;
@@ -78,6 +99,9 @@ function mapAdminUserListItem(record: {
     id: record.id,
     login: record.login,
     displayName: record.display_name,
+    company: record.company,
+    phone: record.phone,
+    notes: record.notes,
     role: normalizeRole(record.role),
     isActive: record.is_active === 1,
     createdAt: record.created_at,
@@ -88,7 +112,7 @@ export function findUserByLogin(login: string): AuthUserRecord | null {
   const row = db
     .prepare(
       `
-        SELECT id, login, password_hash, display_name, role, is_active, created_at
+        SELECT id, login, password_hash, display_name, company, phone, notes, role, is_active, created_at
         FROM users
         WHERE login = ?
       `,
@@ -102,7 +126,7 @@ export function findUserById(id: number): AuthUserRecord | null {
   const row = db
     .prepare(
       `
-        SELECT id, login, password_hash, display_name, role, is_active, created_at
+        SELECT id, login, password_hash, display_name, company, phone, notes, role, is_active, created_at
         FROM users
         WHERE id = ?
       `,
@@ -115,14 +139,17 @@ export function findUserById(id: number): AuthUserRecord | null {
 export function createUser(input: CreateUserInput): PublicAuthUser {
   const payload = {
     ...input,
+    company: normalizeOptionalText(input.company),
+    phone: normalizeOptionalText(input.phone),
+    notes: normalizeOptionalText(input.notes),
     role: input.role ?? "manager",
   };
 
   const result = db
     .prepare(
       `
-        INSERT INTO users (login, password_hash, display_name, role, is_active)
-        VALUES (@login, @password_hash, @display_name, @role, 1)
+        INSERT INTO users (login, password_hash, display_name, company, phone, notes, role, is_active)
+        VALUES (@login, @password_hash, @display_name, @company, @phone, @notes, @role, 1)
       `,
     )
     .run(payload);
@@ -210,7 +237,7 @@ export function listUsersForAdmin(): AdminUserListItem[] {
   const rows = db
     .prepare(
       `
-        SELECT id, login, display_name, role, is_active, created_at
+        SELECT id, login, display_name, company, phone, notes, role, is_active, created_at
         FROM users
         ORDER BY created_at DESC
       `,
@@ -219,6 +246,9 @@ export function listUsersForAdmin(): AdminUserListItem[] {
     id: number;
     login: string;
     display_name: string;
+    company: string | null;
+    phone: string | null;
+    notes: string | null;
     role: string;
     is_active: number;
     created_at: string;
@@ -245,6 +275,30 @@ export function deleteUserById(id: number): boolean {
     .run(id);
 
   return result.changes > 0;
+}
+
+interface UpdateUserMetaInput {
+  company?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+}
+
+export function updateUserMetaById(userId: number, input: UpdateUserMetaInput): void {
+  db.prepare(
+    `
+      UPDATE users
+      SET
+        company = @company,
+        phone = @phone,
+        notes = @notes
+      WHERE id = @id
+    `,
+  ).run({
+    id: userId,
+    company: normalizeOptionalText(input.company),
+    phone: normalizeOptionalText(input.phone),
+    notes: normalizeOptionalText(input.notes),
+  });
 }
 
 export function countUsersByRole(role: UserRole): number {

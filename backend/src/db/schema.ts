@@ -163,6 +163,9 @@ export function initializeSchema(): void {
       login TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       display_name TEXT NOT NULL,
+      company TEXT,
+      phone TEXT,
+      notes TEXT,
       role TEXT NOT NULL DEFAULT 'manager',
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -210,6 +213,21 @@ export function initializeSchema(): void {
   const hasRoleColumn = userColumns.some((column) => column.name === "role");
   if (!hasRoleColumn) {
     db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'manager';`);
+  }
+
+  const hasCompanyColumn = userColumns.some((column) => column.name === "company");
+  if (!hasCompanyColumn) {
+    db.exec(`ALTER TABLE users ADD COLUMN company TEXT;`);
+  }
+
+  const hasPhoneColumn = userColumns.some((column) => column.name === "phone");
+  if (!hasPhoneColumn) {
+    db.exec(`ALTER TABLE users ADD COLUMN phone TEXT;`);
+  }
+
+  const hasNotesColumn = userColumns.some((column) => column.name === "notes");
+  if (!hasNotesColumn) {
+    db.exec(`ALTER TABLE users ADD COLUMN notes TEXT;`);
   }
 
   db.exec(`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);`);

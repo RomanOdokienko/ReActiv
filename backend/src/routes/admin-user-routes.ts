@@ -8,6 +8,7 @@ import {
   findUserById,
   listUsersForAdmin,
   updateUserPasswordById,
+  updateUserMetaById,
 } from "../repositories/auth-user-repository";
 import { buildPasswordHash, normalizeLogin } from "../services/auth-service";
 
@@ -15,7 +16,16 @@ const createUserBodySchema = z.object({
   login: z.string().trim().min(1),
   password: z.string().min(8),
   displayName: z.string().trim().min(1).max(100),
+  company: z.string().max(200).optional(),
+  phone: z.string().max(50).optional(),
+  notes: z.string().max(1000).optional(),
   role: z.enum(["admin", "manager", "stock_owner"]).optional(),
+});
+
+const updateUserMetaBodySchema = z.object({
+  company: z.string().max(200).optional(),
+  phone: z.string().max(50).optional(),
+  notes: z.string().max(1000).optional(),
 });
 
 function rejectIfNotAdmin(
@@ -63,6 +73,9 @@ export async function registerAdminUserRoutes(app: FastifyInstance): Promise<voi
         login: normalizeLogin(payload.login),
         password_hash: buildPasswordHash(payload.password),
         display_name: payload.displayName,
+        company: payload.company,
+        phone: payload.phone,
+        notes: payload.notes,
         role: payload.role ?? "manager",
       });
 
@@ -150,5 +163,37 @@ export async function registerAdminUserRoutes(app: FastifyInstance): Promise<voi
       },
       temporaryPassword,
     });
+  });
+
+  app.patch("/api/admin/users/:id/meta", async (request, reply) => {
+    if (rejectIfNotAdmin(request, reply)) {
+      return;
+    }
+
+    const { id } = request.params as { id: string };
+    const parsedId = Number(id);
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      return reply.code(400).send({ message: "Invalid user id" });
+    }
+
+    const targetUser = findUserById(parsedId);
+    if (!targetUser) {
+      return reply.code(404).send({ message: "User not found" });
+    }
+
+    try {
+      const payload = updateUserMetaBodySchema.parse(request.body);
+      updateUserMetaById(parsedId, payload);
+      return reply.code(200).send({ message: "User meta updated" });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return reply.code(400).send({
+          message: "Invalid request",
+          errors: error.flatten(),
+        });
+      }
+
+      return reply.code(500).send({ message: "Failed to update user meta" });
+    }
   });
 }

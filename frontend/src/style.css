@@ -507,6 +507,24 @@ a {
   min-width: 180px;
 }
 
+.admin-users-form textarea,
+.admin-users-meta-form textarea {
+  flex: 1 1 100%;
+  min-height: 92px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  resize: vertical;
+}
+
+.admin-users-meta-form h2 {
+  width: 100%;
+  margin-bottom: 2px;
+}
+
 .admin-users-delete select {
   flex: 1 1 340px;
   min-width: 240px;
