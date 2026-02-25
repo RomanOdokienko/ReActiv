@@ -10,6 +10,7 @@ import {
   getCatalogItemById,
   getMediaGalleryUrls,
   getMediaPreviewImageUrl,
+  logActivityEvent,
 } from "../api/client";
 import type { CatalogItem } from "../types/api";
 
@@ -362,6 +363,21 @@ export function ShowcaseItemPage() {
                 target="_blank"
                 rel="noreferrer"
                 title="romanodokienko@gmail.com"
+                onClick={() => {
+                  if (!item) {
+                    return;
+                  }
+
+                  void logActivityEvent({
+                    eventType: "showcase_contact_click",
+                    page: location.pathname,
+                    entityType: "catalog_item",
+                    entityId: String(item.id),
+                    payload: {
+                      channel: "email",
+                    },
+                  });
+                }}
               >
                 Написать на почту
               </a>
@@ -371,6 +387,21 @@ export function ShowcaseItemPage() {
                 target="_blank"
                 rel="noreferrer"
                 title="@romanodokienko"
+                onClick={() => {
+                  if (!item) {
+                    return;
+                  }
+
+                  void logActivityEvent({
+                    eventType: "showcase_contact_click",
+                    page: location.pathname,
+                    entityType: "catalog_item",
+                    entityId: String(item.id),
+                    payload: {
+                      channel: "telegram",
+                    },
+                  });
+                }}
               >
                 <span className="detail-cta-button__icon" aria-hidden>
                   <svg viewBox="0 0 24 24" focusable="false">
@@ -443,6 +474,14 @@ export function ShowcaseItemPage() {
                   href={item.websiteUrl}
                   target="_blank"
                   rel="noreferrer"
+                  onClick={() => {
+                    void logActivityEvent({
+                      eventType: "showcase_source_open",
+                      page: location.pathname,
+                      entityType: "catalog_item",
+                      entityId: String(item.id),
+                    });
+                  }}
                 >
                   Открыть источник лота
                 </a>

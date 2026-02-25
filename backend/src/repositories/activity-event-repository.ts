@@ -7,8 +7,12 @@ export const ACTIVITY_EVENT_TYPES = [
   "session_heartbeat",
   "showcase_open",
   "showcase_filters_apply",
+  "showcase_filters_reset",
+  "showcase_no_results",
   "showcase_page_change",
   "showcase_item_open",
+  "showcase_contact_click",
+  "showcase_source_open",
 ] as const;
 
 export type ActivityEventType = (typeof ACTIVITY_EVENT_TYPES)[number];

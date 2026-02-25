@@ -161,6 +161,7 @@ export function ShowcasePage() {
   const hasLoggedShowcaseOpenRef = useRef(false);
   const hasLoggedInitialFiltersRef = useRef(false);
   const hasLoggedInitialPageRef = useRef(false);
+  const lastNoResultsSignatureRef = useRef("");
   const initialBookingPreset =
     restoredState.bookingPreset && BOOKING_PRESETS.includes(restoredState.bookingPreset)
       ? restoredState.bookingPreset
@@ -534,6 +535,35 @@ export function ShowcasePage() {
   }, [page, totalPages]);
 
   useEffect(() => {
+    if (isLoading || !itemsResponse) {
+      return;
+    }
+
+    if (itemsResponse.items.length > 0) {
+      return;
+    }
+
+    if (activeFiltersCount === 0) {
+      return;
+    }
+
+    const signature = JSON.stringify(query);
+    if (lastNoResultsSignatureRef.current === signature) {
+      return;
+    }
+
+    lastNoResultsSignatureRef.current = signature;
+    void logActivityEvent({
+      eventType: "showcase_no_results",
+      page: "/showcase",
+      payload: {
+        activeFiltersCount,
+        query,
+      },
+    });
+  }, [activeFiltersCount, isLoading, itemsResponse, query]);
+
+  useEffect(() => {
     if (hasRestoredScrollRef.current || isLoading || !itemsResponse) {
       return;
     }
@@ -748,6 +778,14 @@ export function ShowcasePage() {
   }
 
   function clearFilters(): void {
+    void logActivityEvent({
+      eventType: "showcase_filters_reset",
+      page: "/showcase",
+      payload: {
+        activeFiltersCount,
+      },
+    });
+
     setBookingPreset("");
     setCity("");
     setSelectedVehicleTypes([]);
