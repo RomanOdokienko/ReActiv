@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { logActivityEvent, login } from "../api/client";
 import type { AuthUser } from "../types/api";
@@ -12,6 +12,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.body.classList.add("auth-page");
+    return () => {
+      document.body.classList.remove("auth-page");
+    };
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -91,6 +98,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           </div>
 
           <aside className="auth-promo-card" aria-label="Преимущества платформы">
+            <div className="auth-promo-card__image" aria-hidden="true" />
             <h2>Единый агрегатор изъятой лизинговой техники</h2>
             <ul className="auth-promo-list">
               <li>
