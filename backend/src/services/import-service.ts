@@ -65,7 +65,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
 
     if (columnMap.missingRequiredFields.length > 0) {
       for (const missingField of columnMap.missingRequiredFields) {
-        const message = `Missing required column: ${missingField}`;
+        const message = `Missing required column: ${missingField}. Values will be imported as empty.`;
         insertImportError({
           import_batch_id: importBatchId,
           row_number: 1,
@@ -77,22 +77,6 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
           errors.push({ rowNumber: 1, field: missingField, message });
         }
       }
-
-      skippedRows = totalRows;
-      updateImportBatchSummary({
-        id: importBatchId,
-        status: "failed",
-        total_rows: totalRows,
-        imported_rows: importedRows,
-        skipped_rows: skippedRows,
-      });
-
-      return {
-        importBatchId,
-        status: "failed",
-        summary: { totalRows, importedRows, skippedRows },
-        errors,
-      };
     }
 
     parsedWorkbook.rows.forEach((row, index) => {
@@ -101,8 +85,36 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
       const validationErrors = validateNormalizedRow(normalizedRow);
 
       if (validationErrors.length > 0) {
-        skippedRows += 1;
         for (const validationError of validationErrors) {
+          switch (validationError.field) {
+            case "offer_code":
+              normalizedRow.offer_code = null;
+              break;
+            case "year":
+              normalizedRow.year = null;
+              break;
+            case "mileage_km":
+              normalizedRow.mileage_km = null;
+              break;
+            case "key_count":
+              normalizedRow.key_count = null;
+              break;
+            case "has_encumbrance":
+              normalizedRow.has_encumbrance = null;
+              break;
+            case "is_deregistered":
+              normalizedRow.is_deregistered = null;
+              break;
+            case "days_on_sale":
+              normalizedRow.days_on_sale = null;
+              break;
+            case "price":
+              normalizedRow.price = null;
+              break;
+            default:
+              break;
+          }
+
           insertImportError({
             import_batch_id: importBatchId,
             row_number: rowNumber,
@@ -118,14 +130,13 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
             });
           }
         }
-        return;
       }
 
       insertVehicleOffer(importBatchId, normalizedRow);
       importedRows += 1;
     });
 
-    const status = skippedRows > 0 ? "completed_with_errors" : "completed";
+    const status = errors.length > 0 ? "completed_with_errors" : "completed";
 
     updateImportBatchSummary({
       id: importBatchId,

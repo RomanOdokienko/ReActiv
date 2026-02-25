@@ -10,16 +10,16 @@ interface VehicleOfferDbRow {
   model: string;
   modification: string;
   vehicle_type: string;
-  year: number;
-  mileage_km: number;
-  key_count: number;
+  year: number | null;
+  mileage_km: number | null;
+  key_count: number | null;
   pts_type: string;
-  has_encumbrance: number;
-  is_deregistered: number;
+  has_encumbrance: number | null;
+  is_deregistered: number | null;
   responsible_person: string;
   storage_address: string;
-  days_on_sale: number;
-  price: number;
+  days_on_sale: number | null;
+  price: number | null;
   yandex_disk_url: string;
   booking_status: string;
   external_id: string;
@@ -38,16 +38,16 @@ export interface CatalogItem {
   model: string;
   modification: string;
   vehicleType: string;
-  year: number;
-  mileageKm: number;
-  keyCount: number;
+  year: number | null;
+  mileageKm: number | null;
+  keyCount: number | null;
   ptsType: string;
-  hasEncumbrance: boolean;
-  isDeregistered: boolean;
+  hasEncumbrance: boolean | null;
+  isDeregistered: boolean | null;
   responsiblePerson: string;
   storageAddress: string;
-  daysOnSale: number;
-  price: number;
+  daysOnSale: number | null;
+  price: number | null;
   yandexDiskUrl: string;
   bookingStatus: string;
   externalId: string;
@@ -55,6 +55,16 @@ export interface CatalogItem {
   websiteUrl: string;
   title: string;
   createdAt: string;
+}
+
+function mapDbBoolean(value: number | null): boolean | null {
+  if (value === 1) {
+    return true;
+  }
+  if (value === 0) {
+    return false;
+  }
+  return null;
 }
 
 function mapDbRow(row: VehicleOfferDbRow): CatalogItem {
@@ -71,8 +81,8 @@ function mapDbRow(row: VehicleOfferDbRow): CatalogItem {
     mileageKm: row.mileage_km,
     keyCount: row.key_count,
     ptsType: row.pts_type,
-    hasEncumbrance: row.has_encumbrance === 1,
-    isDeregistered: row.is_deregistered === 1,
+    hasEncumbrance: mapDbBoolean(row.has_encumbrance),
+    isDeregistered: mapDbBoolean(row.is_deregistered),
     responsiblePerson: row.responsible_person,
     storageAddress: row.storage_address,
     daysOnSale: row.days_on_sale,
@@ -117,6 +127,22 @@ function addLikeAnyFilter(
   values.forEach((value) => {
     params.push(`%${value}%`);
   });
+}
+
+function addNullableRangeFilter(
+  clauses: string[],
+  params: unknown[],
+  column: string,
+  operator: ">=" | "<=",
+  value: number | undefined,
+): void {
+  if (value === undefined) {
+    return;
+  }
+
+  clauses.push(`${column} IS NOT NULL`);
+  clauses.push(`${column} ${operator} ?`);
+  params.push(value);
 }
 
 function normalizeRegionLabel(value: string): string {
@@ -257,46 +283,16 @@ function buildWhere(filters: CatalogQuery): { whereClause: string; params: unkno
   addInFilter(clauses, params, "website_url", filters.websiteUrl);
   addInFilter(clauses, params, "yandex_disk_url", filters.yandexDiskUrl);
 
-  if (filters.priceMin !== undefined) {
-    clauses.push("price >= ?");
-    params.push(filters.priceMin);
-  }
-  if (filters.priceMax !== undefined) {
-    clauses.push("price <= ?");
-    params.push(filters.priceMax);
-  }
-  if (filters.yearMin !== undefined) {
-    clauses.push("year >= ?");
-    params.push(filters.yearMin);
-  }
-  if (filters.yearMax !== undefined) {
-    clauses.push("year <= ?");
-    params.push(filters.yearMax);
-  }
-  if (filters.mileageMin !== undefined) {
-    clauses.push("mileage_km >= ?");
-    params.push(filters.mileageMin);
-  }
-  if (filters.mileageMax !== undefined) {
-    clauses.push("mileage_km <= ?");
-    params.push(filters.mileageMax);
-  }
-  if (filters.keyCountMin !== undefined) {
-    clauses.push("key_count >= ?");
-    params.push(filters.keyCountMin);
-  }
-  if (filters.keyCountMax !== undefined) {
-    clauses.push("key_count <= ?");
-    params.push(filters.keyCountMax);
-  }
-  if (filters.daysOnSaleMin !== undefined) {
-    clauses.push("days_on_sale >= ?");
-    params.push(filters.daysOnSaleMin);
-  }
-  if (filters.daysOnSaleMax !== undefined) {
-    clauses.push("days_on_sale <= ?");
-    params.push(filters.daysOnSaleMax);
-  }
+  addNullableRangeFilter(clauses, params, "price", ">=", filters.priceMin);
+  addNullableRangeFilter(clauses, params, "price", "<=", filters.priceMax);
+  addNullableRangeFilter(clauses, params, "year", ">=", filters.yearMin);
+  addNullableRangeFilter(clauses, params, "year", "<=", filters.yearMax);
+  addNullableRangeFilter(clauses, params, "mileage_km", ">=", filters.mileageMin);
+  addNullableRangeFilter(clauses, params, "mileage_km", "<=", filters.mileageMax);
+  addNullableRangeFilter(clauses, params, "key_count", ">=", filters.keyCountMin);
+  addNullableRangeFilter(clauses, params, "key_count", "<=", filters.keyCountMax);
+  addNullableRangeFilter(clauses, params, "days_on_sale", ">=", filters.daysOnSaleMin);
+  addNullableRangeFilter(clauses, params, "days_on_sale", "<=", filters.daysOnSaleMax);
   if (filters.search) {
     clauses.push(
       `
@@ -429,8 +425,10 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     (
       db
         .prepare(`SELECT DISTINCT ${column} AS value FROM vehicle_offers ORDER BY ${column} ASC`)
-        .all() as Array<{ value: number }>
-    ).map((row) => row.value === 1);
+        .all() as Array<{ value: number | null }>
+    )
+      .filter((row) => row.value === 0 || row.value === 1)
+      .map((row) => row.value === 1);
 
   const rangeRow = db
     .prepare(
@@ -474,6 +472,54 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     {},
   );
 
+  const brandsByVehicleTypeRows = db
+    .prepare(
+      `
+        SELECT vehicle_type, brand
+        FROM vehicle_offers
+        WHERE vehicle_type != '' AND brand != ''
+        GROUP BY vehicle_type, brand
+        ORDER BY vehicle_type ASC, brand ASC
+      `,
+    )
+    .all() as Array<{ vehicle_type: string; brand: string }>;
+
+  const brandsByVehicleType = brandsByVehicleTypeRows.reduce<Record<string, string[]>>(
+    (accumulator, row) => {
+      if (!accumulator[row.vehicle_type]) {
+        accumulator[row.vehicle_type] = [];
+      }
+      accumulator[row.vehicle_type].push(row.brand);
+      return accumulator;
+    },
+    {},
+  );
+
+  const modelsByBrandAndVehicleTypeRows = db
+    .prepare(
+      `
+        SELECT vehicle_type, brand, model
+        FROM vehicle_offers
+        WHERE vehicle_type != '' AND brand != '' AND model != ''
+        GROUP BY vehicle_type, brand, model
+        ORDER BY vehicle_type ASC, brand ASC, model ASC
+      `,
+    )
+    .all() as Array<{ vehicle_type: string; brand: string; model: string }>;
+
+  const modelsByBrandAndVehicleType = modelsByBrandAndVehicleTypeRows.reduce<
+    Record<string, Record<string, string[]>>
+  >((accumulator, row) => {
+    if (!accumulator[row.vehicle_type]) {
+      accumulator[row.vehicle_type] = {};
+    }
+    if (!accumulator[row.vehicle_type][row.brand]) {
+      accumulator[row.vehicle_type][row.brand] = [];
+    }
+    accumulator[row.vehicle_type][row.brand].push(row.model);
+    return accumulator;
+  }, {});
+
   const citySet = new Set<string>();
   const storageAddresses = distinct("storage_address");
   storageAddresses.forEach((address) => {
@@ -505,6 +551,8 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     websiteUrl: distinct("website_url"),
     yandexDiskUrl: distinct("yandex_disk_url"),
     modelsByBrand,
+    brandsByVehicleType,
+    modelsByBrandAndVehicleType,
     ...rangeRow,
   };
 }

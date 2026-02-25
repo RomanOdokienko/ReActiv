@@ -17,6 +17,13 @@ import type {
   CatalogItemsResponse,
 } from "../types/api";
 
+function formatNumberValue(value: number | null): string {
+  if (value === null) {
+    return "-";
+  }
+  return value.toLocaleString("ru-RU");
+}
+
 export function CatalogPage() {
   const [filters, setFilters] = useState<CatalogFiltersResponse | null>(null);
   const [itemsResponse, setItemsResponse] = useState<CatalogItemsResponse | null>(
@@ -330,9 +337,9 @@ export function CatalogPage() {
                         <td>{item.status}</td>
                         <td>{item.brand}</td>
                         <td>{item.model}</td>
-                        <td>{item.year}</td>
-                        <td>{item.mileageKm}</td>
-                        <td>{item.price}</td>
+                        <td>{formatNumberValue(item.year)}</td>
+                        <td>{formatNumberValue(item.mileageKm)}</td>
+                        <td>{formatNumberValue(item.price)}</td>
                         <td>{item.bookingStatus}</td>
                         <td>{item.storageAddress}</td>
                       </tr>
@@ -357,15 +364,15 @@ export function CatalogPage() {
                       </div>
                       <div className="mobile-card__row">
                         <dt className="mobile-card__label">Год</dt>
-                        <dd className="mobile-card__value">{item.year}</dd>
+                        <dd className="mobile-card__value">{formatNumberValue(item.year)}</dd>
                       </div>
                       <div className="mobile-card__row">
                         <dt className="mobile-card__label">Пробег</dt>
-                        <dd className="mobile-card__value">{item.mileageKm}</dd>
+                        <dd className="mobile-card__value">{formatNumberValue(item.mileageKm)}</dd>
                       </div>
                       <div className="mobile-card__row">
                         <dt className="mobile-card__label">Цена</dt>
-                        <dd className="mobile-card__value">{item.price}</dd>
+                        <dd className="mobile-card__value">{formatNumberValue(item.price)}</dd>
                       </div>
                       <div className="mobile-card__row">
                         <dt className="mobile-card__label">Бронь</dt>

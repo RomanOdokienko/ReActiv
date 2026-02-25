@@ -25,7 +25,7 @@ function getStatusLabel(status: ImportResponse["status"]): string {
     return "Завершен";
   }
   if (status === "completed_with_errors") {
-    return "Завершен с ошибками";
+    return "Завершен с предупреждениями";
   }
   return "Ошибка";
 }
@@ -183,7 +183,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
           {result.errors.length > 0 && (
             <>
-              <h3>Ошибки</h3>
+              <h3>Предупреждения</h3>
               <div className="table-wrap desktop-table">
                 <table>
                   <thead>
@@ -211,7 +211,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
                     className="mobile-card"
                   >
                     <div className="mobile-card__head">
-                      <strong>Ошибка в строке {item.rowNumber}</strong>
+                      <strong>Предупреждение в строке {item.rowNumber}</strong>
                     </div>
                     <dl className="mobile-card__list">
                       <div className="mobile-card__row">

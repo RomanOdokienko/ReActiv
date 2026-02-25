@@ -76,7 +76,10 @@ function writeShowcaseUiState(state: ShowcaseUiState): void {
   }
 }
 
-function formatPrice(price: number): string {
+function formatPrice(price: number | null): string {
+  if (price === null) {
+    return "—";
+  }
   return `${price.toLocaleString("ru-RU")} ₽`;
 }
 
@@ -117,7 +120,8 @@ function buildCardSubtitle(item: CatalogItem): string {
     .replace(/^\W+|\W+$/g, "")
     .trim();
 
-  return `${item.year} г, ${cleanedDetails}`;
+  const yearPart = item.year !== null ? `${item.year} г` : "";
+  return yearPart ? `${yearPart}, ${cleanedDetails}` : cleanedDetails;
 }
 
 function normalizeIntegerInput(raw: string): string {
@@ -803,7 +807,10 @@ export function ShowcasePage() {
     return value;
   }
 
-  function getMarketTag(daysOnSale: number): { label: string; className: string } {
+  function getMarketTag(daysOnSale: number | null): { label: string; className: string } | null {
+    if (daysOnSale === null) {
+      return null;
+    }
     if (daysOnSale <= 30) {
       return { label: "цена в рынке", className: "badge-market market" };
     }
@@ -1194,7 +1201,7 @@ export function ShowcasePage() {
                     }}
                   >
                     <div className="vehicle-card__image">
-                      <span className={marketTag.className}>{marketTag.label}</span>
+                      {marketTag && <span className={marketTag.className}>{marketTag.label}</span>}
                       {primaryMediaUrl ? (
                         <>
                           <img

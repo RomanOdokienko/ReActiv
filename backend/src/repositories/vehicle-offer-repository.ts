@@ -5,24 +5,18 @@ function toDbText(value: string | null): string {
   return value ?? "";
 }
 
-function toDbBooleanOrRaw(value: boolean | string | null): number | string {
+function toDbNullableBoolean(value: boolean | null): number | null {
   if (typeof value === "boolean") {
     return value ? 1 : 0;
   }
-
-  if (typeof value === "string") {
-    return value;
-  }
-
-  return "";
+  return null;
 }
 
-function toDbNumberOrRaw(value: number | string | null): number | string {
-  if (typeof value === "number" || typeof value === "string") {
+function toDbNullableNumber(value: number | null): number | null {
+  if (typeof value === "number") {
     return value;
   }
-
-  return "";
+  return null;
 }
 
 export function insertVehicleOffer(
@@ -89,16 +83,16 @@ export function insertVehicleOffer(
     model: toDbText(row.model),
     modification: toDbText(row.modification),
     vehicle_type: toDbText(row.vehicle_type),
-    year: row.year,
-    mileage_km: row.mileage_km,
-    key_count: toDbNumberOrRaw(row.key_count),
+    year: toDbNullableNumber(row.year),
+    mileage_km: toDbNullableNumber(row.mileage_km),
+    key_count: toDbNullableNumber(row.key_count),
     pts_type: toDbText(row.pts_type),
-    has_encumbrance: toDbBooleanOrRaw(row.has_encumbrance),
-    is_deregistered: toDbBooleanOrRaw(row.is_deregistered),
+    has_encumbrance: toDbNullableBoolean(row.has_encumbrance),
+    is_deregistered: toDbNullableBoolean(row.is_deregistered),
     responsible_person: toDbText(row.responsible_person),
     storage_address: toDbText(row.storage_address),
-    days_on_sale: row.days_on_sale,
-    price: row.price,
+    days_on_sale: toDbNullableNumber(row.days_on_sale),
+    price: toDbNullableNumber(row.price),
     yandex_disk_url: toDbText(row.yandex_disk_url),
     booking_status: toDbText(row.booking_status),
     external_id: toDbText(row.external_id),

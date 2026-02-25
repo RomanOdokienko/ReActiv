@@ -5,7 +5,7 @@
   type ImgHTMLAttributes,
   type SyntheticEvent,
 } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   getCatalogItemById,
   getMediaGalleryUrls,
@@ -13,7 +13,10 @@ import {
 } from "../api/client";
 import type { CatalogItem } from "../types/api";
 
-function formatPrice(price: number): string {
+function formatPrice(price: number | null): string {
+  if (price === null) {
+    return "-";
+  }
   return `${price.toLocaleString("ru-RU")} ₽`;
 }
 
@@ -78,7 +81,10 @@ function ProxyAwareImage({ sourceUrl, onError, ...restProps }: ProxyAwareImagePr
   );
 }
 
-function formatBool(value: boolean): string {
+function formatBool(value: boolean | null): string {
+  if (value === null) {
+    return "-";
+  }
   return value ? "Да" : "Нет";
 }
 
@@ -87,12 +93,26 @@ function formatString(value: string): string {
   return normalized ? normalized : "-";
 }
 
+function formatInteger(value: number | null, suffix = ""): string {
+  if (value === null) {
+    return "-";
+  }
+
+  const formatted = value.toLocaleString("ru-RU");
+  return suffix ? `${formatted} ${suffix}` : formatted;
+}
+
 interface DetailSpec {
   label: string;
   value: string;
 }
 
-function getMarketTag(daysOnSale: number): { label: string; tone: "market" | "good" | "bad" } {
+function getMarketTag(
+  daysOnSale: number | null,
+): { label: string; tone: "market" | "good" | "bad" } | null {
+  if (daysOnSale === null) {
+    return null;
+  }
   if (daysOnSale <= 30) {
     return { label: "цена в рынке", tone: "market" };
   }
@@ -104,6 +124,8 @@ function getMarketTag(daysOnSale: number): { label: string; tone: "market" | "go
 
 export function ShowcaseItemPage() {
   const { itemId } = useParams<{ itemId: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [item, setItem] = useState<CatalogItem | null>(null);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState("");
@@ -201,6 +223,14 @@ export function ShowcaseItemPage() {
     ? mediaUrls[visibleThumbnails.length]
     : null;
   const marketTag = item ? getMarketTag(item.daysOnSale) : null;
+  const contactMessage = item
+    ? `Добрый день. Вопрос по лоту *${item.offerCode}`
+    : "Добрый день. Вопрос по лоту";
+  const encodedContactMessage = encodeURIComponent(contactMessage);
+  const encodedMailSubject = encodeURIComponent(`Вопрос по лоту ${item?.offerCode ?? ""}`.trim());
+  const cameFromShowcase = Boolean(
+    (location.state as { fromShowcase?: boolean } | null)?.fromShowcase,
+  );
 
   useEffect(() => {
     if (!mediaUrls.length) {
@@ -286,7 +316,18 @@ export function ShowcaseItemPage() {
 
   return (
     <section className="showcase-detail-page">
-      <Link className="detail-back-link" to="/showcase">
+      <Link
+        className="detail-back-link"
+        to="/showcase"
+        onClick={(event) => {
+          if (!cameFromShowcase) {
+            return;
+          }
+
+          event.preventDefault();
+          navigate(-1);
+        }}
+      >
         Назад к витрине
       </Link>
 
@@ -295,63 +336,49 @@ export function ShowcaseItemPage() {
 
       {!isLoading && !error && item && (
         <>
-          <header className="detail-header">
-            <div>
-              <h1>{item.title || `${item.brand} ${item.model}`}</h1>
-              <p className="detail-meta-line">
-                {formatDate(item.createdAt) || "Дата не указана"} · Код {item.offerCode}
-              </p>
-            </div>
-            <div className="detail-header-price-wrap">
-              {marketTag && (
-                <span className={`detail-market-tag detail-market-tag--${marketTag.tone}`}>
-                  {marketTag.label}
-                </span>
-              )}
-              <p className="detail-header-price">{formatPrice(item.price)}</p>
-            </div>
-          </header>
-
           <div className="detail-top-cards">
             <article className="detail-trust-card">
-              <span className="detail-trust-icon" aria-hidden>
-                ✓
-              </span>
               <div className="detail-trust-content">
-                <p className="detail-trust-title">
-                  {item.responsiblePerson
-                    ? `Ответственный: ${item.responsiblePerson}`
-                    : "Проверенный лот"}
-                </p>
+                <p className="detail-trust-title">{item.title || `${item.brand} ${item.model}`}</p>
                 <p className="detail-trust-meta">
-                  {formatString(item.storageAddress) !== "-"
-                    ? item.storageAddress
-                    : "Адрес хранения уточняется"}
+                  {formatDate(item.createdAt) || "Дата не указана"} · Код {formatString(item.offerCode)}
                 </p>
+              </div>
+              <div className="detail-trust-price-wrap">
+                <p className="detail-trust-price">{formatPrice(item.price)}</p>
+                {marketTag && (
+                  <span className={`detail-market-tag detail-market-tag--${marketTag.tone}`}>
+                    {marketTag.label}
+                  </span>
+                )}
               </div>
             </article>
 
             <aside className="detail-cta-card">
               <p className="detail-cta-caption">Нужна дополнительная информация по лоту?</p>
-              {item.websiteUrl ? (
-                <a
-                  className="detail-cta-button"
-                  href={item.websiteUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Открыть карточку источника
-                </a>
-              ) : (
-                <a
-                  className="detail-cta-button"
-                  href="https://t.me/romanodokienko"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Прямой контакт
-                </a>
-              )}
+              <a
+                className="detail-cta-button"
+                href={`mailto:romanodokienko@gmail.com?subject=${encodedMailSubject}&body=${encodedContactMessage}`}
+                target="_blank"
+                rel="noreferrer"
+                title="romanodokienko@gmail.com"
+              >
+                Написать на почту
+              </a>
+              <a
+                className="detail-cta-button detail-cta-button--telegram"
+                href={`https://t.me/romanodokienko?text=${encodedContactMessage}`}
+                target="_blank"
+                rel="noreferrer"
+                title="@romanodokienko"
+              >
+                <span className="detail-cta-button__icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M9.8 14.7l-.4 4.1c.6 0 .9-.3 1.2-.6l2.9-2.8 6-4.4c1-.7-.2-1.1-1.5-.6l-7.4 2.8-3.2-1c-1.3-.4-1.3-1.3.3-1.9l12.6-4.9c1.2-.4 2.2.3 1.8 1.9l-2.1 10.3c-.3 1.3-1.1 1.7-2.2 1.1l-6-4.4-2.9 2.8c-.3.3-.6.6-1.1.6z" />
+                  </svg>
+                </span>
+                <span className="detail-cta-button__text">Написать в Telegram</span>
+              </a>
             </aside>
           </div>
 
@@ -359,14 +386,14 @@ export function ShowcaseItemPage() {
             <aside className="panel detail-side-panel">
               {(() => {
                 const ownershipSpecs: DetailSpec[] = [
-                  { label: "Год выпуска", value: String(item.year) },
-                  { label: "Пробег", value: `${item.mileageKm.toLocaleString("ru-RU")} км` },
+                  { label: "Год выпуска", value: formatInteger(item.year) },
+                  { label: "Пробег", value: formatInteger(item.mileageKm, "км") },
                   {
                     label: "Статус брони",
                     value: formatString(item.bookingStatus || "Без статуса"),
                   },
                   { label: "Ответственный", value: formatString(item.responsiblePerson) },
-                  { label: "Дней в продаже", value: `${item.daysOnSale}` },
+                  { label: "Дней в продаже", value: formatInteger(item.daysOnSale) },
                   { label: "Регион/адрес", value: formatString(item.storageAddress) },
                 ];
 
@@ -376,7 +403,7 @@ export function ShowcaseItemPage() {
                   { label: "Модификация", value: formatString(item.modification) },
                   { label: "Тип ТС", value: formatString(item.vehicleType) },
                   { label: "ПТС/ЭПТС", value: formatString(item.ptsType) },
-                  { label: "Ключи", value: `${item.keyCount}` },
+                  { label: "Ключи", value: formatInteger(item.keyCount) },
                   { label: "Обременение", value: formatBool(item.hasEncumbrance) },
                   { label: "Снят с учета", value: formatBool(item.isDeregistered) },
                 ];
@@ -560,3 +587,6 @@ export function ShowcaseItemPage() {
     </section>
   );
 }
+
+
+

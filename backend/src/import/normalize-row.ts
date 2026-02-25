@@ -16,10 +16,10 @@ export interface NormalizedVehicleOfferRow {
   vehicle_type: string | null;
   year: number | null;
   mileage_km: number | null;
-  key_count: number | string | null;
+  key_count: number | null;
   pts_type: string | null;
-  has_encumbrance: boolean | string | null;
-  is_deregistered: boolean | string | null;
+  has_encumbrance: boolean | null;
+  is_deregistered: boolean | null;
   responsible_person: string | null;
   storage_address: string | null;
   days_on_sale: number | null;
@@ -51,15 +51,9 @@ export function normalizeVehicleOfferRow(
   const modification =
     normalizeString(getValue(row, fieldToColumnIndex, "modification")) || null;
 
-  const keyCountRaw = normalizeString(getValue(row, fieldToColumnIndex, "key_count")) || null;
-  const hasEncumbranceRaw =
-    normalizeString(getValue(row, fieldToColumnIndex, "has_encumbrance")) || null;
-  const isDeregisteredRaw =
-    normalizeString(getValue(row, fieldToColumnIndex, "is_deregistered")) || null;
-
-  const parsedKeyCount = parseInteger(keyCountRaw);
-  const parsedHasEncumbrance = parseBoolean(hasEncumbranceRaw);
-  const parsedIsDeregistered = parseBoolean(isDeregisteredRaw);
+  const parsedKeyCount = parseInteger(getValue(row, fieldToColumnIndex, "key_count"));
+  const parsedHasEncumbrance = parseBoolean(getValue(row, fieldToColumnIndex, "has_encumbrance"));
+  const parsedIsDeregistered = parseBoolean(getValue(row, fieldToColumnIndex, "is_deregistered"));
 
   return {
     offer_code: offerCode,
@@ -70,10 +64,10 @@ export function normalizeVehicleOfferRow(
     vehicle_type: normalizeString(getValue(row, fieldToColumnIndex, "vehicle_type")) || null,
     year: parseInteger(getValue(row, fieldToColumnIndex, "year")),
     mileage_km: parseInteger(getValue(row, fieldToColumnIndex, "mileage_km")),
-    key_count: parsedKeyCount ?? keyCountRaw,
+    key_count: parsedKeyCount,
     pts_type: normalizeString(getValue(row, fieldToColumnIndex, "pts_type")) || null,
-    has_encumbrance: parsedHasEncumbrance ?? hasEncumbranceRaw,
-    is_deregistered: parsedIsDeregistered ?? isDeregisteredRaw,
+    has_encumbrance: parsedHasEncumbrance,
+    is_deregistered: parsedIsDeregistered,
     responsible_person:
       normalizeString(getValue(row, fieldToColumnIndex, "responsible_person")) || null,
     storage_address:

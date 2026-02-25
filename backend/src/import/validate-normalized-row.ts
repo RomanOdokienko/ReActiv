@@ -31,6 +31,24 @@ export function validateNormalizedRow(
     errors.push({ field: "mileage_km", message: "Invalid mileage value" });
   }
 
+  if (row.key_count === null) {
+    errors.push({ field: "key_count", message: "Invalid key_count value" });
+  }
+
+  if (row.has_encumbrance === null) {
+    errors.push({
+      field: "has_encumbrance",
+      message: "Invalid has_encumbrance value",
+    });
+  }
+
+  if (row.is_deregistered === null) {
+    errors.push({
+      field: "is_deregistered",
+      message: "Invalid is_deregistered value",
+    });
+  }
+
   if (row.days_on_sale === null) {
     errors.push({ field: "days_on_sale", message: "Invalid days_on_sale value" });
   }
