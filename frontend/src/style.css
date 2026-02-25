@@ -349,7 +349,7 @@ a {
   color: rgba(230, 235, 242, 0.9);
 }
 
-.auth-feedback-widget {
+.feedback-widget {
   position: fixed;
   right: 26px;
   bottom: 24px;
@@ -359,7 +359,7 @@ a {
   gap: 12px;
 }
 
-.auth-feedback-widget__panel {
+.feedback-widget__panel {
   width: min(420px, calc(100vw - 28px));
   padding: 20px 22px;
   border-radius: 22px;
@@ -368,44 +368,58 @@ a {
   box-shadow: 0 18px 36px rgba(16, 31, 62, 0.2);
 }
 
-.auth-feedback-widget__panel p {
+.feedback-widget__panel p {
   margin: 0;
   color: #232f40;
   font-size: 16px;
   line-height: 1.42;
 }
 
-.auth-feedback-widget__panel a {
+.feedback-widget__panel a {
   color: #1f70d4;
   text-decoration: none;
 }
 
-.auth-feedback-widget__panel a:hover {
+.feedback-widget__panel a:hover {
   text-decoration: underline;
 }
 
-.auth-feedback-widget__button {
+.feedback-widget__button {
   width: 60px;
   min-width: 60px;
   min-height: 60px;
   padding: 0;
   border-radius: 999px;
-  border: 1px solid #0f60c7;
-  background: #1f70d4;
+  border: 1px solid #0f63d4;
+  background: #156fe8;
   box-shadow: 0 10px 22px rgba(26, 80, 156, 0.35);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
-.auth-feedback-widget__button img {
+.feedback-widget__button img {
   width: 28px;
   height: 28px;
+  filter: brightness(0) invert(1);
 }
 
-.auth-feedback-widget__button:hover:not(:disabled) {
+.feedback-widget__button:hover:not(:disabled),
+.feedback-widget__button.is-open {
+  border-color: #0b58bd;
+  background: #0f63d9;
+  transform: none;
+  box-shadow: 0 12px 26px rgba(20, 65, 128, 0.42);
+}
+
+.feedback-widget__button:focus-visible {
+  outline: 3px solid rgba(21, 111, 232, 0.26);
+  outline-offset: 2px;
+}
+
+.feedback-widget__button:hover:not(:disabled):not(.is-open) {
   transform: translateY(-1px);
-  box-shadow: 0 12px 26px rgba(26, 80, 156, 0.4);
 }
 
 .nav a {
@@ -2586,30 +2600,30 @@ tbody tr:nth-child(even) {
     line-height: 18px;
   }
 
-  .auth-feedback-widget {
+  .feedback-widget {
     right: 12px;
     bottom: 12px;
     gap: 10px;
   }
 
-  .auth-feedback-widget__panel {
+  .feedback-widget__panel {
     width: min(360px, calc(100vw - 24px));
     padding: 16px 16px;
     border-radius: 16px;
   }
 
-  .auth-feedback-widget__panel p {
+  .feedback-widget__panel p {
     font-size: 15px;
     line-height: 1.4;
   }
 
-  .auth-feedback-widget__button {
+  .feedback-widget__button {
     width: 56px;
     min-width: 56px;
     min-height: 56px;
   }
 
-  .auth-feedback-widget__button img {
+  .feedback-widget__button img {
     width: 24px;
     height: 24px;
   }

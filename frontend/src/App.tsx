@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { getCurrentUser, logActivityEvent, logout } from "./api/client";
+import { FeedbackWidget } from "./components/FeedbackWidget";
 import { CatalogPage } from "./pages/CatalogPage";
 import { AdminActivityPage } from "./pages/AdminActivityPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
@@ -85,92 +86,117 @@ export function App() {
 
   if (authState === "checking") {
     return (
-      <div className="app">
-        <div className="panel">
-          <h2>Проверка сессии...</h2>
+      <>
+        <div className="app">
+          <div className="panel">
+            <h2>Проверка сессии...</h2>
+          </div>
         </div>
-      </div>
+        <FeedbackWidget />
+      </>
     );
   }
 
   if (authState === "unauthorized") {
     return (
-      <div className="app">
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <LoginPage
-                onLoginSuccess={(user) => {
-                  setAuthUser(user);
-                  setAuthState("authorized");
-                }}
-              />
-            }
-          />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </div>
+      <>
+        <div className="app">
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                <LoginPage
+                  onLoginSuccess={(user) => {
+                    setAuthUser(user);
+                    setAuthState("authorized");
+                  }}
+                />
+              }
+            />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </div>
+        <FeedbackWidget />
+      </>
     );
   }
 
   return (
-    <div className="app">
-      <div className="nav-wrap">
-        <nav className="nav">
-          {canAccessUpload && (
-            <NavLink to="/upload" className={({ isActive }) => (isActive ? "active" : "")}>Загрузка</NavLink>
-          )}
-          {isAdmin && (
-            <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Каталог</NavLink>
-          )}
-          <NavLink to="/showcase" className={({ isActive }) => (isActive ? "active" : "")}>Витрина</NavLink>
-          {isAdmin && (
-            <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>Пользователи</NavLink>
-          )}
-          {isAdmin && (
-            <NavLink to="/admin/activity" className={({ isActive }) => (isActive ? "active" : "")}>Активность</NavLink>
-          )}
-        </nav>
-        <div className="nav-actions">
-          <span className="nav-user">{authUser?.displayName ?? authUser?.login}</span>
-          <button
-            type="button"
-            className="secondary-button nav-logout"
-            onClick={() => void handleLogout()}
-          >
-            Выйти
-          </button>
+    <>
+      <div className="app">
+        <div className="nav-wrap">
+          <nav className="nav">
+            {canAccessUpload && (
+              <NavLink to="/upload" className={({ isActive }) => (isActive ? "active" : "")}>
+                Загрузка
+              </NavLink>
+            )}
+            {isAdmin && (
+              <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>
+                Каталог
+              </NavLink>
+            )}
+            <NavLink to="/showcase" className={({ isActive }) => (isActive ? "active" : "")}>
+              Витрина
+            </NavLink>
+            {isAdmin && (
+              <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>
+                Пользователи
+              </NavLink>
+            )}
+            {isAdmin && (
+              <NavLink to="/admin/activity" className={({ isActive }) => (isActive ? "active" : "")}>
+                Активность
+              </NavLink>
+            )}
+          </nav>
+          <div className="nav-actions">
+            <span className="nav-user">{authUser?.displayName ?? authUser?.login}</span>
+            <button
+              type="button"
+              className="secondary-button nav-logout"
+              onClick={() => void handleLogout()}
+            >
+              Выйти
+            </button>
+          </div>
         </div>
+        <Routes>
+          <Route
+            path="/"
+            element={<Navigate to={canAccessUpload ? "/upload" : "/showcase"} replace />}
+          />
+          <Route
+            path="/upload"
+            element={
+              canAccessUpload ? (
+                <UploadPage canAccessCatalog={canAccessCatalog} />
+              ) : (
+                <Navigate to="/showcase" replace />
+              )
+            }
+          />
+          <Route
+            path="/catalog"
+            element={isAdmin ? <CatalogPage /> : <Navigate to="/showcase" replace />}
+          />
+          <Route path="/showcase" element={<ShowcasePage />} />
+          <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
+          <Route
+            path="/admin/users"
+            element={isAdmin ? <AdminUsersPage /> : <Navigate to="/showcase" replace />}
+          />
+          <Route
+            path="/admin/activity"
+            element={isAdmin ? <AdminActivityPage /> : <Navigate to="/showcase" replace />}
+          />
+          <Route
+            path="/login"
+            element={<Navigate to={canAccessUpload ? "/upload" : "/showcase"} replace />}
+          />
+        </Routes>
       </div>
-      <Routes>
-        <Route
-          path="/"
-          element={<Navigate to={canAccessUpload ? "/upload" : "/showcase"} replace />}
-        />
-        <Route
-          path="/upload"
-          element={canAccessUpload ? <UploadPage canAccessCatalog={canAccessCatalog} /> : <Navigate to="/showcase" replace />}
-        />
-        <Route
-          path="/catalog"
-          element={isAdmin ? <CatalogPage /> : <Navigate to="/showcase" replace />}
-        />
-        <Route path="/showcase" element={<ShowcasePage />} />
-        <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
-        <Route
-          path="/admin/users"
-          element={isAdmin ? <AdminUsersPage /> : <Navigate to="/showcase" replace />}
-        />
-        <Route
-          path="/admin/activity"
-          element={isAdmin ? <AdminActivityPage /> : <Navigate to="/showcase" replace />}
-        />
-        <Route
-          path="/login"
-          element={<Navigate to={canAccessUpload ? "/upload" : "/showcase"} replace />}
-        />
-      </Routes>
-    </div>
+      <FeedbackWidget />
+    </>
   );
 }
