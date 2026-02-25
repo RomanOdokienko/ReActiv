@@ -16,6 +16,7 @@ import type {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:3001/api";
 const ACTIVITY_SESSION_KEY = "activity_session_id_v1";
+const ACTIVITY_ATTRIBUTION_KEY = "activity_attribution_v1";
 
 function buildUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
@@ -46,6 +47,84 @@ function getActivitySessionId(): string {
   } catch {
     return createActivitySessionId();
   }
+}
+
+interface ActivityAttributionContext {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  referrer?: string;
+}
+
+function readStoredAttributionContext(): ActivityAttributionContext {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(ACTIVITY_ATTRIBUTION_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    return JSON.parse(raw) as ActivityAttributionContext;
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredAttributionContext(context: ActivityAttributionContext): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(ACTIVITY_ATTRIBUTION_KEY, JSON.stringify(context));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function getActivityAttributionContext(): ActivityAttributionContext {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const nextContext: ActivityAttributionContext = {
+    utmSource: params.get("utm_source") ?? undefined,
+    utmMedium: params.get("utm_medium") ?? undefined,
+    utmCampaign: params.get("utm_campaign") ?? undefined,
+    utmTerm: params.get("utm_term") ?? undefined,
+    utmContent: params.get("utm_content") ?? undefined,
+    referrer: document.referrer || undefined,
+  };
+
+  const hasAnyUtm =
+    Boolean(nextContext.utmSource) ||
+    Boolean(nextContext.utmMedium) ||
+    Boolean(nextContext.utmCampaign) ||
+    Boolean(nextContext.utmTerm) ||
+    Boolean(nextContext.utmContent);
+
+  const stored = readStoredAttributionContext();
+
+  const merged: ActivityAttributionContext = {
+    utmSource: nextContext.utmSource || stored.utmSource,
+    utmMedium: nextContext.utmMedium || stored.utmMedium,
+    utmCampaign: nextContext.utmCampaign || stored.utmCampaign,
+    utmTerm: nextContext.utmTerm || stored.utmTerm,
+    utmContent: nextContext.utmContent || stored.utmContent,
+    referrer: nextContext.referrer || stored.referrer,
+  };
+
+  if (hasAnyUtm || !stored.referrer) {
+    writeStoredAttributionContext(merged);
+  }
+
+  return merged;
 }
 
 function backendUnavailableError(): Error {
@@ -518,6 +597,29 @@ export interface ActivityEventInput {
   payload?: Record<string, unknown>;
 }
 
+async function postGuestActivityEvent(input: ActivityEventInput): Promise<void> {
+  const attribution = getActivityAttributionContext();
+
+  await fetch(buildUrl("/public/activity/events"), {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    keepalive: true,
+    body: JSON.stringify({
+      ...input,
+      sessionId: getActivitySessionId(),
+      utmSource: attribution.utmSource,
+      utmMedium: attribution.utmMedium,
+      utmCampaign: attribution.utmCampaign,
+      utmTerm: attribution.utmTerm,
+      utmContent: attribution.utmContent,
+      referrer: attribution.referrer,
+    }),
+  });
+}
+
 export interface GetAdminActivityInput {
   page?: number;
   pageSize?: number;
@@ -530,7 +632,7 @@ export interface GetAdminActivityInput {
 
 export async function logActivityEvent(input: ActivityEventInput): Promise<void> {
   try {
-    await fetch(buildUrl("/activity/events"), {
+    const response = await fetch(buildUrl("/activity/events"), {
       method: "POST",
       credentials: "include",
       headers: {
@@ -542,6 +644,10 @@ export async function logActivityEvent(input: ActivityEventInput): Promise<void>
         sessionId: getActivitySessionId(),
       }),
     });
+
+    if (response.status === 401) {
+      await postGuestActivityEvent(input);
+    }
   } catch {
     // analytics logging must never break the user flow
   }
