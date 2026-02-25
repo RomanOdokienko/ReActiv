@@ -9,6 +9,8 @@ import { registerAuthRoutes } from "./routes/auth-routes";
 import { registerCatalogRoutes } from "./routes/catalog-routes";
 import { registerImportRoutes } from "./routes/import-routes";
 import { registerMediaRoutes } from "./routes/media-routes";
+import { registerPlatformRoutes } from "./routes/platform-routes";
+import { getPlatformMode } from "./repositories/platform-settings-repository";
 import { authenticateRequest } from "./services/auth-service";
 import { ensureBootstrapAdmin } from "./startup/bootstrap-admin";
 
@@ -20,6 +22,27 @@ app.get("/health", async () => {
 
 const port = Number(process.env.PORT ?? 3001);
 const host = process.env.HOST ?? "0.0.0.0";
+
+const ALWAYS_PUBLIC_PATHS = new Set([
+  "/health",
+  "/api/auth/login",
+  "/api/platform/mode",
+  "/api/public/activity/events",
+]);
+
+const OPEN_MODE_PUBLIC_PREFIXES = [
+  "/api/catalog/items",
+  "/api/catalog/filters",
+  "/api/media/preview",
+  "/api/media/preview-image",
+  "/api/media/gallery",
+];
+
+function isOpenModePublicPath(requestPath: string): boolean {
+  return OPEN_MODE_PUBLIC_PREFIXES.some(
+    (prefix) => requestPath === prefix || requestPath.startsWith(`${prefix}/`),
+  );
+}
 
 initializeSchema();
 ensureBootstrapAdmin(app.log);
@@ -33,6 +56,7 @@ async function startServer(): Promise<void> {
   await app.register(cookie);
   await app.register(multipart);
   await registerAuthRoutes(app);
+  await registerPlatformRoutes(app);
 
   app.addHook("preHandler", async (request, reply) => {
     if (request.method === "OPTIONS") {
@@ -40,7 +64,11 @@ async function startServer(): Promise<void> {
     }
 
     const requestPath = request.raw.url?.split("?")[0] ?? "";
-    if (requestPath === "/health" || requestPath === "/api/auth/login") {
+    if (ALWAYS_PUBLIC_PATHS.has(requestPath)) {
+      return;
+    }
+
+    if (isOpenModePublicPath(requestPath) && getPlatformMode() === "open") {
       return;
     }
 

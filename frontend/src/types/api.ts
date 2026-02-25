@@ -1,4 +1,5 @@
 export type UserRole = "admin" | "manager" | "stock_owner";
+export type PlatformMode = "closed" | "open";
 
 export interface ImportErrorItem {
   rowNumber: number;
@@ -15,6 +16,10 @@ export interface AuthUser {
 
 export interface AuthResponse {
   user: AuthUser;
+}
+
+export interface PlatformModeResponse {
+  mode: PlatformMode;
 }
 
 export interface AdminUserListItem {

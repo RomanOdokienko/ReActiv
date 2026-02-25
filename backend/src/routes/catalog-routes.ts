@@ -10,7 +10,7 @@ import {
 function sanitizeCatalogItemForRole<
   T extends { responsiblePerson: string; websiteUrl: string },
 >(item: T, role: string | undefined): T {
-  if (role !== "manager") {
+  if (role === "admin" || role === "stock_owner") {
     return item;
   }
 
@@ -25,7 +25,7 @@ function sanitizeCatalogFiltersForRole(
   metadata: Record<string, unknown>,
   role: string | undefined,
 ): Record<string, unknown> {
-  if (role !== "manager") {
+  if (role === "admin" || role === "stock_owner") {
     return metadata;
   }
 

@@ -10,6 +10,8 @@ import type {
   CatalogFiltersResponse,
   CatalogItemsResponse,
   ImportResponse,
+  PlatformMode,
+  PlatformModeResponse,
   ResetAdminPasswordResponse,
   UserRole,
 } from "../types/api";
@@ -163,6 +165,66 @@ export async function login(
     }
 
     return (await response.json()) as AuthResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getPlatformMode(): Promise<PlatformModeResponse> {
+  try {
+    const response = await fetch(buildUrl("/platform/mode"), {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ СЂРµР¶РёРј РїР»Р°С‚С„РѕСЂРјС‹");
+    }
+
+    return (await response.json()) as PlatformModeResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function updatePlatformMode(
+  mode: PlatformMode,
+): Promise<PlatformModeResponse> {
+  try {
+    const response = await fetch(buildUrl("/admin/platform/mode"), {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode }),
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (!response.ok) {
+      let errorMessage = "РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ СЂРµР¶РёРј РїР»Р°С‚С„РѕСЂРјС‹";
+      try {
+        const errorPayload = (await response.json()) as { message?: string };
+        if (errorPayload.message) {
+          errorMessage = errorPayload.message;
+        }
+      } catch {
+        // keep default message
+      }
+      throw new Error(errorMessage);
+    }
+
+    return (await response.json()) as PlatformModeResponse;
   } catch (error) {
     if (error instanceof TypeError) {
       throw backendUnavailableError();

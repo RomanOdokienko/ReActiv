@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { getCurrentUser, logActivityEvent, logout } from "./api/client";
+import {
+  getCurrentUser,
+  getPlatformMode,
+  logActivityEvent,
+  logout,
+} from "./api/client";
 import { FeedbackWidget } from "./components/FeedbackWidget";
 import { CatalogPage } from "./pages/CatalogPage";
 import { AdminActivityPage } from "./pages/AdminActivityPage";
@@ -9,13 +14,17 @@ import { LoginPage } from "./pages/LoginPage";
 import { ShowcaseItemPage } from "./pages/ShowcaseItemPage";
 import { ShowcasePage } from "./pages/ShowcasePage";
 import { UploadPage } from "./pages/UploadPage";
-import type { AuthUser } from "./types/api";
+import type { AuthUser, PlatformMode } from "./types/api";
 
 type AuthState = "checking" | "authorized" | "unauthorized";
+type PlatformModeState = "checking" | PlatformMode;
+
+const HIDDEN_ADMIN_LOGIN_PATH = "/staff-login-reactiv";
 
 export function App() {
   const location = useLocation();
   const [authState, setAuthState] = useState<AuthState>("checking");
+  const [platformMode, setPlatformMode] = useState<PlatformModeState>("checking");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const hasLoggedSessionStartRef = useRef(false);
   const lastLoggedPageRef = useRef<string>("");
@@ -24,20 +33,41 @@ export function App() {
   const canAccessUpload =
     authUser?.role === "admin" || authUser?.role === "stock_owner";
   const canAccessCatalog = isAdmin;
+  const defaultAuthorizedPath = canAccessUpload ? "/upload" : "/showcase";
 
   useEffect(() => {
-    async function checkSession() {
-      try {
-        const response = await getCurrentUser();
-        setAuthUser(response.user);
+    let isMounted = true;
+
+    async function bootstrapSession() {
+      const [modeResult, authResult] = await Promise.allSettled([
+        getPlatformMode(),
+        getCurrentUser(),
+      ]);
+
+      if (!isMounted) {
+        return;
+      }
+
+      if (modeResult.status === "fulfilled") {
+        setPlatformMode(modeResult.value.mode);
+      } else {
+        setPlatformMode("closed");
+      }
+
+      if (authResult.status === "fulfilled") {
+        setAuthUser(authResult.value.user);
         setAuthState("authorized");
-      } catch {
+      } else {
         setAuthUser(null);
         setAuthState("unauthorized");
       }
     }
 
-    void checkSession();
+    void bootstrapSession();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -107,7 +137,7 @@ export function App() {
     }
   }
 
-  if (authState === "checking") {
+  if (authState === "checking" || platformMode === "checking") {
     return (
       <>
         <div className="app">
@@ -121,21 +151,39 @@ export function App() {
   }
 
   if (authState === "unauthorized") {
+    const loginElement = (
+      <LoginPage
+        onLoginSuccess={(user) => {
+          setAuthUser(user);
+          setAuthState("authorized");
+        }}
+      />
+    );
+
+    if (platformMode === "open") {
+      return (
+        <>
+          <div className="app">
+            <Routes>
+              <Route path="/" element={<Navigate to="/showcase" replace />} />
+              <Route path="/showcase" element={<ShowcasePage />} />
+              <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
+              <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
+              <Route path="/login" element={<Navigate to="/showcase" replace />} />
+              <Route path="*" element={<Navigate to="/showcase" replace />} />
+            </Routes>
+          </div>
+          <FeedbackWidget />
+        </>
+      );
+    }
+
     return (
       <>
         <div className="app">
           <Routes>
-            <Route
-              path="/login"
-              element={
-                <LoginPage
-                  onLoginSuccess={(user) => {
-                    setAuthUser(user);
-                    setAuthState("authorized");
-                  }}
-                />
-              }
-            />
+            <Route path="/login" element={loginElement} />
+            <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>
@@ -187,7 +235,7 @@ export function App() {
         <Routes>
           <Route
             path="/"
-            element={<Navigate to={canAccessUpload ? "/upload" : "/showcase"} replace />}
+            element={<Navigate to={defaultAuthorizedPath} replace />}
           />
           <Route
             path="/upload"
@@ -215,8 +263,13 @@ export function App() {
           />
           <Route
             path="/login"
-            element={<Navigate to={canAccessUpload ? "/upload" : "/showcase"} replace />}
+            element={<Navigate to={defaultAuthorizedPath} replace />}
           />
+          <Route
+            path={HIDDEN_ADMIN_LOGIN_PATH}
+            element={<Navigate to={defaultAuthorizedPath} replace />}
+          />
+          <Route path="*" element={<Navigate to={defaultAuthorizedPath} replace />} />
         </Routes>
       </div>
       <FeedbackWidget />

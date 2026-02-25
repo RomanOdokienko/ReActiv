@@ -530,6 +530,37 @@ a {
   min-width: 240px;
 }
 
+.admin-platform-mode-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.platform-mode-hint {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.platform-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.platform-mode-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  accent-color: var(--accent);
+}
+
 .import-summary {
   display: grid;
   gap: 14px;

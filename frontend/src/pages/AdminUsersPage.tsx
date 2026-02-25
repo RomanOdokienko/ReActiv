@@ -5,10 +5,12 @@ import {
   deleteAdminUser,
   getAdminUsers,
   getCurrentUser,
+  getPlatformMode,
   resetAdminUserPassword,
+  updatePlatformMode,
   updateAdminUserMeta,
 } from "../api/client";
-import type { AdminUserListItem, UserRole } from "../types/api";
+import type { AdminUserListItem, PlatformMode, UserRole } from "../types/api";
 
 function roleLabel(role: UserRole): string {
   if (role === "admin") {
@@ -36,8 +38,10 @@ export function AdminUsersPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isSavingMeta, setIsSavingMeta] = useState(false);
+  const [isUpdatingPlatformMode, setIsUpdatingPlatformMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [platformMode, setPlatformMode] = useState<PlatformMode>("closed");
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [selectedUserId, setSelectedUserId] = useState("");
@@ -73,14 +77,16 @@ export function AdminUsersPage() {
   async function initializePage() {
     try {
       setError(null);
-      const [usersResponse, meResponse] = await Promise.all([
+      const [usersResponse, meResponse, modeResponse] = await Promise.all([
         getAdminUsers(),
         getCurrentUser(),
+        getPlatformMode(),
       ]);
 
       setUsers(usersResponse.items);
       setCurrentUserId(meResponse.user.id);
       setSelectedUserId(usersResponse.items.length > 0 ? String(usersResponse.items[0].id) : "");
+      setPlatformMode(modeResponse.mode);
     } catch (caughtError) {
       if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
         setError("Доступ к управлению пользователями разрешен только администратору.");
@@ -310,10 +316,60 @@ export function AdminUsersPage() {
     }
   }
 
+  async function handlePlatformModeToggle(checked: boolean): Promise<void> {
+    setIsUpdatingPlatformMode(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const nextMode: PlatformMode = checked ? "open" : "closed";
+      const response = await updatePlatformMode(nextMode);
+      setPlatformMode(response.mode);
+      setSuccess(
+        response.mode === "open"
+          ? "Платформа переведена в открытый режим витрины."
+          : "Платформа переведена в закрытый режим.",
+      );
+    } catch (caughtError) {
+      if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
+        setError("Р”РѕСЃС‚СѓРї Рє СѓРїСЂР°РІР»РµРЅРёСЋ СЂРµР¶РёРјРѕРј РїР»Р°С‚С„РѕСЂРјС‹ СЂР°Р·СЂРµС€РµРЅ С‚РѕР»СЊРєРѕ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂСѓ.");
+        return;
+      }
+
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+        return;
+      }
+
+      setError("РќРµ СѓРґР°Р»РѕСЃСЊ РёР·РјРµРЅРёС‚СЊ СЂРµР¶РёРј РїР»Р°С‚С„РѕСЂРјС‹");
+    } finally {
+      setIsUpdatingPlatformMode(false);
+    }
+  }
+
   return (
     <section>
       <h1>Пользователи</h1>
 
+      <div className="panel admin-platform-mode-panel">
+        <h2>����� ���������</h2>
+        <p className="platform-mode-hint">
+          � �������� ������ ������� �������� ��� �����������, ���� � ������� � ������ �� �������� URL.
+        </p>
+        <label className="platform-mode-toggle">
+          <input
+            type="checkbox"
+            checked={platformMode === "open"}
+            onChange={(event) => {
+              void handlePlatformModeToggle(event.target.checked);
+            }}
+            disabled={isUpdatingPlatformMode}
+          />
+          <span>
+            {platformMode === "open" ? "�������� ��������� (������� ��������)" : "�������� ���������"}
+          </span>
+        </label>
+      </div>
       <form className="panel upload-form admin-users-form" onSubmit={handleSubmit}>
         <input
           type="text"
@@ -531,3 +587,4 @@ export function AdminUsersPage() {
     </section>
   );
 }
+
