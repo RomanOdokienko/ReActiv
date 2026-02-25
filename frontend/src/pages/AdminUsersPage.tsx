@@ -327,12 +327,12 @@ export function AdminUsersPage() {
       setPlatformMode(response.mode);
       setSuccess(
         response.mode === "open"
-          ? "РџР»Р°С‚С„РѕСЂРјР° РїРµСЂРµРІРµРґРµРЅР° РІ РѕС‚РєСЂС‹С‚С‹Р№ СЂРµР¶РёРј РІРёС‚СЂРёРЅС‹."
-          : "РџР»Р°С‚С„РѕСЂРјР° РїРµСЂРµРІРµРґРµРЅР° РІ Р·Р°РєСЂС‹С‚С‹Р№ СЂРµР¶РёРј.",
+          ? "Platform switched to OPEN mode."
+          : "Platform switched to CLOSED mode.",
       );
     } catch (caughtError) {
       if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
-        setError("Р вЂќР С•РЎРѓРЎвЂљРЎС“Р С— Р С” РЎС“Р С—РЎР‚Р В°Р Р†Р В»Р ВµР Р…Р С‘РЎР‹ РЎР‚Р ВµР В¶Р С‘Р СР С•Р С Р С—Р В»Р В°РЎвЂљРЎвЂћР С•РЎР‚Р СРЎвЂ№ РЎР‚Р В°Р В·РЎР‚Р ВµРЎв‚¬Р ВµР Р… РЎвЂљР С•Р В»РЎРЉР С”Р С• Р В°Р Т‘Р СР С‘Р Р…Р С‘РЎРѓРЎвЂљРЎР‚Р В°РЎвЂљР С•РЎР‚РЎС“.");
+        setError("Only admin can change platform mode.");
         return;
       }
 
@@ -341,7 +341,7 @@ export function AdminUsersPage() {
         return;
       }
 
-      setError("Р СњР Вµ РЎС“Р Т‘Р В°Р В»Р С•РЎРѓРЎРЉ Р С‘Р В·Р СР ВµР Р…Р С‘РЎвЂљРЎРЉ РЎР‚Р ВµР В¶Р С‘Р С Р С—Р В»Р В°РЎвЂљРЎвЂћР С•РЎР‚Р СРЎвЂ№");
+      setError("Failed to update platform mode.");
     } finally {
       setIsUpdatingPlatformMode(false);
     }
@@ -352,9 +352,9 @@ export function AdminUsersPage() {
       <h1>РџРѕР»СЊР·РѕРІР°С‚РµР»Рё</h1>
 
       <div className="panel admin-platform-mode-panel">
-        <h2>Режим платформы</h2>
+        <h2>Platform Mode</h2>
         <p className="platform-mode-hint">
-          В открытом режиме витрина доступна без авторизации, вход в админку — только по скрытому URL.
+          OPEN: showcase is public without login. Admin login is available only via hidden URL.
         </p>
         <label className="platform-mode-toggle">
           <input
@@ -366,7 +366,7 @@ export function AdminUsersPage() {
             disabled={isUpdatingPlatformMode}
           />
           <span>
-            {platformMode === "open" ? "Открытая платформа (витрина публична)" : "Закрытая платформа"}
+            {platformMode === "open" ? "OPEN (public showcase)" : "CLOSED (login required)"}
           </span>
         </label>
       </div>
