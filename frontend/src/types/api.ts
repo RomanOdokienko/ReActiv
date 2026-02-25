@@ -137,14 +137,24 @@ export type ActivityEventType =
   | "logout"
   | "session_start"
   | "session_heartbeat"
+  | "page_view"
   | "showcase_open"
+  | "showcase_filter_drawer_open"
+  | "showcase_filter_drawer_close"
   | "showcase_filters_apply"
   | "showcase_filters_reset"
   | "showcase_no_results"
+  | "showcase_sort_change"
+  | "showcase_view_mode_change"
+  | "showcase_pagination_click"
   | "showcase_page_change"
   | "showcase_item_open"
+  | "showcase_gallery_open"
+  | "showcase_gallery_navigate"
+  | "showcase_gallery_close"
   | "showcase_contact_click"
-  | "showcase_source_open";
+  | "showcase_source_open"
+  | "api_error";
 
 export interface ActivityEventItem {
   id: number;

@@ -9,7 +9,7 @@ import { normalizeLogin } from "../services/auth-service";
 
 const ACTIVITY_EVENT_MAX_PAYLOAD_BYTES = 4096;
 const ACTIVITY_RATE_LIMIT_WINDOW_MS = 60_000;
-const ACTIVITY_RATE_LIMIT_MAX_EVENTS = 120;
+const ACTIVITY_RATE_LIMIT_MAX_EVENTS = 300;
 
 const activityRateLimitByUser = new Map<number, number[]>();
 

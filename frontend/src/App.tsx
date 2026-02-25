@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { getCurrentUser, logActivityEvent, logout } from "./api/client";
 import { FeedbackWidget } from "./components/FeedbackWidget";
 import { CatalogPage } from "./pages/CatalogPage";
@@ -14,9 +14,11 @@ import type { AuthUser } from "./types/api";
 type AuthState = "checking" | "authorized" | "unauthorized";
 
 export function App() {
+  const location = useLocation();
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const hasLoggedSessionStartRef = useRef(false);
+  const lastLoggedPageRef = useRef<string>("");
 
   const isAdmin = authUser?.role === "admin";
   const canAccessUpload =
@@ -56,6 +58,7 @@ export function App() {
   useEffect(() => {
     if (authState !== "authorized") {
       hasLoggedSessionStartRef.current = false;
+      lastLoggedPageRef.current = "";
       return;
     }
 
@@ -70,6 +73,26 @@ export function App() {
       window.clearInterval(intervalId);
     };
   }, [authState]);
+
+  useEffect(() => {
+    if (authState !== "authorized") {
+      return;
+    }
+
+    const pageKey = `${location.pathname}${location.search}`;
+    if (lastLoggedPageRef.current === pageKey) {
+      return;
+    }
+
+    lastLoggedPageRef.current = pageKey;
+    void logActivityEvent({
+      eventType: "page_view",
+      page: location.pathname,
+      payload: {
+        search: location.search || null,
+      },
+    });
+  }, [authState, location.pathname, location.search]);
 
   async function handleLogout(): Promise<void> {
     try {

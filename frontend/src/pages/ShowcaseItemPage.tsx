@@ -150,6 +150,18 @@ export function ShowcaseItemPage() {
         const response = await getCatalogItemById(parsedId);
         setItem(response);
       } catch (caughtError) {
+        void logActivityEvent({
+          eventType: "api_error",
+          page: location.pathname,
+          entityType: "catalog_item",
+          entityId: String(parsedId),
+          payload: {
+            endpoint: `/catalog/items/${parsedId}`,
+            message:
+              caughtError instanceof Error ? caughtError.message : "unknown_error",
+          },
+        });
+
         if (caughtError instanceof Error) {
           setError(caughtError.message);
         } else {
@@ -197,7 +209,17 @@ export function ShowcaseItemPage() {
         }
 
         setMediaUrls(sourceUrls);
-      } catch {
+      } catch (caughtError) {
+        void logActivityEvent({
+          eventType: "api_error",
+          page: location.pathname,
+          payload: {
+            endpoint: "/media/gallery",
+            message:
+              caughtError instanceof Error ? caughtError.message : "unknown_error",
+          },
+        });
+
         if (!isCancelled) {
           setMediaUrls(sourceUrls);
         }
@@ -245,16 +267,52 @@ export function ShowcaseItemPage() {
     }
   }, [mediaUrls, selectedImage]);
 
-  function openLightbox(url: string): void {
+  function openLightbox(
+    url: string,
+    source: "main_image" | "thumbnail" | "hidden_thumbnails" | "unknown" = "unknown",
+  ): void {
     if (!url) {
       return;
+    }
+
+    const imageIndex = mediaUrls.indexOf(url);
+    if (item) {
+      void logActivityEvent({
+        eventType: "showcase_gallery_open",
+        page: location.pathname,
+        entityType: "catalog_item",
+        entityId: String(item.id),
+        payload: {
+          source,
+          imageIndex: imageIndex >= 0 ? imageIndex : 0,
+          totalImages: mediaUrls.length,
+        },
+      });
     }
 
     setSelectedImage(url);
     setIsLightboxOpen(true);
   }
 
-  function closeLightbox(): void {
+  function closeLightbox(reason: string = "manual"): void {
+    if (!isLightboxOpen) {
+      return;
+    }
+
+    if (item) {
+      void logActivityEvent({
+        eventType: "showcase_gallery_close",
+        page: location.pathname,
+        entityType: "catalog_item",
+        entityId: String(item.id),
+        payload: {
+          reason,
+          imageIndex: selectedImageIndex >= 0 ? selectedImageIndex : 0,
+          totalImages: mediaUrls.length,
+        },
+      });
+    }
+
     setIsLightboxOpen(false);
   }
 
@@ -265,6 +323,20 @@ export function ShowcaseItemPage() {
 
     const currentIndex = selectedImageIndex >= 0 ? selectedImageIndex : 0;
     const previousIndex = currentIndex === 0 ? mediaUrls.length - 1 : currentIndex - 1;
+    if (item) {
+      void logActivityEvent({
+        eventType: "showcase_gallery_navigate",
+        page: location.pathname,
+        entityType: "catalog_item",
+        entityId: String(item.id),
+        payload: {
+          direction: "previous",
+          fromIndex: currentIndex,
+          toIndex: previousIndex,
+          totalImages: mediaUrls.length,
+        },
+      });
+    }
     setSelectedImage(mediaUrls[previousIndex]);
   }
 
@@ -275,6 +347,20 @@ export function ShowcaseItemPage() {
 
     const currentIndex = selectedImageIndex >= 0 ? selectedImageIndex : 0;
     const nextIndex = currentIndex === mediaUrls.length - 1 ? 0 : currentIndex + 1;
+    if (item) {
+      void logActivityEvent({
+        eventType: "showcase_gallery_navigate",
+        page: location.pathname,
+        entityType: "catalog_item",
+        entityId: String(item.id),
+        payload: {
+          direction: "next",
+          fromIndex: currentIndex,
+          toIndex: nextIndex,
+          totalImages: mediaUrls.length,
+        },
+      });
+    }
     setSelectedImage(mediaUrls[nextIndex]);
   }
 
@@ -288,7 +374,7 @@ export function ShowcaseItemPage() {
 
     function handleKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
-        closeLightbox();
+        closeLightbox("escape_key");
         return;
       }
 
@@ -497,9 +583,9 @@ export function ShowcaseItemPage() {
                       className="detail-main-image__link"
                       onClick={() => {
                         if (isLightboxOpen) {
-                          closeLightbox();
+                          closeLightbox("main_image_toggle");
                         } else {
-                          openLightbox(selectedImage);
+                          openLightbox(selectedImage, "main_image");
                         }
                       }}
                       title="Открыть полноэкранный просмотр"
@@ -529,7 +615,7 @@ export function ShowcaseItemPage() {
                       type="button"
                       key={url}
                       className={url === selectedImage ? "detail-thumb active" : "detail-thumb"}
-                      onClick={() => openLightbox(url)}
+                      onClick={() => openLightbox(url, "thumbnail")}
                       aria-label={`Фото ${index + 1}`}
                       title="Открыть полноэкранный просмотр"
                     >
@@ -540,7 +626,7 @@ export function ShowcaseItemPage() {
                     <button
                       type="button"
                       className="detail-thumb detail-thumb--more-button"
-                      onClick={() => openLightbox(firstHiddenThumbnailUrl)}
+                      onClick={() => openLightbox(firstHiddenThumbnailUrl, "hidden_thumbnails")}
                       aria-label={`Показать еще ${hiddenThumbnailCount} фото`}
                       title={`Показать еще ${hiddenThumbnailCount} фото`}
                     >
@@ -560,14 +646,14 @@ export function ShowcaseItemPage() {
               role="dialog"
               aria-modal="true"
               aria-label="Полноэкранный просмотр фото"
-              onClick={closeLightbox}
+              onClick={() => closeLightbox("backdrop")}
             >
               <button
                 type="button"
                 className="detail-lightbox__close"
                 onClick={(event) => {
                   event.stopPropagation();
-                  closeLightbox();
+                  closeLightbox("close_button");
                 }}
                 aria-label="Закрыть просмотр"
               >
@@ -592,7 +678,7 @@ export function ShowcaseItemPage() {
                 <button
                   type="button"
                   className="detail-lightbox__image-button"
-                  onClick={closeLightbox}
+                  onClick={() => closeLightbox("image_click")}
                   aria-label="Закрыть просмотр"
                 >
                   <ProxyAwareImage

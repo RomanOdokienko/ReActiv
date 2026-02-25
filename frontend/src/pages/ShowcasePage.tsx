@@ -43,6 +43,22 @@ interface ShowcaseUiState {
   page: number;
 }
 
+interface FilterTrackingSnapshot {
+  bookingPreset: string | null;
+  city: string | null;
+  vehicleTypes: string[];
+  brand: string | null;
+  model: string | null;
+  priceMin: number | null;
+  priceMax: number | null;
+  yearMin: number | null;
+  yearMax: number | null;
+  mileageMin: number | null;
+  mileageMax: number | null;
+  sortBy: string;
+  sortDir: string;
+}
+
 const SHOWCASE_UI_STATE_KEY = "showcase_ui_state_v1";
 const SHOWCASE_RETURN_FLAG_KEY = "showcase_return_pending_v1";
 const SHOWCASE_SCROLL_Y_KEY = "showcase_scroll_y_v1";
@@ -152,6 +168,42 @@ function sortUniqueValues(values: Iterable<string>): string[] {
   );
 }
 
+function toNullableNumber(value: string): number | null {
+  return value ? Number(value) : null;
+}
+
+function createFilterTrackingSnapshot(input: {
+  bookingPreset: string;
+  city: string;
+  selectedVehicleTypes: string[];
+  brand: string;
+  model: string;
+  priceMin: string;
+  priceMax: string;
+  yearMin: string;
+  yearMax: string;
+  mileageMin: string;
+  mileageMax: string;
+  sortBy: string;
+  sortDir: string;
+}): FilterTrackingSnapshot {
+  return {
+    bookingPreset: input.bookingPreset || null,
+    city: input.city || null,
+    vehicleTypes: [...input.selectedVehicleTypes],
+    brand: input.brand || null,
+    model: input.model || null,
+    priceMin: toNullableNumber(input.priceMin),
+    priceMax: toNullableNumber(input.priceMax),
+    yearMin: toNullableNumber(input.yearMin),
+    yearMax: toNullableNumber(input.yearMax),
+    mileageMin: toNullableNumber(input.mileageMin),
+    mileageMax: toNullableNumber(input.mileageMax),
+    sortBy: input.sortBy,
+    sortDir: input.sortDir,
+  };
+}
+
 export function ShowcasePage() {
   const pageSize = 20;
   const restoredState = useMemo(readShowcaseUiState, []);
@@ -162,6 +214,7 @@ export function ShowcasePage() {
   const hasLoggedInitialFiltersRef = useRef(false);
   const hasLoggedInitialPageRef = useRef(false);
   const lastNoResultsSignatureRef = useRef("");
+  const previousFilterSnapshotRef = useRef<FilterTrackingSnapshot | null>(null);
   const initialBookingPreset =
     restoredState.bookingPreset && BOOKING_PRESETS.includes(restoredState.bookingPreset)
       ? restoredState.bookingPreset
@@ -237,7 +290,7 @@ export function ShowcasePage() {
 
   useEffect(() => {
     if (!isMobileViewport && isMobileFiltersOpen) {
-      setIsMobileFiltersOpen(false);
+      closeMobileFilters("viewport_change");
     }
   }, [isMobileFiltersOpen, isMobileViewport]);
 
@@ -263,7 +316,7 @@ export function ShowcasePage() {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsMobileFiltersOpen(false);
+        closeMobileFilters("escape_key");
       }
     };
 
@@ -278,8 +331,17 @@ export function ShowcasePage() {
       try {
         const data = await getCatalogFilters();
         setFilters(data);
-      } catch {
+      } catch (caughtError) {
         setError("Не удалось загрузить фильтры");
+        void logActivityEvent({
+          eventType: "api_error",
+          page: "/showcase",
+          payload: {
+            endpoint: "/catalog/filters",
+            message:
+              caughtError instanceof Error ? caughtError.message : "unknown_error",
+          },
+        });
       }
     }
 
@@ -365,8 +427,17 @@ export function ShowcasePage() {
       try {
         const response = await getCatalogItems(query);
         setItemsResponse(response);
-      } catch {
+      } catch (caughtError) {
         setError("Не удалось загрузить витрину");
+        void logActivityEvent({
+          eventType: "api_error",
+          page: "/showcase",
+          payload: {
+            endpoint: "/catalog/items",
+            message:
+              caughtError instanceof Error ? caughtError.message : "unknown_error",
+          },
+        });
       } finally {
         setIsLoading(false);
       }
@@ -472,29 +543,64 @@ export function ShowcasePage() {
   ]);
 
   useEffect(() => {
+    const nextSnapshot = createFilterTrackingSnapshot({
+      bookingPreset,
+      city,
+      selectedVehicleTypes,
+      brand,
+      model,
+      priceMin,
+      priceMax,
+      yearMin,
+      yearMax,
+      mileageMin,
+      mileageMax,
+      sortBy,
+      sortDir,
+    });
+
     if (!hasLoggedInitialFiltersRef.current) {
       hasLoggedInitialFiltersRef.current = true;
+      previousFilterSnapshotRef.current = nextSnapshot;
       return;
     }
 
+    const previousSnapshot = previousFilterSnapshotRef.current;
+    if (!previousSnapshot) {
+      previousFilterSnapshotRef.current = nextSnapshot;
+      return;
+    }
+
+    const changedFields = (
+      Object.keys(nextSnapshot) as Array<keyof FilterTrackingSnapshot>
+    ).filter(
+      (key) =>
+        JSON.stringify(previousSnapshot[key]) !== JSON.stringify(nextSnapshot[key]),
+    );
+
+    if (changedFields.length === 0) {
+      return;
+    }
+
+    const previousValues = changedFields.reduce<Record<string, unknown>>((acc, key) => {
+      acc[key] = previousSnapshot[key];
+      return acc;
+    }, {});
+
+    const nextValues = changedFields.reduce<Record<string, unknown>>((acc, key) => {
+      acc[key] = nextSnapshot[key];
+      return acc;
+    }, {});
+
     const timeoutId = window.setTimeout(() => {
+      previousFilterSnapshotRef.current = nextSnapshot;
       void logActivityEvent({
         eventType: "showcase_filters_apply",
         page: "/showcase",
         payload: {
-          bookingPreset: bookingPreset || null,
-          city: city || null,
-          vehicleTypes: selectedVehicleTypes,
-          brand: brand || null,
-          model: model || null,
-          priceMin: priceMin ? Number(priceMin) : null,
-          priceMax: priceMax ? Number(priceMax) : null,
-          yearMin: yearMin ? Number(yearMin) : null,
-          yearMax: yearMax ? Number(yearMax) : null,
-          mileageMin: mileageMin ? Number(mileageMin) : null,
-          mileageMax: mileageMax ? Number(mileageMax) : null,
-          sortBy,
-          sortDir,
+          changedFields,
+          previousValues,
+          nextValues,
         },
       });
     }, 600);
@@ -763,7 +869,85 @@ export function ShowcasePage() {
     return pages;
   }, [page, totalPages]);
 
+  function openMobileFilters(source: string): void {
+    if (isMobileFiltersOpen) {
+      return;
+    }
+
+    void logActivityEvent({
+      eventType: "showcase_filter_drawer_open",
+      page: "/showcase",
+      payload: {
+        source,
+        isMobileViewport,
+      },
+    });
+    setIsMobileFiltersOpen(true);
+  }
+
+  function closeMobileFilters(source: string): void {
+    if (!isMobileFiltersOpen) {
+      return;
+    }
+
+    void logActivityEvent({
+      eventType: "showcase_filter_drawer_close",
+      page: "/showcase",
+      payload: {
+        source,
+        isMobileViewport,
+      },
+    });
+    setIsMobileFiltersOpen(false);
+  }
+
+  function setPageFromPagination(targetPage: number, control: "prev" | "next" | "number"): void {
+    if (targetPage < 1 || targetPage > totalPages || targetPage === page) {
+      return;
+    }
+
+    void logActivityEvent({
+      eventType: "showcase_pagination_click",
+      page: "/showcase",
+      payload: {
+        control,
+        fromPage: page,
+        toPage: targetPage,
+        totalPages,
+      },
+    });
+    setPage(targetPage);
+  }
+
+  function applyViewModeSelection(nextViewMode: ViewMode): void {
+    if (viewMode === nextViewMode) {
+      return;
+    }
+
+    void logActivityEvent({
+      eventType: "showcase_view_mode_change",
+      page: "/showcase",
+      payload: {
+        from: viewMode,
+        to: nextViewMode,
+      },
+    });
+    setViewMode(nextViewMode);
+  }
+
   function applyDateSortSelection(value: "asc" | "desc"): void {
+    if (sortBy === "created_at" && sortDir === value) {
+      return;
+    }
+
+    void logActivityEvent({
+      eventType: "showcase_sort_change",
+      page: "/showcase",
+      payload: {
+        sortBy: "created_at",
+        sortDir: value,
+      },
+    });
     setPage(1);
     setDateSortDir(value);
     setSortBy("created_at");
@@ -771,6 +955,18 @@ export function ShowcasePage() {
   }
 
   function applyPriceSortSelection(value: "asc" | "desc"): void {
+    if (sortBy === "price" && sortDir === value) {
+      return;
+    }
+
+    void logActivityEvent({
+      eventType: "showcase_sort_change",
+      page: "/showcase",
+      payload: {
+        sortBy: "price",
+        sortDir: value,
+      },
+    });
     setPage(1);
     setPriceSortDir(value);
     setSortBy("price");
@@ -868,7 +1064,7 @@ export function ShowcasePage() {
           <button
             type="button"
             className="showcase-mobile-filter-toggle"
-            onClick={() => setIsMobileFiltersOpen(true)}
+            onClick={() => openMobileFilters("mobile_filter_button")}
             aria-expanded={isMobileFiltersOpen}
             aria-controls="showcase-filter-panel"
           >
@@ -890,7 +1086,7 @@ export function ShowcasePage() {
             type="button"
             className="showcase-filter-drawer__backdrop"
             aria-label="Закрыть фильтры"
-            onClick={() => setIsMobileFiltersOpen(false)}
+            onClick={() => closeMobileFilters("backdrop")}
           />
 
           <div
@@ -905,7 +1101,7 @@ export function ShowcasePage() {
               <button
                 type="button"
                 className="secondary-button showcase-filter-mobile-close"
-                onClick={() => setIsMobileFiltersOpen(false)}
+                onClick={() => closeMobileFilters("close_button")}
               >
                 Закрыть
               </button>
@@ -1128,7 +1324,7 @@ export function ShowcasePage() {
               </button>
               <button
                 type="button"
-                onClick={() => setIsMobileFiltersOpen(false)}
+                onClick={() => closeMobileFilters("show_results_button")}
               >
                 Показать {total.toLocaleString("ru-RU")}
               </button>
@@ -1168,7 +1364,7 @@ export function ShowcasePage() {
               <button
                 type="button"
                 className={effectiveViewMode === "grid" ? "active" : ""}
-                onClick={() => setViewMode("grid")}
+                onClick={() => applyViewModeSelection("grid")}
                 aria-label="Сетка"
                 title="Сетка"
               >
@@ -1182,7 +1378,7 @@ export function ShowcasePage() {
               <button
                 type="button"
                 className={effectiveViewMode === "list" ? "active" : ""}
-                onClick={() => setViewMode("list")}
+                onClick={() => applyViewModeSelection("list")}
                 aria-label="По порядку"
                 title="По порядку"
               >
@@ -1296,7 +1492,7 @@ export function ShowcasePage() {
                   className="pager-button pager-button--nav"
                   type="button"
                   disabled={page <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  onClick={() => setPageFromPagination(page - 1, "prev")}
                   aria-label="Предыдущая страница"
                   title="Предыдущая страница"
                 >
@@ -1309,7 +1505,7 @@ export function ShowcasePage() {
                   className="pager-button pager-button--nav"
                   type="button"
                   disabled={page >= totalPages}
-                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  onClick={() => setPageFromPagination(page + 1, "next")}
                   aria-label="Следующая страница"
                   title="Следующая страница"
                 >
@@ -1322,7 +1518,7 @@ export function ShowcasePage() {
                   className="pager-button pager-button--nav"
                   type="button"
                   disabled={page <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  onClick={() => setPageFromPagination(page - 1, "prev")}
                   aria-label="Предыдущая страница"
                   title="Предыдущая страница"
                 >
@@ -1343,7 +1539,7 @@ export function ShowcasePage() {
                         key={item}
                         type="button"
                         className={item === page ? "pager-page active" : "pager-page"}
-                        onClick={() => setPage(item)}
+                        onClick={() => setPageFromPagination(item, "number")}
                       >
                         {item}
                       </button>
@@ -1354,7 +1550,7 @@ export function ShowcasePage() {
                   className="pager-button pager-button--nav"
                   type="button"
                   disabled={page >= totalPages}
-                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  onClick={() => setPageFromPagination(page + 1, "next")}
                   aria-label="Следующая страница"
                   title="Следующая страница"
                 >
