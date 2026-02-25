@@ -38,6 +38,23 @@ export interface CreateActivityEventInput {
   payload_json: string | null;
 }
 
+export interface CreateGuestActivityEventInput {
+  session_id: string;
+  event_type: ActivityEventType;
+  page: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  payload_json: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_term: string | null;
+  utm_content: string | null;
+  referrer: string | null;
+  user_agent: string | null;
+  ip_hash: string | null;
+}
+
 interface ActivityEventRow {
   id: number;
   user_id: number;
@@ -168,6 +185,45 @@ export function createActivityEvent(input: CreateActivityEventInput): void {
         @entity_type,
         @entity_id,
         @payload_json
+      )
+    `,
+  ).run(input);
+}
+
+export function createGuestActivityEvent(input: CreateGuestActivityEventInput): void {
+  db.prepare(
+    `
+      INSERT INTO guest_activity_events (
+        session_id,
+        event_type,
+        page,
+        entity_type,
+        entity_id,
+        payload_json,
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        utm_term,
+        utm_content,
+        referrer,
+        user_agent,
+        ip_hash
+      )
+      VALUES (
+        @session_id,
+        @event_type,
+        @page,
+        @entity_type,
+        @entity_id,
+        @payload_json,
+        @utm_source,
+        @utm_medium,
+        @utm_campaign,
+        @utm_term,
+        @utm_content,
+        @referrer,
+        @user_agent,
+        @ip_hash
       )
     `,
   ).run(input);

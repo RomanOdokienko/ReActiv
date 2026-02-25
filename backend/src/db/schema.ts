@@ -194,6 +194,25 @@ export function initializeSchema(): void {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS guest_activity_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      page TEXT,
+      entity_type TEXT,
+      entity_id TEXT,
+      payload_json TEXT,
+      utm_source TEXT,
+      utm_medium TEXT,
+      utm_campaign TEXT,
+      utm_term TEXT,
+      utm_content TEXT,
+      referrer TEXT,
+      user_agent TEXT,
+      ip_hash TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
     CREATE INDEX IF NOT EXISTS idx_users_login ON users(login);
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_token_hash ON auth_sessions(token_hash);
@@ -201,6 +220,9 @@ export function initializeSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_activity_user_id_created_at ON user_activity_events(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_event_type_created_at ON user_activity_events(event_type, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_session_id_created_at ON user_activity_events(session_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_guest_activity_event_type_created_at ON guest_activity_events(event_type, created_at);
+    CREATE INDEX IF NOT EXISTS idx_guest_activity_session_id_created_at ON guest_activity_events(session_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_guest_activity_created_at ON guest_activity_events(created_at);
   `);
 
   db.exec(createVehicleOffersTableSql("vehicle_offers"));
