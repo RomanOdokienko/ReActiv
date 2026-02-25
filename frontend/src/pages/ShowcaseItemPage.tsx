@@ -509,7 +509,14 @@ export function ShowcaseItemPage() {
                     label: "Статус брони",
                     value: formatString(item.bookingStatus || "Без статуса"),
                   },
-                  { label: "Ответственный", value: formatString(item.responsiblePerson) },
+                  ...(item.responsiblePerson.trim()
+                    ? [
+                        {
+                          label: "Ответственный",
+                          value: formatString(item.responsiblePerson),
+                        },
+                      ]
+                    : []),
                   { label: "Дней в продаже", value: formatInteger(item.daysOnSale) },
                   { label: "Регион/адрес", value: formatString(item.storageAddress) },
                 ];

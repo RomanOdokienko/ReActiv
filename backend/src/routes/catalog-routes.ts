@@ -7,14 +7,46 @@ import {
   searchCatalogItems,
 } from "../repositories/catalog-repository";
 
+function sanitizeCatalogItemForRole<
+  T extends { responsiblePerson: string; websiteUrl: string },
+>(item: T, role: string | undefined): T {
+  if (role !== "manager") {
+    return item;
+  }
+
+  return {
+    ...item,
+    responsiblePerson: "",
+    websiteUrl: "",
+  };
+}
+
+function sanitizeCatalogFiltersForRole(
+  metadata: Record<string, unknown>,
+  role: string | undefined,
+): Record<string, unknown> {
+  if (role !== "manager") {
+    return metadata;
+  }
+
+  return {
+    ...metadata,
+    responsiblePerson: [],
+    websiteUrl: [],
+  };
+}
+
 export async function registerCatalogRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/catalog/items", async (request, reply) => {
     try {
       const query = parseCatalogQuery(request.query);
       const result = searchCatalogItems(query);
+      const items = result.items.map((item) =>
+        sanitizeCatalogItemForRole(item, request.authUser?.role),
+      );
 
       return reply.code(200).send({
-        items: result.items,
+        items,
         pagination: {
           page: query.page,
           pageSize: query.pageSize,
@@ -33,10 +65,12 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     }
   });
 
-  app.get("/api/catalog/filters", async (_request, reply) => {
+  app.get("/api/catalog/filters", async (request, reply) => {
     try {
       const metadata = getCatalogFiltersMetadata();
-      return reply.code(200).send(metadata);
+      return reply
+        .code(200)
+        .send(sanitizeCatalogFiltersForRole(metadata, request.authUser?.role));
     } catch {
       return reply.code(500).send({ message: "Failed to fetch filter metadata" });
     }
@@ -56,7 +90,9 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
         return reply.code(404).send({ message: "Catalog item not found" });
       }
 
-      return reply.code(200).send(item);
+      return reply
+        .code(200)
+        .send(sanitizeCatalogItemForRole(item, request.authUser?.role));
     } catch {
       return reply.code(500).send({ message: "Failed to fetch catalog item" });
     }
