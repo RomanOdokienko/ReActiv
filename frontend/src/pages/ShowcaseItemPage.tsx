@@ -496,7 +496,9 @@ export function ShowcaseItemPage() {
                         },
                       ]
                     : []),
-                  { label: "Дней в продаже", value: formatInteger(item.daysOnSale) },
+                  ...(item.daysOnSale !== null
+                    ? [{ label: "Дней в продаже", value: formatInteger(item.daysOnSale) }]
+                    : []),
                   { label: "Регион/адрес", value: formatString(item.storageAddress) },
                 ];
 

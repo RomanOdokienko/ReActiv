@@ -8,7 +8,11 @@ import {
 } from "../repositories/catalog-repository";
 
 function sanitizeCatalogItemForRole<
-  T extends { responsiblePerson: string; websiteUrl: string },
+  T extends {
+    responsiblePerson: string;
+    websiteUrl: string;
+    daysOnSale: number | null;
+  },
 >(item: T, role: string | undefined): T {
   if (role === "admin" || role === "stock_owner") {
     return item;
@@ -18,6 +22,7 @@ function sanitizeCatalogItemForRole<
     ...item,
     responsiblePerson: "",
     websiteUrl: "",
+    daysOnSale: null,
   };
 }
 
@@ -33,6 +38,8 @@ function sanitizeCatalogFiltersForRole(
     ...metadata,
     responsiblePerson: [],
     websiteUrl: [],
+    daysOnSaleMin: null,
+    daysOnSaleMax: null,
   };
 }
 
