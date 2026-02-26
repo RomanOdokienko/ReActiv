@@ -33,6 +33,7 @@ export function App() {
   const canAccessUpload =
     authUser?.role === "admin" || authUser?.role === "stock_owner";
   const canAccessCatalog = isAdmin;
+  const showMainNav = isAdmin || canAccessUpload;
   const defaultAuthorizedPath = canAccessUpload ? "/upload" : "/showcase";
 
   useEffect(() => {
@@ -214,8 +215,9 @@ export function App() {
   return (
     <>
       <div className="app">
-        <div className="nav-wrap">
-          <nav className="nav">
+        <div className={`nav-wrap${showMainNav ? "" : " nav-wrap--actions-only"}`}>
+          {showMainNav && (
+            <nav className="nav">
             {canAccessUpload && (
               <NavLink to="/upload" className={({ isActive }) => (isActive ? "active" : "")}>
                 Загрузка
@@ -239,7 +241,8 @@ export function App() {
                 Активность
               </NavLink>
             )}
-          </nav>
+            </nav>
+          )}
           <div className="nav-actions">
             <span className="nav-user">{authUser?.displayName ?? authUser?.login}</span>
             <button

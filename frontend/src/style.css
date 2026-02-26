@@ -96,6 +96,10 @@ a {
   margin-bottom: 30px;
 }
 
+.nav-wrap--actions-only {
+  justify-content: flex-end;
+}
+
 .nav {
   display: inline-flex;
   gap: 8px;
@@ -2130,10 +2134,14 @@ tbody tr:nth-child(even) {
   transition: background-color 120ms ease, transform 120ms ease;
 }
 
-.detail-lightbox__close:hover,
-.detail-lightbox__nav:hover {
+.detail-lightbox__close:hover {
   background: rgba(20, 45, 76, 0.82);
   transform: translateY(-1px);
+}
+
+.detail-lightbox__nav:hover {
+  background: rgba(20, 45, 76, 0.82);
+  transform: translateY(calc(-50% - 1px));
 }
 
 .detail-lightbox__close {
