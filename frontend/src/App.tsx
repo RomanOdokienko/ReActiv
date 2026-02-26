@@ -20,6 +20,7 @@ type AuthState = "checking" | "authorized" | "unauthorized";
 type PlatformModeState = "checking" | PlatformMode;
 
 const HIDDEN_ADMIN_LOGIN_PATH = "/staff-login-reactiv";
+const ACTIVITY_VIEWER_LOGINS = new Set(["alexey"]);
 
 export function App() {
   const location = useLocation();
@@ -30,10 +31,12 @@ export function App() {
   const lastLoggedPageRef = useRef<string>("");
 
   const isAdmin = authUser?.role === "admin";
+  const canViewActivity =
+    isAdmin || (authUser?.login ? ACTIVITY_VIEWER_LOGINS.has(authUser.login.toLowerCase()) : false);
   const canAccessUpload =
     authUser?.role === "admin" || authUser?.role === "stock_owner";
   const canAccessCatalog = isAdmin;
-  const showMainNav = isAdmin || canAccessUpload;
+  const showMainNav = isAdmin || canAccessUpload || canViewActivity;
   const defaultAuthorizedPath = canAccessUpload ? "/upload" : "/showcase";
 
   useEffect(() => {
@@ -240,11 +243,11 @@ export function App() {
                 Пользователи
               </NavLink>
             )}
-            {isAdmin && (
-              <NavLink to="/admin/activity" className={({ isActive }) => (isActive ? "active" : "")}>
-                Активность
-              </NavLink>
-            )}
+              {canViewActivity && (
+                <NavLink to="/admin/activity" className={({ isActive }) => (isActive ? "active" : "")}>
+                  Активность
+                </NavLink>
+              )}
             </nav>
           )}
           <div className="nav-actions">
@@ -285,7 +288,7 @@ export function App() {
           />
           <Route
             path="/admin/activity"
-            element={isAdmin ? <AdminActivityPage /> : <Navigate to="/showcase" replace />}
+            element={canViewActivity ? <AdminActivityPage /> : <Navigate to="/showcase" replace />}
           />
           <Route
             path="/login"

@@ -17,6 +17,7 @@ const GUEST_ACTIVITY_RATE_LIMIT_MAX_EVENTS = 240;
 
 const activityRateLimitByUser = new Map<number, number[]>();
 const activityRateLimitByGuestKey = new Map<string, number[]>();
+const ACTIVITY_VIEWER_LOGINS = new Set(["alexey"]);
 
 const createActivityEventBodySchema = z.object({
   eventType: z.enum(ACTIVITY_EVENT_TYPES),
@@ -65,7 +66,11 @@ function rejectIfNotAdmin(
   request: FastifyRequest,
   reply: FastifyReply,
 ): boolean {
-  if (request.authUser?.role === "admin") {
+  const canViewActivity =
+    request.authUser?.role === "admin" ||
+    (request.authUser?.login ? ACTIVITY_VIEWER_LOGINS.has(request.authUser.login) : false);
+
+  if (canViewActivity) {
     return false;
   }
 
