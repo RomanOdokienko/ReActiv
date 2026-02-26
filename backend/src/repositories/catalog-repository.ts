@@ -161,6 +161,25 @@ function normalizeRegionLabel(value: string): string {
 function canonicalizeRegionLabel(value: string): string {
   const normalized = normalizeRegionLabel(value);
   const lower = normalized.toLowerCase();
+  const compact = lower.replace(/\./g, "").replace(/\s+/g, " ").trim();
+
+  if (
+    compact === "мо" ||
+    compact === "московская область" ||
+    compact === "московская обл" ||
+    compact === "моск обл"
+  ) {
+    return "Московская область";
+  }
+  if (compact === "москва") {
+    return "Москва";
+  }
+  if (compact === "спб" || compact === "санкт-петербург" || compact === "санкт петербург") {
+    return "Санкт-Петербург";
+  }
+  if (compact === "севастополь") {
+    return "Севастополь";
+  }
 
   if (lower.includes("ханты-мансий")) {
     return "Ханты-Мансийский автономный округ - Югра";
@@ -241,8 +260,22 @@ function extractRegionFromAddress(address: string): string | null {
     }
   }
 
+  const directRegionPart = parts.find((part) => {
+    const cleaned = part.replace(/^(город|г\.?)\s*/i, "").trim();
+    const candidate = canonicalizeRegionLabel(cleaned);
+    return (
+      candidate === "Москва" ||
+      candidate === "Санкт-Петербург" ||
+      candidate === "Севастополь" ||
+      candidate === "Московская область"
+    );
+  });
+  if (directRegionPart) {
+    return canonicalizeRegionLabel(directRegionPart.replace(/^(город|г\.?)\s*/i, "").trim());
+  }
+
   const federalCityPart = parts.find((part) =>
-    /^(город|г\.?)\s*(москва|санкт-петербург|севастополь)\b/i.test(part),
+    /^(?:(?:город|г\.?)\s*)?(москва|санкт-петербург|севастополь)\b/i.test(part),
   );
   if (federalCityPart) {
     const cityName = federalCityPart.replace(/^(город|г\.?)\s*/i, "").trim();
@@ -251,13 +284,43 @@ function extractRegionFromAddress(address: string): string | null {
   return null;
 }
 
+function normalizeRequestedRegions(values?: string[]): Set<string> {
+  if (!values || values.length === 0) {
+    return new Set<string>();
+  }
+
+  return new Set(
+    values
+      .map((value) => canonicalizeRegionLabel(value))
+      .map((value) => value.toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+function filterRowsByRegions(
+  rows: VehicleOfferDbRow[],
+  requestedRegions: Set<string>,
+): VehicleOfferDbRow[] {
+  if (requestedRegions.size === 0) {
+    return rows;
+  }
+
+  return rows.filter((row) => {
+    const extractedRegion = extractRegionFromAddress(row.storage_address);
+    if (!extractedRegion) {
+      return false;
+    }
+
+    return requestedRegions.has(extractedRegion.toLowerCase());
+  });
+}
+
 function buildWhere(filters: CatalogQuery): { whereClause: string; params: unknown[] } {
   const clauses: string[] = [];
   const params: unknown[] = [];
 
   addInFilter(clauses, params, "offer_code", filters.offerCode);
   addInFilter(clauses, params, "status", filters.status);
-  addLikeAnyFilter(clauses, params, "storage_address", filters.city);
   addInFilter(clauses, params, "brand", filters.brand);
   addInFilter(clauses, params, "model", filters.model);
   addInFilter(clauses, params, "modification", filters.modification);
@@ -350,40 +413,50 @@ export function searchCatalogItems(filters: CatalogQuery): {
   total: number;
 } {
   const { whereClause, params } = buildWhere(filters);
+  const requestedRegions = normalizeRequestedRegions(filters.city);
+  const shouldFilterByRegion = requestedRegions.size > 0;
+  const limit = filters.pageSize;
+  const offset = (filters.page - 1) * filters.pageSize;
+
+  const baseSelectQuery = `
+    SELECT *
+    FROM vehicle_offers
+    ${whereClause}
+    ORDER BY
+      CASE
+        WHEN TRIM(COALESCE(yandex_disk_url, '')) = '' THEN 0
+        WHEN lower(yandex_disk_url) LIKE '%disk.yandex.%' THEN 1
+        WHEN lower(yandex_disk_url) LIKE '%yadi.sk%' THEN 1
+        WHEN lower(yandex_disk_url) LIKE '%downloader.disk.yandex.%' THEN 1
+        WHEN lower(yandex_disk_url) LIKE '%.jpg%' THEN 1
+        WHEN lower(yandex_disk_url) LIKE '%.jpeg%' THEN 1
+        WHEN lower(yandex_disk_url) LIKE '%.png%' THEN 1
+        WHEN lower(yandex_disk_url) LIKE '%.webp%' THEN 1
+        WHEN lower(yandex_disk_url) LIKE '%.gif%' THEN 1
+        WHEN lower(yandex_disk_url) LIKE '%.bmp%' THEN 1
+        WHEN lower(yandex_disk_url) LIKE '%.svg%' THEN 1
+        ELSE 0
+      END DESC,
+      ${filters.sortBy} ${filters.sortDir.toUpperCase()}
+  `;
+
+  if (shouldFilterByRegion) {
+    const rows = db.prepare(baseSelectQuery).all(...params) as VehicleOfferDbRow[];
+    const filteredRows = filterRowsByRegions(rows, requestedRegions);
+    const paginatedRows = filteredRows.slice(offset, offset + limit);
+
+    return {
+      items: paginatedRows.map(mapDbRow),
+      total: filteredRows.length,
+    };
+  }
 
   const totalRow = db
     .prepare(`SELECT COUNT(*) as total FROM vehicle_offers ${whereClause}`)
     .get(...params) as { total: number };
 
-  const limit = filters.pageSize;
-  const offset = (filters.page - 1) * filters.pageSize;
-
   const rows = db
-    .prepare(
-      `
-        SELECT *
-        FROM vehicle_offers
-        ${whereClause}
-        ORDER BY
-          CASE
-            WHEN TRIM(COALESCE(yandex_disk_url, '')) = '' THEN 0
-            WHEN lower(yandex_disk_url) LIKE '%disk.yandex.%' THEN 1
-            WHEN lower(yandex_disk_url) LIKE '%yadi.sk%' THEN 1
-            WHEN lower(yandex_disk_url) LIKE '%downloader.disk.yandex.%' THEN 1
-            WHEN lower(yandex_disk_url) LIKE '%.jpg%' THEN 1
-            WHEN lower(yandex_disk_url) LIKE '%.jpeg%' THEN 1
-            WHEN lower(yandex_disk_url) LIKE '%.png%' THEN 1
-            WHEN lower(yandex_disk_url) LIKE '%.webp%' THEN 1
-            WHEN lower(yandex_disk_url) LIKE '%.gif%' THEN 1
-            WHEN lower(yandex_disk_url) LIKE '%.bmp%' THEN 1
-            WHEN lower(yandex_disk_url) LIKE '%.svg%' THEN 1
-            ELSE 0
-          END DESC,
-          ${filters.sortBy} ${filters.sortDir.toUpperCase()}
-        LIMIT ?
-        OFFSET ?
-      `,
-    )
+    .prepare(`${baseSelectQuery}\nLIMIT ?\nOFFSET ?`)
     .all(...params, limit, offset) as VehicleOfferDbRow[];
 
   return {
