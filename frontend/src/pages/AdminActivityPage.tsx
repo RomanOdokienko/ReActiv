@@ -11,7 +11,9 @@ import type {
 
 const EVENT_TYPE_OPTIONS: Array<{ value: "" | ActivityEventType; label: string }> = [
   { value: "", label: "Все события" },
+  { value: "login_open", label: "Открытие формы входа" },
   { value: "login_success", label: "Вход" },
+  { value: "login_failed", label: "Ошибка входа" },
   { value: "logout", label: "Выход" },
   { value: "session_start", label: "Старт сессии" },
   { value: "session_heartbeat", label: "Heartbeat" },

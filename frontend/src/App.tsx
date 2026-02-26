@@ -178,7 +178,11 @@ export function App() {
                     единый агрегатор изъятой лизинговой техники
                   </div>
                 </div>
-                <Link to="/login" className="public-showcase-login-link">
+                <Link
+                  to="/login"
+                  state={{ activitySource: "public_showcase_header" }}
+                  className="public-showcase-login-link"
+                >
                   Вход / Регистрация
                 </Link>
               </div>

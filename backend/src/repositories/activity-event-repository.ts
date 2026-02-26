@@ -1,7 +1,9 @@
 import { db } from "../db/connection";
 
 export const ACTIVITY_EVENT_TYPES = [
+  "login_open",
   "login_success",
+  "login_failed",
   "logout",
   "session_start",
   "session_heartbeat",

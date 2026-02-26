@@ -146,7 +146,9 @@ export interface CatalogFiltersResponse {
 }
 
 export type ActivityEventType =
+  | "login_open"
   | "login_success"
+  | "login_failed"
   | "logout"
   | "session_start"
   | "session_heartbeat"

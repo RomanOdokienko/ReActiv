@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { useLocation } from "react-router-dom";
 import { logActivityEvent, login } from "../api/client";
 import type { AuthUser } from "../types/api";
 
@@ -8,6 +9,7 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onLoginSuccess }: LoginPageProps) {
+  const location = useLocation();
   const [loginValue, setLoginValue] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,6 +21,19 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       document.body.classList.remove("auth-page");
     };
   }, []);
+
+  useEffect(() => {
+    const stateSource =
+      (location.state as { activitySource?: string } | null)?.activitySource ?? null;
+
+    void logActivityEvent({
+      eventType: "login_open",
+      page: location.pathname,
+      payload: {
+        source: stateSource ?? "direct",
+      },
+    });
+  }, [location.pathname, location.state]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -43,6 +58,16 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         },
       });
     } catch (caughtError) {
+      void logActivityEvent({
+        eventType: "login_failed",
+        page: location.pathname,
+        payload: {
+          loginAttempt: loginValue.trim() || null,
+          message:
+            caughtError instanceof Error ? caughtError.message.slice(0, 160) : "unknown_error",
+        },
+      });
+
       if (caughtError instanceof Error) {
         setError(caughtError.message);
       } else {
@@ -90,6 +115,16 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 href="https://t.me/romanodokienko"
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => {
+                  void logActivityEvent({
+                    eventType: "showcase_contact_click",
+                    page: location.pathname,
+                    payload: {
+                      source: "login_request_access",
+                      channel: "telegram",
+                    },
+                  });
+                }}
               >
                 Запросить доступ к платформе
               </a>
