@@ -768,6 +768,11 @@ a {
   line-height: 1.1;
 }
 
+.activity-summary-card[title],
+.activity-funnel-step[title] {
+  cursor: help;
+}
+
 .activity-funnel-grid {
   display: grid;
   gap: 10px;

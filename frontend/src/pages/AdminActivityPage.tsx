@@ -577,65 +577,107 @@ export function AdminActivityPage() {
           ) : guestSummary ? (
             <>
               <div className="activity-summary-grid">
-                <article className="activity-summary-card">
+                <article
+                  className="activity-summary-card"
+                  title="Количество уникальных session_id в выбранном периоде."
+                >
                   <span>Уникальные сессии</span>
                   <strong>{guestSummary.uniqueSessions.toLocaleString("ru-RU")}</strong>
                 </article>
-                <article className="activity-summary-card">
+                <article
+                  className="activity-summary-card"
+                  title="Сумма только бизнес-событий: витрина, фильтры, карточки, логин и контактные действия. Heartbeat и page_view не входят."
+                >
                   <span>Бизнес-события</span>
                   <strong>{guestSummary.businessEvents.toLocaleString("ru-RU")}</strong>
                 </article>
-                <article className="activity-summary-card">
+                <article
+                  className="activity-summary-card"
+                  title="Сессии считаются engaged, если был meaningful-ивент (например, open карточки/логина) или накоплено не менее 30 секунд engaged time."
+                >
                   <span>Engaged-сессии</span>
                   <strong>
                     {guestSummary.engagedSessions.toLocaleString("ru-RU")} (
                     {guestSummary.engagedSessionsPercent.toFixed(2)}%)
                   </strong>
                 </article>
-                <article className="activity-summary-card">
+                <article
+                  className="activity-summary-card"
+                  title="Среднее engaged time по сессиям: сумма интервалов между событиями внутри каждой сессии, каждый интервал ограничен 60 сек."
+                >
                   <span>Среднее engaged время</span>
                   <strong>{formatDuration(guestSummary.avgEngagedTimeSec)}</strong>
                 </article>
-                <article className="activity-summary-card">
+                <article
+                  className="activity-summary-card"
+                  title="Медиана engaged time по сессиям. Более устойчива к выбросам, чем среднее."
+                >
                   <span>Медиана engaged времени</span>
                   <strong>{formatDuration(guestSummary.medianEngagedTimeSec)}</strong>
                 </article>
-                <article className="activity-summary-card">
+                <article
+                  className="activity-summary-card"
+                  title="Доля сессий, где после открытия витрины было открытие карточки: sessions_with_item_open / sessions_with_showcase_open."
+                >
                   <span>CTR витрина → карточка</span>
                   <strong>{guestSummary.showcaseToItemSessionCtrPercent.toFixed(2)}%</strong>
                 </article>
-                <article className="activity-summary-card">
+                <article
+                  className="activity-summary-card"
+                  title="Доля сессий, где после открытия витрины был переход в форму логина: sessions_with_login_open / sessions_with_showcase_open."
+                >
                   <span>CVR витрина → логин</span>
                   <strong>{guestSummary.showcaseToLoginSessionPercent.toFixed(2)}%</strong>
                 </article>
-                <article className="activity-summary-card">
+                <article
+                  className="activity-summary-card"
+                  title="Доля сессий с no-results среди сессий, где применяли фильтры: sessions_with_no_results / sessions_with_filters."
+                >
                   <span>Доля no-results среди сессий с фильтрами</span>
                   <strong>{guestSummary.filtersToNoResultsSessionPercent.toFixed(2)}%</strong>
                 </article>
-                <article className="activity-summary-card">
+                <article
+                  className="activity-summary-card"
+                  title="Количество событий api_error в гостевом треке за выбранный период."
+                >
                   <span>Ошибки API</span>
                   <strong>{guestSummary.apiErrors.toLocaleString("ru-RU")}</strong>
                 </article>
               </div>
 
               <div className="activity-funnel-grid">
-                <article className="activity-funnel-step">
+                <article
+                  className="activity-funnel-step"
+                  title="Количество уникальных сессий, в которых было событие showcase_open."
+                >
                   <span>Сессии с открытием витрины</span>
                   <strong>{guestSummary.showcaseSessions.toLocaleString("ru-RU")}</strong>
                 </article>
-                <article className="activity-funnel-step">
+                <article
+                  className="activity-funnel-step"
+                  title="Количество уникальных сессий, в которых было хотя бы одно событие showcase_filters_apply."
+                >
                   <span>Сессии с фильтрами</span>
                   <strong>{guestSummary.filtersSessions.toLocaleString("ru-RU")}</strong>
                 </article>
-                <article className="activity-funnel-step">
+                <article
+                  className="activity-funnel-step"
+                  title="Количество уникальных сессий, в которых было хотя бы одно событие showcase_item_open."
+                >
                   <span>Сессии с открытием карточки</span>
                   <strong>{guestSummary.itemSessions.toLocaleString("ru-RU")}</strong>
                 </article>
-                <article className="activity-funnel-step">
+                <article
+                  className="activity-funnel-step"
+                  title="Количество уникальных сессий, в которых было хотя бы одно событие login_open."
+                >
                   <span>Сессии с переходом в логин</span>
                   <strong>{guestSummary.loginSessions.toLocaleString("ru-RU")}</strong>
                 </article>
-                <article className="activity-funnel-step">
+                <article
+                  className="activity-funnel-step"
+                  title="Количество уникальных сессий, где после применения фильтров случался no-results."
+                >
                   <span>Сессии с no-results</span>
                   <strong>{guestSummary.noResultsSessions.toLocaleString("ru-RU")}</strong>
                 </article>
