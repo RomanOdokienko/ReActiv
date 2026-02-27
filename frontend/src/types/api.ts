@@ -220,3 +220,34 @@ export interface GuestActivityEventsResponse {
     total: number;
   };
 }
+
+export interface GuestActivitySummarySourceItem {
+  source: string;
+  sessions: number;
+  sharePercent: number;
+}
+
+export interface GuestActivitySummaryFilterFieldItem {
+  field: string;
+  count: number;
+  sharePercent: number;
+}
+
+export interface GuestActivitySummaryResponse {
+  uniqueSessions: number;
+  totalEvents: number;
+  showcaseOpen: number;
+  filtersApply: number;
+  itemOpen: number;
+  loginOpen: number;
+  noResults: number;
+  apiErrors: number;
+  showcaseToItemCtrPercent: number;
+  showcaseToLoginPercent: number;
+  filtersToNoResultsPercent: number;
+  totalSessionDurationSec: number;
+  avgSessionDurationSec: number;
+  medianSessionDurationSec: number;
+  topSources: GuestActivitySummarySourceItem[];
+  topFilterFields: GuestActivitySummaryFilterFieldItem[];
+}

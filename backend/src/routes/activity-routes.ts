@@ -5,6 +5,7 @@ import {
   ACTIVITY_EVENT_TYPES,
   createActivityEvent,
   createGuestActivityEvent,
+  getGuestActivitySummary,
   searchActivityEvents,
   searchGuestActivityEvents,
 } from "../repositories/activity-event-repository";
@@ -58,6 +59,11 @@ const searchGuestActivityEventsQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
   sessionId: z.string().trim().min(1).max(120).optional(),
   eventType: z.enum(ACTIVITY_EVENT_TYPES).optional(),
+  from: z.string().trim().min(1).optional(),
+  to: z.string().trim().min(1).optional(),
+});
+
+const guestActivitySummaryQuerySchema = z.object({
   from: z.string().trim().min(1).optional(),
   to: z.string().trim().min(1).optional(),
 });
@@ -329,6 +335,39 @@ export async function registerActivityRoutes(app: FastifyInstance): Promise<void
 
       request.log.error({ error }, "guest_activity_events_search_failed");
       return reply.code(500).send({ message: "Failed to fetch guest activity events" });
+    }
+  });
+
+  app.get("/api/admin/activity/guests/summary", async (request, reply) => {
+    if (rejectIfNotAdmin(request, reply)) {
+      return;
+    }
+
+    try {
+      const query = guestActivitySummaryQuerySchema.parse(request.query);
+      const normalizedFrom = normalizeDateInput(query.from);
+      const normalizedTo = normalizeDateInput(query.to);
+
+      const result = getGuestActivitySummary({
+        from: normalizedFrom,
+        to: normalizedTo,
+      });
+
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return reply.code(400).send({
+          message: "Invalid query",
+          errors: error.flatten(),
+        });
+      }
+
+      if (error instanceof Error && error.message === "Invalid datetime") {
+        return reply.code(400).send({ message: "Invalid datetime filter" });
+      }
+
+      request.log.error({ error }, "guest_activity_summary_failed");
+      return reply.code(500).send({ message: "Failed to fetch guest activity summary" });
     }
   });
 }

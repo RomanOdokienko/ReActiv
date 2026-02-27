@@ -2,11 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getAdminActivity,
   getAdminGuestActivity,
+  getAdminGuestActivitySummary,
 } from "../api/client";
 import type {
   ActivityEventItem,
   ActivityEventType,
   GuestActivityEventItem,
+  GuestActivitySummaryFilterFieldItem,
+  GuestActivitySummaryResponse,
+  GuestActivitySummarySourceItem,
 } from "../types/api";
 
 const EVENT_TYPE_OPTIONS: Array<{ value: "" | ActivityEventType; label: string }> = [
@@ -26,6 +30,22 @@ const EVENT_TYPE_OPTIONS: Array<{ value: "" | ActivityEventType; label: string }
   { value: "showcase_source_open", label: "Открытие источника" },
   { value: "api_error", label: "Ошибка API" },
 ];
+
+const FILTER_FIELD_LABELS: Record<string, string> = {
+  bookingPreset: "Статус техники",
+  city: "Регион",
+  selectedVehicleTypes: "Тип техники",
+  brand: "Марка",
+  model: "Модель",
+  priceMin: "Цена от",
+  priceMax: "Цена до",
+  yearMin: "Год от",
+  yearMax: "Год до",
+  mileageMin: "Пробег от",
+  mileageMax: "Пробег до",
+  sortBy: "Сортировка: поле",
+  sortDir: "Сортировка: направление",
+};
 
 interface AppliedUserFilters {
   login: string;
@@ -71,6 +91,43 @@ function textOrDash(value: string | null): string {
   return value && value.trim().length > 0 ? value : "-";
 }
 
+function formatDuration(seconds: number): string {
+  if (seconds <= 0) {
+    return "0 сек";
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const restSeconds = seconds % 60;
+  if (minutes <= 0) {
+    return `${restSeconds} сек`;
+  }
+
+  if (minutes < 60) {
+    return `${minutes} мин ${restSeconds} сек`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+  return `${hours} ч ${restMinutes} мин`;
+}
+
+function formatSourceLabel(source: string): string {
+  if (source === "direct") {
+    return "direct";
+  }
+  if (source.startsWith("utm:")) {
+    return `utm:${source.slice(4)}`;
+  }
+  if (source.startsWith("ref:")) {
+    return source.slice(4);
+  }
+  return source;
+}
+
+function formatFilterFieldLabel(field: string): string {
+  return FILTER_FIELD_LABELS[field] ?? field;
+}
+
 export function AdminActivityPage() {
   const [items, setItems] = useState<ActivityEventItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,6 +169,10 @@ export function AdminActivityPage() {
     from: "",
     to: "",
   });
+
+  const [guestSummary, setGuestSummary] = useState<GuestActivitySummaryResponse | null>(null);
+  const [isGuestSummaryLoading, setIsGuestSummaryLoading] = useState(true);
+  const [guestSummaryError, setGuestSummaryError] = useState<string | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const canGoPrev = page > 1;
@@ -238,6 +299,35 @@ export function AdminActivityPage() {
 
     void loadGuestActivity();
   }, [appliedGuestFilters, guestPage, guestPageSize]);
+
+  useEffect(() => {
+    async function loadGuestSummary() {
+      setIsGuestSummaryLoading(true);
+      setGuestSummaryError(null);
+
+      try {
+        const response = await getAdminGuestActivitySummary({
+          from: appliedGuestFilters.from || undefined,
+          to: appliedGuestFilters.to || undefined,
+        });
+        setGuestSummary(response);
+      } catch (caughtError) {
+        if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
+          setGuestSummaryError("Доступ к дашборду гостевой активности запрещен.");
+          return;
+        }
+        if (caughtError instanceof Error) {
+          setGuestSummaryError(caughtError.message);
+          return;
+        }
+        setGuestSummaryError("Не удалось загрузить дашборд гостевой активности.");
+      } finally {
+        setIsGuestSummaryLoading(false);
+      }
+    }
+
+    void loadGuestSummary();
+  }, [appliedGuestFilters.from, appliedGuestFilters.to]);
 
   function applyFilters(): void {
     setPage(1);
@@ -477,6 +567,137 @@ export function AdminActivityPage() {
         <p className="empty">
           Фильтров применено: {activeGuestFilterCount}. Всего событий: {guestTotal.toLocaleString("ru-RU")}
         </p>
+
+        <div className="activity-summary-block">
+          <h3>MVP-дашборд гостевой активности</h3>
+          {isGuestSummaryLoading ? (
+            <p>Загрузка дашборда...</p>
+          ) : guestSummaryError ? (
+            <p className="error">{guestSummaryError}</p>
+          ) : guestSummary ? (
+            <>
+              <div className="activity-summary-grid">
+                <article className="activity-summary-card">
+                  <span>Уникальные сессии</span>
+                  <strong>{guestSummary.uniqueSessions.toLocaleString("ru-RU")}</strong>
+                </article>
+                <article className="activity-summary-card">
+                  <span>Всего событий</span>
+                  <strong>{guestSummary.totalEvents.toLocaleString("ru-RU")}</strong>
+                </article>
+                <article className="activity-summary-card">
+                  <span>Среднее время на сайте</span>
+                  <strong>{formatDuration(guestSummary.avgSessionDurationSec)}</strong>
+                </article>
+                <article className="activity-summary-card">
+                  <span>Медиана времени на сайте</span>
+                  <strong>{formatDuration(guestSummary.medianSessionDurationSec)}</strong>
+                </article>
+                <article className="activity-summary-card">
+                  <span>CTR витрина → карточка</span>
+                  <strong>{guestSummary.showcaseToItemCtrPercent.toFixed(2)}%</strong>
+                </article>
+                <article className="activity-summary-card">
+                  <span>CVR витрина → логин</span>
+                  <strong>{guestSummary.showcaseToLoginPercent.toFixed(2)}%</strong>
+                </article>
+                <article className="activity-summary-card">
+                  <span>Доля no-results после фильтров</span>
+                  <strong>{guestSummary.filtersToNoResultsPercent.toFixed(2)}%</strong>
+                </article>
+                <article className="activity-summary-card">
+                  <span>Ошибки API</span>
+                  <strong>{guestSummary.apiErrors.toLocaleString("ru-RU")}</strong>
+                </article>
+              </div>
+
+              <div className="activity-funnel-grid">
+                <article className="activity-funnel-step">
+                  <span>Открытия витрины</span>
+                  <strong>{guestSummary.showcaseOpen.toLocaleString("ru-RU")}</strong>
+                </article>
+                <article className="activity-funnel-step">
+                  <span>Применения фильтров</span>
+                  <strong>{guestSummary.filtersApply.toLocaleString("ru-RU")}</strong>
+                </article>
+                <article className="activity-funnel-step">
+                  <span>Открытия карточек</span>
+                  <strong>{guestSummary.itemOpen.toLocaleString("ru-RU")}</strong>
+                </article>
+                <article className="activity-funnel-step">
+                  <span>Переходы в логин</span>
+                  <strong>{guestSummary.loginOpen.toLocaleString("ru-RU")}</strong>
+                </article>
+                <article className="activity-funnel-step">
+                  <span>События no-results</span>
+                  <strong>{guestSummary.noResults.toLocaleString("ru-RU")}</strong>
+                </article>
+              </div>
+
+              <div className="activity-breakdown-grid">
+                <div className="activity-breakdown-card">
+                  <h4>Источники (по сессиям)</h4>
+                  {guestSummary.topSources.length === 0 ? (
+                    <p className="empty">Нет данных.</p>
+                  ) : (
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Источник</th>
+                            <th>Сессий</th>
+                            <th>Доля</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {guestSummary.topSources.map((item: GuestActivitySummarySourceItem) => (
+                            <tr key={`source-${item.source}`}>
+                              <td>{formatSourceLabel(item.source)}</td>
+                              <td>{item.sessions.toLocaleString("ru-RU")}</td>
+                              <td>{item.sharePercent.toFixed(2)}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="activity-breakdown-card">
+                  <h4>Часто меняемые фильтры</h4>
+                  {guestSummary.topFilterFields.length === 0 ? (
+                    <p className="empty">Нет данных.</p>
+                  ) : (
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Поле фильтра</th>
+                            <th>Изменений</th>
+                            <th>Доля</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {guestSummary.topFilterFields.map(
+                            (item: GuestActivitySummaryFilterFieldItem) => (
+                              <tr key={`filter-${item.field}`}>
+                                <td>{formatFilterFieldLabel(item.field)}</td>
+                                <td>{item.count.toLocaleString("ru-RU")}</td>
+                                <td>{item.sharePercent.toFixed(2)}%</td>
+                              </tr>
+                            ),
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="empty">Нет данных для дашборда.</p>
+          )}
+        </div>
       </div>
 
       {guestError && <p className="error">{guestError}</p>}

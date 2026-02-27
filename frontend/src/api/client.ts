@@ -6,6 +6,7 @@ import type {
   CatalogItem,
   ClearImportsResponse,
   GuestActivityEventsResponse,
+  GuestActivitySummaryResponse,
   ImportBatchesResponse,
   CatalogFiltersResponse,
   CatalogItemsResponse,
@@ -810,4 +811,41 @@ export async function getAdminGuestActivity(
   }
 
   return (await response.json()) as GuestActivityEventsResponse;
+}
+
+export interface GetAdminGuestActivitySummaryInput {
+  from?: string;
+  to?: string;
+}
+
+export async function getAdminGuestActivitySummary(
+  input: GetAdminGuestActivitySummaryInput = {},
+): Promise<GuestActivitySummaryResponse> {
+  const params = new URLSearchParams();
+
+  if (input.from) {
+    params.set("from", input.from);
+  }
+  if (input.to) {
+    params.set("to", input.to);
+  }
+
+  const query = params.toString();
+  const path = query
+    ? `/admin/activity/guests/summary?${query}`
+    : "/admin/activity/guests/summary";
+  const response = await fetch(buildUrl(path), {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  if (response.status === 403) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!response.ok) {
+    throw new Error("Не удалось загрузить сводку гостевой активности");
+  }
+
+  return (await response.json()) as GuestActivitySummaryResponse;
 }

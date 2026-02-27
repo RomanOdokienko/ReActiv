@@ -731,6 +731,83 @@ a {
   word-break: break-word;
 }
 
+.activity-summary-block {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.activity-summary-block h3,
+.activity-breakdown-card h4 {
+  margin: 0;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+}
+
+.activity-summary-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.activity-summary-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f7faff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.activity-summary-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.activity-summary-card strong {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.activity-funnel-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.activity-funnel-step {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  display: grid;
+  gap: 6px;
+}
+
+.activity-funnel-step span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.activity-funnel-step strong {
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.activity-breakdown-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.activity-breakdown-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 10px;
+}
+
 .catalog-layout {
   display: grid;
   grid-template-columns: 310px 1fr;
