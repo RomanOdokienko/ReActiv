@@ -236,18 +236,21 @@ export interface GuestActivitySummaryFilterFieldItem {
 export interface GuestActivitySummaryResponse {
   uniqueSessions: number;
   totalEvents: number;
-  showcaseOpen: number;
-  filtersApply: number;
-  itemOpen: number;
-  loginOpen: number;
-  noResults: number;
+  businessEvents: number;
+  engagedSessions: number;
+  engagedSessionsPercent: number;
+  showcaseSessions: number;
+  filtersSessions: number;
+  itemSessions: number;
+  loginSessions: number;
+  noResultsSessions: number;
   apiErrors: number;
-  showcaseToItemCtrPercent: number;
-  showcaseToLoginPercent: number;
-  filtersToNoResultsPercent: number;
-  totalSessionDurationSec: number;
-  avgSessionDurationSec: number;
-  medianSessionDurationSec: number;
+  showcaseToItemSessionCtrPercent: number;
+  showcaseToLoginSessionPercent: number;
+  filtersToNoResultsSessionPercent: number;
+  totalEngagedTimeSec: number;
+  avgEngagedTimeSec: number;
+  medianEngagedTimeSec: number;
   topSources: GuestActivitySummarySourceItem[];
   topFilterFields: GuestActivitySummaryFilterFieldItem[];
 }

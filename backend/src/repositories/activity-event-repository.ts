@@ -170,36 +170,31 @@ export interface GuestActivitySummaryFilterFieldItem {
 export interface GuestActivitySummaryResult {
   uniqueSessions: number;
   totalEvents: number;
-  showcaseOpen: number;
-  filtersApply: number;
-  itemOpen: number;
-  loginOpen: number;
-  noResults: number;
+  businessEvents: number;
+  engagedSessions: number;
+  engagedSessionsPercent: number;
+  showcaseSessions: number;
+  filtersSessions: number;
+  itemSessions: number;
+  loginSessions: number;
+  noResultsSessions: number;
   apiErrors: number;
-  showcaseToItemCtrPercent: number;
-  showcaseToLoginPercent: number;
-  filtersToNoResultsPercent: number;
-  totalSessionDurationSec: number;
-  avgSessionDurationSec: number;
-  medianSessionDurationSec: number;
+  showcaseToItemSessionCtrPercent: number;
+  showcaseToLoginSessionPercent: number;
+  filtersToNoResultsSessionPercent: number;
+  totalEngagedTimeSec: number;
+  avgEngagedTimeSec: number;
+  medianEngagedTimeSec: number;
   topSources: GuestActivitySummarySourceItem[];
   topFilterFields: GuestActivitySummaryFilterFieldItem[];
 }
 
-interface GuestSessionDurationRow {
+interface GuestSummaryEventRow {
   session_id: string;
-  started_at_unix: number;
-  ended_at_unix: number;
-}
-
-interface GuestSourceRow {
-  session_id: string;
+  event_type: ActivityEventType;
+  created_at_unix: number;
   utm_source: string | null;
   referrer: string | null;
-  created_at: string;
-}
-
-interface GuestFilterPayloadRow {
   payload_json: string | null;
 }
 
@@ -403,6 +398,29 @@ function sourceLabelFromReferrer(referrer: string | null): string | null {
   }
 }
 
+const BUSINESS_EVENT_TYPES = new Set<ActivityEventType>([
+  "showcase_open",
+  "showcase_filters_apply",
+  "showcase_no_results",
+  "showcase_item_open",
+  "showcase_contact_click",
+  "showcase_source_open",
+  "login_open",
+  "login_success",
+  "login_failed",
+]);
+
+const ENGAGED_EVENT_TYPES = new Set<ActivityEventType>([
+  "showcase_filters_apply",
+  "showcase_item_open",
+  "showcase_contact_click",
+  "showcase_source_open",
+  "login_open",
+]);
+
+const MAX_ENGAGED_INTERVAL_SECONDS = 60;
+const MIN_ENGAGED_SESSION_SECONDS = 30;
+
 export function createActivityEvent(input: CreateActivityEventInput): void {
   db.prepare(
     `
@@ -568,86 +586,132 @@ export function getGuestActivitySummary(
 ): GuestActivitySummaryResult {
   const { whereClause, params } = buildGuestSummaryWhereClause(query);
 
-  const counters = db
-    .prepare(
-      `
-        SELECT
-          COUNT(*) AS total_events,
-          COUNT(DISTINCT session_id) AS unique_sessions,
-          SUM(CASE WHEN event_type = 'showcase_open' THEN 1 ELSE 0 END) AS showcase_open,
-          SUM(CASE WHEN event_type = 'showcase_filters_apply' THEN 1 ELSE 0 END) AS filters_apply,
-          SUM(CASE WHEN event_type = 'showcase_item_open' THEN 1 ELSE 0 END) AS item_open,
-          SUM(CASE WHEN event_type = 'login_open' THEN 1 ELSE 0 END) AS login_open,
-          SUM(CASE WHEN event_type = 'showcase_no_results' THEN 1 ELSE 0 END) AS no_results,
-          SUM(CASE WHEN event_type = 'api_error' THEN 1 ELSE 0 END) AS api_errors
-        FROM guest_activity_events
-        ${whereClause}
-      `,
-    )
-    .get(...params) as {
-    total_events: number | null;
-    unique_sessions: number | null;
-    showcase_open: number | null;
-    filters_apply: number | null;
-    item_open: number | null;
-    login_open: number | null;
-    no_results: number | null;
-    api_errors: number | null;
-  };
-
-  const durations = db
+  const rows = db
     .prepare(
       `
         SELECT
           session_id,
-          MIN(CAST(strftime('%s', created_at) AS INTEGER)) AS started_at_unix,
-          MAX(CAST(strftime('%s', created_at) AS INTEGER)) AS ended_at_unix
-        FROM guest_activity_events
-        ${whereClause}
-        GROUP BY session_id
-      `,
-    )
-    .all(...params) as GuestSessionDurationRow[];
-
-  const sessionDurations = durations.map((row) =>
-    Math.max(0, row.ended_at_unix - row.started_at_unix),
-  );
-  const totalSessionDurationSec = sessionDurations.reduce((sum, value) => sum + value, 0);
-  const avgSessionDurationSec = sessionDurations.length
-    ? Math.round(totalSessionDurationSec / sessionDurations.length)
-    : 0;
-  const medianSessionDurationSec = median(sessionDurations);
-
-  const sourceRows = db
-    .prepare(
-      `
-        SELECT session_id, utm_source, referrer, created_at
+          event_type,
+          CAST(strftime('%s', created_at) AS INTEGER) AS created_at_unix,
+          utm_source,
+          referrer,
+          payload_json
         FROM guest_activity_events
         ${whereClause}
         ORDER BY session_id ASC, datetime(created_at) ASC, id ASC
       `,
     )
-    .all(...params) as GuestSourceRow[];
+    .all(...params) as GuestSummaryEventRow[];
 
+  const uniqueSessionIds = new Set<string>();
   const sourceBySession = new Map<string, string>();
-  for (const row of sourceRows) {
-    if (sourceBySession.has(row.session_id)) {
-      continue;
+  const sessionLastTs = new Map<string, number>();
+  const sessionEngagedTime = new Map<string, number>();
+  const sessionHasEngagedEvent = new Map<string, boolean>();
+
+  let businessEvents = 0;
+  let apiErrors = 0;
+  let totalChangedFields = 0;
+
+  const showcaseSessionSet = new Set<string>();
+  const filtersSessionSet = new Set<string>();
+  const itemSessionSet = new Set<string>();
+  const loginSessionSet = new Set<string>();
+  const noResultsSessionSet = new Set<string>();
+  const filterFieldCounts = new Map<string, number>();
+
+  for (const row of rows) {
+    uniqueSessionIds.add(row.session_id);
+
+    if (!sourceBySession.has(row.session_id)) {
+      const utmSource = row.utm_source?.trim();
+      if (utmSource) {
+        sourceBySession.set(row.session_id, `utm:${utmSource}`);
+      } else {
+        const referrerSource = sourceLabelFromReferrer(row.referrer);
+        sourceBySession.set(row.session_id, referrerSource ? `ref:${referrerSource}` : "direct");
+      }
     }
 
-    const utmSource = row.utm_source?.trim();
-    if (utmSource) {
-      sourceBySession.set(row.session_id, `utm:${utmSource}`);
-      continue;
+    if (BUSINESS_EVENT_TYPES.has(row.event_type)) {
+      businessEvents += 1;
     }
 
-    const referrerSource = sourceLabelFromReferrer(row.referrer);
-    if (referrerSource) {
-      sourceBySession.set(row.session_id, `ref:${referrerSource}`);
-      continue;
+    if (ENGAGED_EVENT_TYPES.has(row.event_type)) {
+      sessionHasEngagedEvent.set(row.session_id, true);
     }
 
-    sourceBySession.set(row.session_id, "direct");
+    if (row.event_type === "api_error") {
+      apiErrors += 1;
+    }
+
+    if (row.event_type === "showcase_open") {
+      showcaseSessionSet.add(row.session_id);
+    }
+    if (row.event_type === "showcase_filters_apply") {
+      filtersSessionSet.add(row.session_id);
+      if (row.payload_json) {
+        try {
+          const parsed = JSON.parse(row.payload_json) as { changedFields?: unknown };
+          if (Array.isArray(parsed.changedFields)) {
+            parsed.changedFields.forEach((field) => {
+              if (typeof field !== "string" || !field.trim()) {
+                return;
+              }
+              const normalizedField = field.trim();
+              filterFieldCounts.set(
+                normalizedField,
+                (filterFieldCounts.get(normalizedField) ?? 0) + 1,
+              );
+              totalChangedFields += 1;
+            });
+          }
+        } catch {
+          // ignore malformed payload
+        }
+      }
+    }
+    if (row.event_type === "showcase_item_open") {
+      itemSessionSet.add(row.session_id);
+    }
+    if (row.event_type === "login_open") {
+      loginSessionSet.add(row.session_id);
+    }
+    if (row.event_type === "showcase_no_results") {
+      noResultsSessionSet.add(row.session_id);
+    }
+
+    const previousTs = sessionLastTs.get(row.session_id);
+    if (typeof previousTs === "number") {
+      const delta = row.created_at_unix - previousTs;
+      if (delta > 0) {
+        const boundedDelta = Math.min(delta, MAX_ENGAGED_INTERVAL_SECONDS);
+        sessionEngagedTime.set(
+          row.session_id,
+          (sessionEngagedTime.get(row.session_id) ?? 0) + boundedDelta,
+        );
+      }
+    }
+    sessionLastTs.set(row.session_id, row.created_at_unix);
+  }
+
+  const uniqueSessions = uniqueSessionIds.size;
+  const engagedDurations = Array.from(uniqueSessionIds.values()).map(
+    (sessionId) => sessionEngagedTime.get(sessionId) ?? 0,
+  );
+  const totalEngagedTimeSec = engagedDurations.reduce((sum, value) => sum + value, 0);
+  const avgEngagedTimeSec = engagedDurations.length
+    ? Math.round(totalEngagedTimeSec / engagedDurations.length)
+    : 0;
+  const medianEngagedTimeSec = median(engagedDurations);
+
+  let engagedSessions = 0;
+  for (const sessionId of uniqueSessionIds) {
+    const duration = sessionEngagedTime.get(sessionId) ?? 0;
+    const hasEngagedEvent = sessionHasEngagedEvent.get(sessionId) ?? false;
+    if (hasEngagedEvent || duration >= MIN_ENGAGED_SESSION_SECONDS) {
+      engagedSessions += 1;
+    }
   }
 
   const sourceCounts = new Map<string, number>();
@@ -655,7 +719,6 @@ export function getGuestActivitySummary(
     sourceCounts.set(source, (sourceCounts.get(source) ?? 0) + 1);
   });
 
-  const uniqueSessions = counters.unique_sessions ?? 0;
   const topSources = Array.from(sourceCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
@@ -664,43 +727,6 @@ export function getGuestActivitySummary(
       sessions,
       sharePercent: toPercent(sessions, uniqueSessions),
     }));
-
-  const filterPayloadRows = db
-    .prepare(
-      `
-        SELECT payload_json
-        FROM guest_activity_events
-        ${whereClause ? `${whereClause} AND event_type = 'showcase_filters_apply'` : "WHERE event_type = 'showcase_filters_apply'"}
-      `,
-    )
-    .all(...params) as GuestFilterPayloadRow[];
-
-  const filterFieldCounts = new Map<string, number>();
-  let totalChangedFields = 0;
-  filterPayloadRows.forEach((row) => {
-    if (!row.payload_json) {
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(row.payload_json) as { changedFields?: unknown };
-      if (!Array.isArray(parsed.changedFields)) {
-        return;
-      }
-
-      parsed.changedFields.forEach((field) => {
-        if (typeof field !== "string" || !field.trim()) {
-          return;
-        }
-
-        const normalizedField = field.trim();
-        filterFieldCounts.set(normalizedField, (filterFieldCounts.get(normalizedField) ?? 0) + 1);
-        totalChangedFields += 1;
-      });
-    } catch {
-      // ignore malformed payload
-    }
-  });
 
   const topFilterFields = Array.from(filterFieldCounts.entries())
     .sort((a, b) => b[1] - a[1])
@@ -711,27 +737,30 @@ export function getGuestActivitySummary(
       sharePercent: toPercent(count, totalChangedFields),
     }));
 
-  const showcaseOpen = counters.showcase_open ?? 0;
-  const filtersApply = counters.filters_apply ?? 0;
-  const itemOpen = counters.item_open ?? 0;
-  const loginOpen = counters.login_open ?? 0;
-  const noResults = counters.no_results ?? 0;
+  const showcaseSessions = showcaseSessionSet.size;
+  const filtersSessions = filtersSessionSet.size;
+  const itemSessions = itemSessionSet.size;
+  const loginSessions = loginSessionSet.size;
+  const noResultsSessions = noResultsSessionSet.size;
 
   return {
     uniqueSessions,
-    totalEvents: counters.total_events ?? 0,
-    showcaseOpen,
-    filtersApply,
-    itemOpen,
-    loginOpen,
-    noResults,
-    apiErrors: counters.api_errors ?? 0,
-    showcaseToItemCtrPercent: toPercent(itemOpen, showcaseOpen),
-    showcaseToLoginPercent: toPercent(loginOpen, showcaseOpen),
-    filtersToNoResultsPercent: toPercent(noResults, filtersApply),
-    totalSessionDurationSec,
-    avgSessionDurationSec,
-    medianSessionDurationSec,
+    totalEvents: rows.length,
+    businessEvents,
+    engagedSessions,
+    engagedSessionsPercent: toPercent(engagedSessions, uniqueSessions),
+    showcaseSessions,
+    filtersSessions,
+    itemSessions,
+    loginSessions,
+    noResultsSessions,
+    apiErrors,
+    showcaseToItemSessionCtrPercent: toPercent(itemSessions, showcaseSessions),
+    showcaseToLoginSessionPercent: toPercent(loginSessions, showcaseSessions),
+    filtersToNoResultsSessionPercent: toPercent(noResultsSessions, filtersSessions),
+    totalEngagedTimeSec,
+    avgEngagedTimeSec,
+    medianEngagedTimeSec,
     topSources,
     topFilterFields,
   };

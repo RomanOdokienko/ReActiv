@@ -582,28 +582,35 @@ export function AdminActivityPage() {
                   <strong>{guestSummary.uniqueSessions.toLocaleString("ru-RU")}</strong>
                 </article>
                 <article className="activity-summary-card">
-                  <span>Всего событий</span>
-                  <strong>{guestSummary.totalEvents.toLocaleString("ru-RU")}</strong>
+                  <span>Бизнес-события</span>
+                  <strong>{guestSummary.businessEvents.toLocaleString("ru-RU")}</strong>
                 </article>
                 <article className="activity-summary-card">
-                  <span>Среднее время на сайте</span>
-                  <strong>{formatDuration(guestSummary.avgSessionDurationSec)}</strong>
+                  <span>Engaged-сессии</span>
+                  <strong>
+                    {guestSummary.engagedSessions.toLocaleString("ru-RU")} (
+                    {guestSummary.engagedSessionsPercent.toFixed(2)}%)
+                  </strong>
                 </article>
                 <article className="activity-summary-card">
-                  <span>Медиана времени на сайте</span>
-                  <strong>{formatDuration(guestSummary.medianSessionDurationSec)}</strong>
+                  <span>Среднее engaged время</span>
+                  <strong>{formatDuration(guestSummary.avgEngagedTimeSec)}</strong>
+                </article>
+                <article className="activity-summary-card">
+                  <span>Медиана engaged времени</span>
+                  <strong>{formatDuration(guestSummary.medianEngagedTimeSec)}</strong>
                 </article>
                 <article className="activity-summary-card">
                   <span>CTR витрина → карточка</span>
-                  <strong>{guestSummary.showcaseToItemCtrPercent.toFixed(2)}%</strong>
+                  <strong>{guestSummary.showcaseToItemSessionCtrPercent.toFixed(2)}%</strong>
                 </article>
                 <article className="activity-summary-card">
                   <span>CVR витрина → логин</span>
-                  <strong>{guestSummary.showcaseToLoginPercent.toFixed(2)}%</strong>
+                  <strong>{guestSummary.showcaseToLoginSessionPercent.toFixed(2)}%</strong>
                 </article>
                 <article className="activity-summary-card">
-                  <span>Доля no-results после фильтров</span>
-                  <strong>{guestSummary.filtersToNoResultsPercent.toFixed(2)}%</strong>
+                  <span>Доля no-results среди сессий с фильтрами</span>
+                  <strong>{guestSummary.filtersToNoResultsSessionPercent.toFixed(2)}%</strong>
                 </article>
                 <article className="activity-summary-card">
                   <span>Ошибки API</span>
@@ -613,24 +620,24 @@ export function AdminActivityPage() {
 
               <div className="activity-funnel-grid">
                 <article className="activity-funnel-step">
-                  <span>Открытия витрины</span>
-                  <strong>{guestSummary.showcaseOpen.toLocaleString("ru-RU")}</strong>
+                  <span>Сессии с открытием витрины</span>
+                  <strong>{guestSummary.showcaseSessions.toLocaleString("ru-RU")}</strong>
                 </article>
                 <article className="activity-funnel-step">
-                  <span>Применения фильтров</span>
-                  <strong>{guestSummary.filtersApply.toLocaleString("ru-RU")}</strong>
+                  <span>Сессии с фильтрами</span>
+                  <strong>{guestSummary.filtersSessions.toLocaleString("ru-RU")}</strong>
                 </article>
                 <article className="activity-funnel-step">
-                  <span>Открытия карточек</span>
-                  <strong>{guestSummary.itemOpen.toLocaleString("ru-RU")}</strong>
+                  <span>Сессии с открытием карточки</span>
+                  <strong>{guestSummary.itemSessions.toLocaleString("ru-RU")}</strong>
                 </article>
                 <article className="activity-funnel-step">
-                  <span>Переходы в логин</span>
-                  <strong>{guestSummary.loginOpen.toLocaleString("ru-RU")}</strong>
+                  <span>Сессии с переходом в логин</span>
+                  <strong>{guestSummary.loginSessions.toLocaleString("ru-RU")}</strong>
                 </article>
                 <article className="activity-funnel-step">
-                  <span>События no-results</span>
-                  <strong>{guestSummary.noResults.toLocaleString("ru-RU")}</strong>
+                  <span>Сессии с no-results</span>
+                  <strong>{guestSummary.noResultsSessions.toLocaleString("ru-RU")}</strong>
                 </article>
               </div>
 
@@ -804,3 +811,4 @@ export function AdminActivityPage() {
     </section>
   );
 }
+
