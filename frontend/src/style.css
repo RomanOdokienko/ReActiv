@@ -191,6 +191,8 @@ a {
 }
 
 .public-legal-footer__inner {
+  display: flex;
+  justify-content: center;
   padding: 14px 18px;
   border: 1px solid var(--line);
   border-radius: 16px;
