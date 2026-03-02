@@ -11,30 +11,36 @@ interface LegalLinksProps {
   className?: string;
 }
 
+function LegalLink({
+  href,
+  label,
+}: {
+  href: string;
+  label: string;
+}) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" title={label} aria-label={label}>
+      {label}
+    </a>
+  );
+}
+
+export function PrivacyPolicyLink() {
+  return <LegalLink href={PRIVACY_POLICY_URL} label={PRIVACY_POLICY_LABEL} />;
+}
+
+export function TermsLink() {
+  return <LegalLink href={TERMS_URL} label={TERMS_LABEL} />;
+}
+
 export function LegalLinks({ className = "" }: LegalLinksProps) {
   const normalizedClassName = className.trim();
 
   return (
     <span className={normalizedClassName || undefined}>
-      <a
-        href={PRIVACY_POLICY_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        title={PRIVACY_POLICY_LABEL}
-        aria-label={PRIVACY_POLICY_LABEL}
-      >
-        {PRIVACY_POLICY_LABEL}
-      </a>
+      <PrivacyPolicyLink />
       {" | "}
-      <a
-        href={TERMS_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        title={TERMS_LABEL}
-        aria-label={TERMS_LABEL}
-      >
-        {TERMS_LABEL}
-      </a>
+      <TermsLink />
     </span>
   );
 }
