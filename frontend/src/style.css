@@ -270,6 +270,7 @@ a {
   top: 28px;
   left: 28px;
   z-index: 2;
+  display: inline-block;
   margin: 0;
   font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
   font-size: 48px;
@@ -277,6 +278,7 @@ a {
   line-height: 1.04;
   letter-spacing: -0.025em;
   color: #171b20;
+  text-decoration: none;
 }
 
 .auth-top-logo span {
