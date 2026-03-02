@@ -104,6 +104,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           {"\u0420\u0435"}
           <span>{"\u0410\u043a\u0442\u0438\u0432"}</span>
         </Link>
+        <Link to="/showcase" className="auth-back-link" onClick={resetShowcaseState}>
+          {"\u2190 \u041d\u0430 \u0432\u0438\u0442\u0440\u0438\u043d\u0443"}
+        </Link>
 
         <div className="auth-landing-grid">
           <div className="panel auth-panel auth-panel--landing">

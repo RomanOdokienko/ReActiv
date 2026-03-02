@@ -285,6 +285,37 @@ a {
   color: #1f70d4;
 }
 
+.auth-back-link {
+  position: fixed;
+  top: 28px;
+  right: 28px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(31, 112, 212, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #35506d;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.auth-back-link:hover {
+  border-color: rgba(31, 112, 212, 0.28);
+  background: rgba(255, 255, 255, 0.96);
+  color: #1f70d4;
+}
+
 .auth-landing-grid {
   display: grid;
   grid-template-columns: 400px 400px;
@@ -2461,6 +2492,13 @@ tbody tr:nth-child(even) {
     font-size: 42px;
   }
 
+  .auth-back-link {
+    position: static;
+    top: auto;
+    right: auto;
+    margin: 0 0 20px;
+  }
+
   .auth-landing-grid {
     grid-template-columns: 1fr;
     justify-items: center;
@@ -2859,6 +2897,13 @@ tbody tr:nth-child(even) {
   .auth-top-logo {
     margin: 0 0 16px;
     font-size: 34px;
+  }
+
+  .auth-back-link {
+    height: 40px;
+    margin: 0 0 16px;
+    padding: 0 14px;
+    font-size: 13px;
   }
 
   .auth-panel.auth-panel--landing {
