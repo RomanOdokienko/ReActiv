@@ -185,6 +185,42 @@ a {
   white-space: nowrap;
 }
 
+.public-legal-footer {
+  margin-top: 18px;
+  padding-bottom: 8px;
+}
+
+.public-legal-footer__inner {
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.legal-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.legal-links a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.legal-links a:hover {
+  text-decoration: underline;
+}
+
+.legal-links--inline {
+  display: inline;
+}
+
 .showcase-page--public {
   margin-top: 0;
 }
@@ -348,6 +384,13 @@ a {
   text-align: center;
   font-size: 16px;
   line-height: 24px;
+}
+
+.auth-legal-note {
+  margin-top: 12px;
+  color: #6a7280;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .auth-promo-card {

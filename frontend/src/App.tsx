@@ -7,6 +7,7 @@ import {
   logout,
 } from "./api/client";
 import { FeedbackWidget } from "./components/FeedbackWidget";
+import { LegalLinks } from "./components/LegalLinks";
 import { CatalogPage } from "./pages/CatalogPage";
 import { AdminActivityPage } from "./pages/AdminActivityPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
@@ -21,6 +22,16 @@ type PlatformModeState = "checking" | PlatformMode;
 
 const HIDDEN_ADMIN_LOGIN_PATH = "/staff-login-reactiv";
 const ACTIVITY_VIEWER_LOGINS = new Set(["alexey"]);
+
+function PublicLegalFooter() {
+  return (
+    <footer className="public-legal-footer">
+      <div className="public-legal-footer__inner">
+        <LegalLinks className="legal-links" />
+      </div>
+    </footer>
+  );
+}
 
 export function App() {
   const location = useLocation();
@@ -199,6 +210,7 @@ export function App() {
               <Route path="/login" element={loginElement} />
               <Route path="*" element={<Navigate to="/showcase" replace />} />
             </Routes>
+            <PublicLegalFooter />
           </div>
           <FeedbackWidget />
         </>
@@ -213,6 +225,7 @@ export function App() {
             <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+          <PublicLegalFooter />
         </div>
         <FeedbackWidget />
       </>

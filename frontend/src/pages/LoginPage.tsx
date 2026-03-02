@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation } from "react-router-dom";
 import { logActivityEvent, login } from "../api/client";
+import { LegalLinks } from "../components/LegalLinks";
 import type { AuthUser } from "../types/api";
 
 interface LoginPageProps {
@@ -128,6 +129,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               >
                 Запросить доступ к платформе
               </a>
+              <p className="auth-legal-note">
+                {"\u041f\u0440\u043e\u0434\u043e\u043b\u0436\u0430\u044f, \u0432\u044b \u0441\u043e\u0433\u043b\u0430\u0448\u0430\u0435\u0442\u0435\u0441\u044c \u0441 "}
+                <LegalLinks className="legal-links legal-links--inline" />.
+              </p>
             </form>
             {error && <p className="error">{error}</p>}
           </div>
