@@ -16,11 +16,23 @@ export function LegalLinks({ className = "" }: LegalLinksProps) {
 
   return (
     <span className={normalizedClassName || undefined}>
-      <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer">
+      <a
+        href={PRIVACY_POLICY_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={PRIVACY_POLICY_LABEL}
+        aria-label={PRIVACY_POLICY_LABEL}
+      >
         {PRIVACY_POLICY_LABEL}
       </a>
       {" | "}
-      <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">
+      <a
+        href={TERMS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={TERMS_LABEL}
+        aria-label={TERMS_LABEL}
+      >
         {TERMS_LABEL}
       </a>
     </span>
