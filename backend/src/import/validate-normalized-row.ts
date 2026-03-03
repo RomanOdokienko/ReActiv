@@ -24,16 +24,20 @@ export function validateNormalizedRow(
   pushIfEmpty(errors, "offer_code", row.offer_code);
   pushIfEmpty(errors, "brand", row.brand);
 
-  if (row.year === null || row.year < 1950 || row.year > 2100) {
+  if (row.year === null) {
+    errors.push({
+      field: "year",
+      message: row.year_present ? "Invalid year value" : "Field is empty",
+    });
+  } else if (row.year < 1950 || row.year > 2100) {
     errors.push({ field: "year", message: "Invalid year value" });
   }
 
   if (row.mileage_km === null) {
-    errors.push({ field: "mileage_km", message: "Invalid mileage value" });
-  }
-
-  if (row.key_count === null) {
-    errors.push({ field: "key_count", message: "Invalid key_count value" });
+    errors.push({
+      field: "mileage_km",
+      message: row.mileage_km_present ? "Invalid mileage value" : "Field is empty",
+    });
   }
 
   if (row.has_encumbrance === null) {
@@ -43,15 +47,18 @@ export function validateNormalizedRow(
     });
   }
 
-  if (row.is_deregistered === null) {
+  if (!row.is_deregistered_present) {
     errors.push({
       field: "is_deregistered",
-      message: "Invalid is_deregistered value",
+      message: "Deregistration date is empty",
     });
   }
 
   if (row.days_on_sale === null) {
-    errors.push({ field: "days_on_sale", message: "Invalid days_on_sale value" });
+    errors.push({
+      field: "days_on_sale",
+      message: row.days_on_sale_present ? "Invalid days_on_sale value" : "Field is empty",
+    });
   }
 
   if (row.price === null) {

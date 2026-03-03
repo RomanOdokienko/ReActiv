@@ -79,6 +79,10 @@ function mapStoredToNormalizedRow(row: StoredVehicleOfferRow): NormalizedVehicle
     crm_ref: toComparableString(row.crm_ref),
     website_url: toComparableString(row.website_url),
     title: toComparableString(row.title) ?? "",
+    year_present: row.year !== null,
+    mileage_km_present: row.mileage_km !== null,
+    days_on_sale_present: row.days_on_sale !== null,
+    is_deregistered_present: row.is_deregistered !== null,
   };
 }
 

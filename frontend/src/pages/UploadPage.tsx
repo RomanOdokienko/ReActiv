@@ -115,9 +115,17 @@ function getFieldLabel(field: string | null): string {
   }
 }
 
-function getWarningSummaryLabel(field: string | null, message: string): string {
+function getWarningText(field: string | null, message: string): string {
   if (message === "Required field is empty") {
     return "Обязательное поле пустое";
+  }
+
+  if (message === "Field is empty") {
+    return `Не заполнено поле «${getFieldLabel(field)}»`;
+  }
+
+  if (message === "Deregistration date is empty") {
+    return "Не заполнена дата «Снят с учета»";
   }
 
   if (message === "Duplicate offer_code in the import file") {
@@ -141,7 +149,7 @@ function buildWarningSummary(
   const grouped = new Map<string, ImportWarningSummaryItem>();
 
   errors.forEach((item) => {
-    const summary = getWarningSummaryLabel(item.field, item.message);
+    const summary = getWarningText(item.field, item.message);
     const groupKey = `${item.field ?? "general"}::${summary}`;
     const existing = grouped.get(groupKey);
 
@@ -373,7 +381,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
                         <tr key={`${item.rowNumber}-${item.field}-${index}`}>
                           <td>{item.rowNumber}</td>
                           <td>{getFieldLabel(item.field)}</td>
-                          <td>{item.message}</td>
+                          <td>{getWarningText(item.field, item.message)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -395,7 +403,9 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
                         </div>
                         <div className="mobile-card__row">
                           <dt className="mobile-card__label">Сообщение</dt>
-                          <dd className="mobile-card__value">{item.message}</dd>
+                          <dd className="mobile-card__value">
+                            {getWarningText(item.field, item.message)}
+                          </dd>
                         </div>
                       </dl>
                     </article>

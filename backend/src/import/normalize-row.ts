@@ -6,6 +6,7 @@ import { normalizeString } from "./normalize-string";
 import { normalizeUrl } from "./normalize-url";
 import { parseBoolean } from "./parse-boolean";
 import { parseInteger } from "./parse-integer";
+import { parseKeyCount } from "./parse-key-count";
 import { parsePrice } from "./parse-price";
 
 export interface NormalizedVehicleOfferRow {
@@ -31,6 +32,10 @@ export interface NormalizedVehicleOfferRow {
   crm_ref: string | null;
   website_url: string | null;
   title: string;
+  year_present: boolean;
+  mileage_km_present: boolean;
+  days_on_sale_present: boolean;
+  is_deregistered_present: boolean;
 }
 
 function getValue(
@@ -51,10 +56,15 @@ export function normalizeVehicleOfferRow(
   const model = normalizeString(getValue(row, fieldToColumnIndex, "model")) || null;
   const modification =
     normalizeString(getValue(row, fieldToColumnIndex, "modification")) || null;
+  const rawYear = getValue(row, fieldToColumnIndex, "year");
+  const rawMileage = getValue(row, fieldToColumnIndex, "mileage_km");
+  const rawKeyCount = getValue(row, fieldToColumnIndex, "key_count");
+  const rawIsDeregistered = getValue(row, fieldToColumnIndex, "is_deregistered");
+  const rawDaysOnSale = getValue(row, fieldToColumnIndex, "days_on_sale");
 
-  const parsedKeyCount = parseInteger(getValue(row, fieldToColumnIndex, "key_count"));
+  const parsedKeyCount = parseKeyCount(rawKeyCount);
   const parsedHasEncumbrance = parseBoolean(getValue(row, fieldToColumnIndex, "has_encumbrance"));
-  const parsedIsDeregistered = parseBoolean(getValue(row, fieldToColumnIndex, "is_deregistered"));
+  const hasDeregistrationValue = Boolean(normalizeString(rawIsDeregistered));
 
   return {
     offer_code: offerCode,
@@ -63,17 +73,17 @@ export function normalizeVehicleOfferRow(
     model,
     modification,
     vehicle_type: normalizeString(getValue(row, fieldToColumnIndex, "vehicle_type")) || null,
-    year: parseInteger(getValue(row, fieldToColumnIndex, "year")),
-    mileage_km: parseInteger(getValue(row, fieldToColumnIndex, "mileage_km")),
+    year: parseInteger(rawYear),
+    mileage_km: parseInteger(rawMileage),
     key_count: parsedKeyCount,
     pts_type: normalizeString(getValue(row, fieldToColumnIndex, "pts_type")) || null,
     has_encumbrance: parsedHasEncumbrance,
-    is_deregistered: parsedIsDeregistered,
+    is_deregistered: hasDeregistrationValue ? true : null,
     responsible_person:
       normalizeString(getValue(row, fieldToColumnIndex, "responsible_person")) || null,
     storage_address:
       normalizeString(getValue(row, fieldToColumnIndex, "storage_address")) || null,
-    days_on_sale: parseInteger(getValue(row, fieldToColumnIndex, "days_on_sale")),
+    days_on_sale: parseInteger(rawDaysOnSale),
     price: parsePrice(getValue(row, fieldToColumnIndex, "price")),
     yandex_disk_url: normalizeUrl(getValue(row, fieldToColumnIndex, "yandex_disk_url")),
     booking_status: normalizeString(getValue(row, fieldToColumnIndex, "booking_status")) || null,
@@ -81,5 +91,9 @@ export function normalizeVehicleOfferRow(
     crm_ref: normalizeString(getValue(row, fieldToColumnIndex, "crm_ref")) || null,
     website_url: normalizeUrl(getValue(row, fieldToColumnIndex, "website_url")),
     title: buildTitle(brand, model, modification, offerCode),
+    year_present: Boolean(normalizeString(rawYear)),
+    mileage_km_present: Boolean(normalizeString(rawMileage)),
+    days_on_sale_present: Boolean(normalizeString(rawDaysOnSale)),
+    is_deregistered_present: hasDeregistrationValue,
   };
 }
