@@ -1,11 +1,22 @@
 import { randomUUID } from "node:crypto";
-import { createImportBatch, updateImportBatchSummary } from "../repositories/import-batch-repository";
+import {
+  createImportBatch,
+  getLatestSuccessfulImportBatchId,
+  updateImportBatchSummary,
+} from "../repositories/import-batch-repository";
 import { insertImportError } from "../repositories/import-error-repository";
-import { insertVehicleOffer } from "../repositories/vehicle-offer-repository";
+import {
+  appendVehicleOfferSnapshots,
+  backfillVehicleOfferSnapshotsIfEmpty,
+  listVehicleOffersByImportBatchId,
+  replaceCurrentVehicleOffers,
+  type StoredVehicleOfferRow,
+} from "../repositories/vehicle-offer-repository";
 import { normalizeVehicleOfferRow } from "../import/normalize-row";
 import { resolveColumnMap } from "../import/resolve-column-map";
 import { validateNormalizedRow } from "../import/validate-normalized-row";
 import { readExcel } from "./excel-reader";
+import type { NormalizedVehicleOfferRow } from "../import/normalize-row";
 
 interface ImportServiceInput {
   filename: string;
@@ -29,6 +40,10 @@ export interface ImportServiceResult {
     totalRows: number;
     importedRows: number;
     skippedRows: number;
+    addedRows: number;
+    updatedRows: number;
+    removedRows: number;
+    unchangedRows: number;
   };
   errors: ImportServiceErrorItem[];
 }
@@ -36,7 +51,70 @@ export interface ImportServiceResult {
 const MAX_RESPONSE_ERRORS = 100;
 const BLOCKING_VALIDATION_FIELDS = new Set(["offer_code", "brand"]);
 
+function toComparableString(value: string | null): string | null {
+  return value ?? null;
+}
+
+function mapStoredToNormalizedRow(row: StoredVehicleOfferRow): NormalizedVehicleOfferRow {
+  return {
+    offer_code: toComparableString(row.offer_code),
+    status: toComparableString(row.status),
+    brand: toComparableString(row.brand),
+    model: toComparableString(row.model),
+    modification: toComparableString(row.modification),
+    vehicle_type: toComparableString(row.vehicle_type),
+    year: row.year,
+    mileage_km: row.mileage_km,
+    key_count: row.key_count,
+    pts_type: toComparableString(row.pts_type),
+    has_encumbrance: row.has_encumbrance,
+    is_deregistered: row.is_deregistered,
+    responsible_person: toComparableString(row.responsible_person),
+    storage_address: toComparableString(row.storage_address),
+    days_on_sale: row.days_on_sale,
+    price: row.price,
+    yandex_disk_url: toComparableString(row.yandex_disk_url),
+    booking_status: toComparableString(row.booking_status),
+    external_id: toComparableString(row.external_id),
+    crm_ref: toComparableString(row.crm_ref),
+    website_url: toComparableString(row.website_url),
+    title: toComparableString(row.title) ?? "",
+  };
+}
+
+function areRowsEquivalent(
+  currentRow: NormalizedVehicleOfferRow,
+  nextRow: NormalizedVehicleOfferRow,
+): boolean {
+  return (
+    currentRow.offer_code === nextRow.offer_code &&
+    currentRow.status === nextRow.status &&
+    currentRow.brand === nextRow.brand &&
+    currentRow.model === nextRow.model &&
+    currentRow.modification === nextRow.modification &&
+    currentRow.vehicle_type === nextRow.vehicle_type &&
+    currentRow.year === nextRow.year &&
+    currentRow.mileage_km === nextRow.mileage_km &&
+    currentRow.key_count === nextRow.key_count &&
+    currentRow.pts_type === nextRow.pts_type &&
+    currentRow.has_encumbrance === nextRow.has_encumbrance &&
+    currentRow.is_deregistered === nextRow.is_deregistered &&
+    currentRow.responsible_person === nextRow.responsible_person &&
+    currentRow.storage_address === nextRow.storage_address &&
+    currentRow.days_on_sale === nextRow.days_on_sale &&
+    currentRow.price === nextRow.price &&
+    currentRow.yandex_disk_url === nextRow.yandex_disk_url &&
+    currentRow.booking_status === nextRow.booking_status &&
+    currentRow.external_id === nextRow.external_id &&
+    currentRow.crm_ref === nextRow.crm_ref &&
+    currentRow.website_url === nextRow.website_url &&
+    currentRow.title === nextRow.title
+  );
+}
+
 export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
+  backfillVehicleOfferSnapshotsIfEmpty();
+  const previousImportBatchId = getLatestSuccessfulImportBatchId();
   const importBatchId = randomUUID();
 
   createImportBatch({
@@ -49,6 +127,10 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
   let totalRows = 0;
   let importedRows = 0;
   let skippedRows = 0;
+  let addedRows = 0;
+  let updatedRows = 0;
+  let removedRows = 0;
+  let unchangedRows = 0;
   const seenOfferCodes = new Set<string>();
 
   input.logger?.info(
@@ -60,8 +142,19 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
   );
 
   try {
+    const previousRowsByOfferCode = new Map<string, NormalizedVehicleOfferRow>();
+    if (previousImportBatchId) {
+      listVehicleOffersByImportBatchId(previousImportBatchId).forEach((row) => {
+        if (!row.offer_code) {
+          return;
+        }
+        previousRowsByOfferCode.set(row.offer_code, mapStoredToNormalizedRow(row));
+      });
+    }
+
     const parsedWorkbook = readExcel(input.fileBuffer);
     totalRows = parsedWorkbook.rows.length;
+    const rowsToImport: NormalizedVehicleOfferRow[] = [];
 
     const columnMap = resolveColumnMap(parsedWorkbook.headers);
 
@@ -164,9 +257,39 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
       }
 
       seenOfferCodes.add(normalizedRow.offer_code);
-      insertVehicleOffer(importBatchId, normalizedRow);
-      importedRows += 1;
+      rowsToImport.push(normalizedRow);
     });
+
+    const nextOfferCodes = new Set(rowsToImport.map((row) => row.offer_code).filter(Boolean) as string[]);
+
+    rowsToImport.forEach((row) => {
+      if (!row.offer_code) {
+        return;
+      }
+
+      const previousRow = previousRowsByOfferCode.get(row.offer_code);
+      if (!previousRow) {
+        addedRows += 1;
+        return;
+      }
+
+      if (areRowsEquivalent(previousRow, row)) {
+        unchangedRows += 1;
+        return;
+      }
+
+      updatedRows += 1;
+    });
+
+    previousRowsByOfferCode.forEach((_row, offerCode) => {
+      if (!nextOfferCodes.has(offerCode)) {
+        removedRows += 1;
+      }
+    });
+
+    appendVehicleOfferSnapshots(importBatchId, rowsToImport);
+    replaceCurrentVehicleOffers(importBatchId, rowsToImport);
+    importedRows = rowsToImport.length;
 
     const status = errors.length > 0 ? "completed_with_errors" : "completed";
 
@@ -176,6 +299,10 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
       total_rows: totalRows,
       imported_rows: importedRows,
       skipped_rows: skippedRows,
+      added_rows: addedRows,
+      updated_rows: updatedRows,
+      removed_rows: removedRows,
+      unchanged_rows: unchangedRows,
     });
 
     return {
@@ -185,6 +312,10 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
         totalRows,
         importedRows,
         skippedRows,
+        addedRows,
+        updatedRows,
+        removedRows,
+        unchangedRows,
       },
       errors,
     };
@@ -203,6 +334,10 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
       total_rows: totalRows,
       imported_rows: importedRows,
       skipped_rows: skippedRows,
+      added_rows: addedRows,
+      updated_rows: updatedRows,
+      removed_rows: removedRows,
+      unchanged_rows: unchangedRows,
     });
 
     input.logger?.error(
@@ -221,6 +356,10 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
         total_rows: totalRows,
         imported_rows: importedRows,
         skipped_rows: skippedRows,
+        added_rows: addedRows,
+        updated_rows: updatedRows,
+        removed_rows: removedRows,
+        unchanged_rows: unchangedRows,
       },
       "import_completed",
     );

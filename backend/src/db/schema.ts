@@ -88,6 +88,14 @@ function createVehicleOfferIndexes(): void {
   `);
 }
 
+function createVehicleOfferSnapshotIndexes(): void {
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_vehicle_offer_snapshots_import_batch_id ON vehicle_offer_snapshots(import_batch_id);
+    CREATE INDEX IF NOT EXISTS idx_vehicle_offer_snapshots_offer_code ON vehicle_offer_snapshots(offer_code);
+    CREATE INDEX IF NOT EXISTS idx_vehicle_offer_snapshots_created_at ON vehicle_offer_snapshots(created_at);
+  `);
+}
+
 function ensureVehicleOffersNullableColumns(): void {
   const columns = db
     .prepare(`PRAGMA table_info(vehicle_offers)`)
@@ -145,6 +153,10 @@ export function initializeSchema(): void {
       total_rows INTEGER NOT NULL DEFAULT 0,
       imported_rows INTEGER NOT NULL DEFAULT 0,
       skipped_rows INTEGER NOT NULL DEFAULT 0,
+      added_rows INTEGER NOT NULL DEFAULT 0,
+      updated_rows INTEGER NOT NULL DEFAULT 0,
+      removed_rows INTEGER NOT NULL DEFAULT 0,
+      unchanged_rows INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -236,8 +248,28 @@ export function initializeSchema(): void {
   `);
 
   db.exec(createVehicleOffersTableSql("vehicle_offers"));
+  db.exec(createVehicleOffersTableSql("vehicle_offer_snapshots"));
   ensureVehicleOffersNullableColumns();
   createVehicleOfferIndexes();
+  createVehicleOfferSnapshotIndexes();
+
+  const importBatchColumns = db
+    .prepare(`PRAGMA table_info(import_batches)`)
+    .all() as Array<{ name: string }>;
+  const requiredImportBatchColumns = [
+    "added_rows",
+    "updated_rows",
+    "removed_rows",
+    "unchanged_rows",
+  ] as const;
+  requiredImportBatchColumns.forEach((columnName) => {
+    const hasColumn = importBatchColumns.some((column) => column.name === columnName);
+    if (!hasColumn) {
+      db.exec(
+        `ALTER TABLE import_batches ADD COLUMN ${columnName} INTEGER NOT NULL DEFAULT 0;`,
+      );
+    }
+  });
 
   const userColumns = db
     .prepare(`PRAGMA table_info(users)`)

@@ -33,6 +33,10 @@ export interface ImportBatch {
   total_rows: number;
   imported_rows: number;
   skipped_rows: number;
+  added_rows: number;
+  updated_rows: number;
+  removed_rows: number;
+  unchanged_rows: number;
   created_at: string;
 }
 
