@@ -321,34 +321,53 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
           <div className="summary-grid">
             <div className="summary-item">
-              <span>Всего</span>
-              <strong>{result.summary.totalRows}</strong>
-            </div>
-            <div className="summary-item">
-              <span>Импортировано</span>
-              <strong>{result.summary.importedRows}</strong>
-            </div>
-            <div className="summary-item">
-              <span>Пропущено</span>
-              <strong>{result.summary.skippedRows}</strong>
-            </div>
-            <div className="summary-item">
-              <span>Добавлено</span>
+              <span>Новые поступления</span>
               <strong>{result.summary.addedRows}</strong>
+              <p className="summary-item__hint">
+                новые коды предложения в текущем файле
+              </p>
             </div>
             <div className="summary-item">
-              <span>Обновлено</span>
-              <strong>{result.summary.updatedRows}</strong>
-            </div>
-            <div className="summary-item">
-              <span>Ушло</span>
+              <span>Проданная / выбывшая техника</span>
               <strong>{result.summary.removedRows}</strong>
+              <p className="summary-item__hint">
+                коды предложения, которых больше нет в новом файле
+              </p>
             </div>
             <div className="summary-item">
-              <span>Без изменений</span>
+              <span>Не загружено в витрину</span>
+              <strong>{result.summary.skippedRows}</strong>
+              <p className="summary-item__hint">
+                строки без кода предложения или марки
+              </p>
+            </div>
+            <div className="summary-item">
+              <span>Всего строк в файле</span>
+              <strong>{result.summary.totalRows}</strong>
+              <p className="summary-item__hint">
+                все строки из загруженного Excel-файла
+              </p>
+            </div>
+            <div className="summary-item">
+              <span>Загружено в витрину</span>
+              <strong>{result.summary.importedRows}</strong>
+              <p className="summary-item__hint">
+                строки, прошедшие валидацию и попавшие в актуальный сток
+              </p>
+            </div>
+            <div className="summary-item">
+              <span>Совпало с прошлой загрузкой</span>
               <strong>{result.summary.unchangedRows}</strong>
+              <p className="summary-item__hint">
+                коды предложения, которые уже были в прошлом файле
+              </p>
             </div>
           </div>
+
+          <p className="summary-note">
+            Изменения внутри существующих кодов предложения сейчас не считаются
+            отдельной метрикой, поэтому «Обновлено» не используется.
+          </p>
 
           <p>
             <Link className="summary-link" to={canAccessCatalog ? "/catalog" : "/showcase"}>
