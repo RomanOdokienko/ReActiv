@@ -1,6 +1,7 @@
 import type { CanonicalField } from "../domain/types";
 import type { ColumnMapResult } from "./resolve-column-map";
 import { buildTitle } from "./build-title";
+import { normalizeOfferCode } from "./normalize-offer-code";
 import { normalizeString } from "./normalize-string";
 import { normalizeUrl } from "./normalize-url";
 import { parseBoolean } from "./parse-boolean";
@@ -45,7 +46,7 @@ export function normalizeVehicleOfferRow(
   row: unknown[],
   fieldToColumnIndex: ColumnMapResult["fieldToColumnIndex"],
 ): NormalizedVehicleOfferRow {
-  const offerCode = normalizeString(getValue(row, fieldToColumnIndex, "offer_code")) || null;
+  const offerCode = normalizeOfferCode(getValue(row, fieldToColumnIndex, "offer_code"));
   const brand = normalizeString(getValue(row, fieldToColumnIndex, "brand")) || null;
   const model = normalizeString(getValue(row, fieldToColumnIndex, "model")) || null;
   const modification =

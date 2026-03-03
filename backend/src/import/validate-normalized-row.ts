@@ -22,6 +22,7 @@ export function validateNormalizedRow(
   const errors: RowValidationError[] = [];
 
   pushIfEmpty(errors, "offer_code", row.offer_code);
+  pushIfEmpty(errors, "brand", row.brand);
 
   if (row.year === null || row.year < 1950 || row.year > 2100) {
     errors.push({ field: "year", message: "Invalid year value" });

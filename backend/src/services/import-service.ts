@@ -34,6 +34,7 @@ export interface ImportServiceResult {
 }
 
 const MAX_RESPONSE_ERRORS = 100;
+const BLOCKING_VALIDATION_FIELDS = new Set(["offer_code", "brand"]);
 
 export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
   const importBatchId = randomUUID();
@@ -48,6 +49,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
   let totalRows = 0;
   let importedRows = 0;
   let skippedRows = 0;
+  const seenOfferCodes = new Set<string>();
 
   input.logger?.info(
     {
@@ -83,36 +85,38 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
       const rowNumber = index + 2;
       const normalizedRow = normalizeVehicleOfferRow(row, columnMap.fieldToColumnIndex);
       const validationErrors = validateNormalizedRow(normalizedRow);
+      let shouldSkipRow = false;
 
       if (validationErrors.length > 0) {
         for (const validationError of validationErrors) {
-          switch (validationError.field) {
-            case "offer_code":
-              normalizedRow.offer_code = null;
-              break;
-            case "year":
-              normalizedRow.year = null;
-              break;
-            case "mileage_km":
-              normalizedRow.mileage_km = null;
-              break;
-            case "key_count":
-              normalizedRow.key_count = null;
-              break;
-            case "has_encumbrance":
-              normalizedRow.has_encumbrance = null;
-              break;
-            case "is_deregistered":
-              normalizedRow.is_deregistered = null;
-              break;
-            case "days_on_sale":
-              normalizedRow.days_on_sale = null;
-              break;
-            case "price":
-              normalizedRow.price = null;
-              break;
-            default:
-              break;
+          if (BLOCKING_VALIDATION_FIELDS.has(validationError.field)) {
+            shouldSkipRow = true;
+          } else {
+            switch (validationError.field) {
+              case "year":
+                normalizedRow.year = null;
+                break;
+              case "mileage_km":
+                normalizedRow.mileage_km = null;
+                break;
+              case "key_count":
+                normalizedRow.key_count = null;
+                break;
+              case "has_encumbrance":
+                normalizedRow.has_encumbrance = null;
+                break;
+              case "is_deregistered":
+                normalizedRow.is_deregistered = null;
+                break;
+              case "days_on_sale":
+                normalizedRow.days_on_sale = null;
+                break;
+              case "price":
+                normalizedRow.price = null;
+                break;
+              default:
+                break;
+            }
           }
 
           insertImportError({
@@ -132,6 +136,34 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
         }
       }
 
+      if (shouldSkipRow || !normalizedRow.offer_code) {
+        skippedRows += 1;
+        return;
+      }
+
+      if (seenOfferCodes.has(normalizedRow.offer_code)) {
+        const message = "Duplicate offer_code in the import file";
+
+        insertImportError({
+          import_batch_id: importBatchId,
+          row_number: rowNumber,
+          field: "offer_code",
+          message,
+        });
+
+        if (errors.length < MAX_RESPONSE_ERRORS) {
+          errors.push({
+            rowNumber,
+            field: "offer_code",
+            message,
+          });
+        }
+
+        skippedRows += 1;
+        return;
+      }
+
+      seenOfferCodes.add(normalizedRow.offer_code);
       insertVehicleOffer(importBatchId, normalizedRow);
       importedRows += 1;
     });
