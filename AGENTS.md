@@ -32,3 +32,16 @@ This file defines the default collaboration workflow for Codex in this repositor
    - commit hash,
    - changed files,
    - next action for user (if needed).
+
+## Architecture Checklist (Mandatory Before Non-trivial Changes)
+
+Before implementing schema/import/access changes, check:
+
+1. `docs/ARCHITECTURE_GUARDRAILS.md`
+2. `docs/IMPORT_CONTRACT.md`
+
+If requested work conflicts with those docs:
+
+- call out the conflict,
+- propose ADR/update first,
+- then implement in small safe steps.
