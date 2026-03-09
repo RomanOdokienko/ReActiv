@@ -1086,8 +1086,11 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
 
   function getVehicleTypeLabel(value: string): string {
     const normalized = value.trim().toLowerCase();
-    if (normalized === "специализированный транспорт") {
-      return "СПЕЦТРАНСПОРТ";
+    if (
+      normalized === "специализированный транспорт" ||
+      normalized === "спецтранспорт"
+    ) {
+      return "Спецтехника";
     }
 
     return value;

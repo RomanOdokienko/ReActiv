@@ -4,6 +4,7 @@ import { buildTitle } from "./build-title";
 import { normalizeOfferCode } from "./normalize-offer-code";
 import { normalizeString } from "./normalize-string";
 import { normalizeUrl } from "./normalize-url";
+import { normalizeVehicleType } from "./normalize-vehicle-type";
 import { parseBoolean } from "./parse-boolean";
 import { parseInteger } from "./parse-integer";
 import { parseKeyCount } from "./parse-key-count";
@@ -80,7 +81,7 @@ export function normalizeVehicleOfferRow(
     brand,
     model,
     modification,
-    vehicle_type: normalizeString(getValue(row, fieldToColumnIndex, "vehicle_type")) || null,
+    vehicle_type: normalizeVehicleType(getValue(row, fieldToColumnIndex, "vehicle_type")),
     year: parseInteger(rawYear),
     mileage_km: parseInteger(rawMileage),
     key_count: parsedKeyCount,

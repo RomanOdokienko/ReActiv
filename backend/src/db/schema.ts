@@ -112,6 +112,50 @@ function ensureTenantColumn(tableName: string): void {
   }
 }
 
+function normalizeVehicleTypeLabels(tableName: "vehicle_offers" | "vehicle_offer_snapshots"): void {
+  const updates: Array<{ target: string; values: string[] }> = [
+    { target: "Автобусы", values: ["Автобус", "Автобусы"] },
+    { target: "Грузовая техника", values: ["Грузовой", "Грузовой транспорт"] },
+    { target: "Легковая техника", values: ["Легковой", "Легковой транспорт"] },
+    {
+      target: "Легкий коммерческий транспорт",
+      values: ["ЛКТ", "Легкий коммерческий транспорт"],
+    },
+    { target: "Мототехника", values: ["Мототехника", "Мототранспорт"] },
+    {
+      target: "Прицепная техника",
+      values: ["Прицеп", "Полуприцеп", "Полуприцеп бортовой", "Прицепная техника"],
+    },
+    {
+      target: "Спецтехника",
+      values: [
+        "Спецтранспорт",
+        "Спецтехника",
+        "Самоходная машина",
+        "Трактор",
+        "Экскаватор-погрузчик",
+        "Оборудование",
+        "Маломерные суда",
+      ],
+    },
+  ];
+
+  const statement = db.prepare(
+    `UPDATE ${tableName} SET vehicle_type = ? WHERE vehicle_type = ?`,
+  );
+
+  db.transaction(() => {
+    updates.forEach((rule) => {
+      rule.values.forEach((sourceValue) => {
+        if (sourceValue === rule.target) {
+          return;
+        }
+        statement.run(rule.target, sourceValue);
+      });
+    });
+  })();
+}
+
 function ensureVehicleOffersNullableColumns(): void {
   const columns = db
     .prepare(`PRAGMA table_info(vehicle_offers)`)
@@ -276,6 +320,8 @@ export function initializeSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_import_batches_tenant_created_at ON import_batches(tenant_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_import_errors_tenant_created_at ON import_errors(tenant_id, created_at);
   `);
+  normalizeVehicleTypeLabels("vehicle_offers");
+  normalizeVehicleTypeLabels("vehicle_offer_snapshots");
   createVehicleOfferIndexes();
   createVehicleOfferSnapshotIndexes();
 
