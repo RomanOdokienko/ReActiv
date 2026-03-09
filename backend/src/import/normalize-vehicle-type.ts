@@ -13,27 +13,27 @@ export function normalizeVehicleType(rawValue: unknown): string | null {
   const lower = normalized.toLowerCase();
 
   if (includesAny(lower, ["автобус"])) {
-    return "Автобусы";
+    return "АВТОБУС";
   }
 
   if (includesAny(lower, ["грузов"])) {
-    return "Грузовая техника";
+    return "ГРУЗОВОЙ";
   }
 
   if (includesAny(lower, ["легков"])) {
-    return "Легковая техника";
+    return "ЛЕГКОВОЙ";
   }
 
   if (includesAny(lower, ["лкт", "легкий коммерчес"])) {
-    return "Легкий коммерческий транспорт";
+    return "ЛКТ";
   }
 
   if (includesAny(lower, ["мото"])) {
-    return "Мототехника";
+    return "МОТОТЕХНИКА";
   }
 
   if (includesAny(lower, ["прицеп"])) {
-    return "Прицепная техника";
+    return "ПРИЦЕП";
   }
 
   if (
@@ -47,9 +47,8 @@ export function normalizeVehicleType(rawValue: unknown): string | null {
       "суд",
     ])
   ) {
-    return "Спецтехника";
+    return "СПЕЦТЕХНИКА";
   }
 
-  return normalized;
+  return normalized.toUpperCase();
 }
-

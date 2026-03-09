@@ -1,4 +1,5 @@
 import { db } from "./connection";
+import { normalizeVehicleType } from "../import/normalize-vehicle-type";
 
 const VEHICLE_OFFER_COLUMNS = [
   "id",
@@ -113,45 +114,21 @@ function ensureTenantColumn(tableName: string): void {
 }
 
 function normalizeVehicleTypeLabels(tableName: "vehicle_offers" | "vehicle_offer_snapshots"): void {
-  const updates: Array<{ target: string; values: string[] }> = [
-    { target: "Автобусы", values: ["Автобус", "Автобусы"] },
-    { target: "Грузовая техника", values: ["Грузовой", "Грузовой транспорт"] },
-    { target: "Легковая техника", values: ["Легковой", "Легковой транспорт"] },
-    {
-      target: "Легкий коммерческий транспорт",
-      values: ["ЛКТ", "Легкий коммерческий транспорт"],
-    },
-    { target: "Мототехника", values: ["Мототехника", "Мототранспорт"] },
-    {
-      target: "Прицепная техника",
-      values: ["Прицеп", "Полуприцеп", "Полуприцеп бортовой", "Прицепная техника"],
-    },
-    {
-      target: "Спецтехника",
-      values: [
-        "Спецтранспорт",
-        "Спецтехника",
-        "Самоходная машина",
-        "Трактор",
-        "Экскаватор-погрузчик",
-        "Оборудование",
-        "Маломерные суда",
-      ],
-    },
-  ];
+  const rows = db
+    .prepare(`SELECT id, vehicle_type FROM ${tableName}`)
+    .all() as Array<{ id: number; vehicle_type: string }>;
 
-  const statement = db.prepare(
-    `UPDATE ${tableName} SET vehicle_type = ? WHERE vehicle_type = ?`,
+  const update = db.prepare(
+    `UPDATE ${tableName} SET vehicle_type = ? WHERE id = ?`,
   );
 
   db.transaction(() => {
-    updates.forEach((rule) => {
-      rule.values.forEach((sourceValue) => {
-        if (sourceValue === rule.target) {
-          return;
-        }
-        statement.run(rule.target, sourceValue);
-      });
+    rows.forEach((row) => {
+      const normalized = normalizeVehicleType(row.vehicle_type);
+      if (!normalized || normalized === row.vehicle_type) {
+        return;
+      }
+      update.run(normalized, row.id);
     });
   })();
 }
