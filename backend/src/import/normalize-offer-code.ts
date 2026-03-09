@@ -12,3 +12,8 @@ export function normalizeOfferCode(rawValue: unknown): string | null {
 
   return normalized;
 }
+
+export function normalizeOfferCodePreserve(rawValue: unknown): string | null {
+  const normalized = normalizeString(rawValue);
+  return normalized || null;
+}

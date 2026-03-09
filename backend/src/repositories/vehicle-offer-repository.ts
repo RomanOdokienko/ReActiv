@@ -4,6 +4,7 @@ import type { NormalizedVehicleOfferRow } from "../import/normalize-row";
 export interface StoredVehicleOfferRow {
   id: number;
   import_batch_id: string;
+  tenant_id: string;
   offer_code: string | null;
   status: string | null;
   brand: string | null;
@@ -51,11 +52,13 @@ function insertVehicleOfferIntoTable(
   tableName: "vehicle_offers" | "vehicle_offer_snapshots",
   importBatchId: string,
   row: NormalizedVehicleOfferRow,
+  tenantId: string,
 ): void {
   db.prepare(
     `
       INSERT INTO ${tableName} (
         import_batch_id,
+        tenant_id,
         offer_code,
         status,
         brand,
@@ -80,6 +83,7 @@ function insertVehicleOfferIntoTable(
         title
       ) VALUES (
         @import_batch_id,
+        @tenant_id,
         @offer_code,
         @status,
         @brand,
@@ -106,6 +110,7 @@ function insertVehicleOfferIntoTable(
     `,
   ).run({
     import_batch_id: importBatchId,
+    tenant_id: tenantId,
     offer_code: toDbText(row.offer_code),
     status: toDbText(row.status),
     brand: toDbText(row.brand),
@@ -134,15 +139,22 @@ function insertVehicleOfferIntoTable(
 export function insertVehicleOffer(
   importBatchId: string,
   row: NormalizedVehicleOfferRow,
+  tenantId: string,
 ): void {
-  insertVehicleOfferIntoTable("vehicle_offers", importBatchId, row);
+  insertVehicleOfferIntoTable("vehicle_offers", importBatchId, row, tenantId);
 }
 
 export function insertVehicleOfferSnapshot(
   importBatchId: string,
   row: NormalizedVehicleOfferRow,
+  tenantId: string,
 ): void {
-  insertVehicleOfferIntoTable("vehicle_offer_snapshots", importBatchId, row);
+  insertVehicleOfferIntoTable(
+    "vehicle_offer_snapshots",
+    importBatchId,
+    row,
+    tenantId,
+  );
 }
 
 function mapDbText(value: string): string | null {
@@ -162,6 +174,7 @@ function mapDbBoolean(value: number | null): boolean | null {
 function mapStoredRow(row: {
   id: number;
   import_batch_id: string;
+  tenant_id: string;
   offer_code: string;
   status: string;
   brand: string;
@@ -189,6 +202,7 @@ function mapStoredRow(row: {
   return {
     id: row.id,
     import_batch_id: row.import_batch_id,
+    tenant_id: row.tenant_id,
     offer_code: mapDbText(row.offer_code),
     status: mapDbText(row.status),
     brand: mapDbText(row.brand),
@@ -215,17 +229,32 @@ function mapStoredRow(row: {
   };
 }
 
-export function listVehicleOffersByImportBatchId(importBatchId: string): StoredVehicleOfferRow[] {
-  const rows = db
-    .prepare(
-      `
-        SELECT *
-        FROM vehicle_offers
-        WHERE import_batch_id = ?
-        ORDER BY id ASC
-      `,
-    )
-    .all(importBatchId) as Array<Parameters<typeof mapStoredRow>[0]>;
+export function listVehicleOffersByImportBatchId(
+  importBatchId: string,
+  tenantId?: string,
+): StoredVehicleOfferRow[] {
+  const rows = tenantId
+    ? (db
+        .prepare(
+          `
+            SELECT *
+            FROM vehicle_offers
+            WHERE import_batch_id = ?
+              AND tenant_id = ?
+            ORDER BY id ASC
+          `,
+        )
+        .all(importBatchId, tenantId) as Array<Parameters<typeof mapStoredRow>[0]>)
+    : (db
+        .prepare(
+          `
+            SELECT *
+            FROM vehicle_offers
+            WHERE import_batch_id = ?
+            ORDER BY id ASC
+          `,
+        )
+        .all(importBatchId) as Array<Parameters<typeof mapStoredRow>[0]>);
 
   return rows.map(mapStoredRow);
 }
@@ -233,13 +262,14 @@ export function listVehicleOffersByImportBatchId(importBatchId: string): StoredV
 export function replaceCurrentVehicleOffers(
   importBatchId: string,
   rows: NormalizedVehicleOfferRow[],
+  tenantId: string,
 ): void {
-  const deleteCurrentOffers = db.prepare(`DELETE FROM vehicle_offers`);
+  const deleteCurrentOffers = db.prepare(`DELETE FROM vehicle_offers WHERE tenant_id = ?`);
 
   db.transaction(() => {
-    deleteCurrentOffers.run();
+    deleteCurrentOffers.run(tenantId);
     rows.forEach((row) => {
-      insertVehicleOffer(importBatchId, row);
+      insertVehicleOffer(importBatchId, row, tenantId);
     });
   })();
 }
@@ -247,10 +277,11 @@ export function replaceCurrentVehicleOffers(
 export function appendVehicleOfferSnapshots(
   importBatchId: string,
   rows: NormalizedVehicleOfferRow[],
+  tenantId: string,
 ): void {
   db.transaction(() => {
     rows.forEach((row) => {
-      insertVehicleOfferSnapshot(importBatchId, row);
+      insertVehicleOfferSnapshot(importBatchId, row, tenantId);
     });
   })();
 }
@@ -267,6 +298,7 @@ export function backfillVehicleOfferSnapshotsIfEmpty(): void {
   db.exec(`
     INSERT INTO vehicle_offer_snapshots (
       import_batch_id,
+      tenant_id,
       offer_code,
       status,
       brand,
@@ -293,6 +325,7 @@ export function backfillVehicleOfferSnapshotsIfEmpty(): void {
     )
     SELECT
       import_batch_id,
+      COALESCE(tenant_id, 'gpb'),
       offer_code,
       status,
       brand,
@@ -320,17 +353,32 @@ export function backfillVehicleOfferSnapshotsIfEmpty(): void {
   `);
 }
 
-export function listVehicleOfferSnapshotCodesByImportBatchId(importBatchId: string): string[] {
-  const rows = db
-    .prepare(
-      `
-        SELECT DISTINCT offer_code
-        FROM vehicle_offer_snapshots
-        WHERE import_batch_id = ?
-          AND TRIM(COALESCE(offer_code, '')) != ''
-      `,
-    )
-    .all(importBatchId) as Array<{ offer_code: string }>;
+export function listVehicleOfferSnapshotCodesByImportBatchId(
+  importBatchId: string,
+  tenantId?: string,
+): string[] {
+  const rows = tenantId
+    ? (db
+        .prepare(
+          `
+            SELECT DISTINCT offer_code
+            FROM vehicle_offer_snapshots
+            WHERE import_batch_id = ?
+              AND tenant_id = ?
+              AND TRIM(COALESCE(offer_code, '')) != ''
+          `,
+        )
+        .all(importBatchId, tenantId) as Array<{ offer_code: string }>)
+    : (db
+        .prepare(
+          `
+            SELECT DISTINCT offer_code
+            FROM vehicle_offer_snapshots
+            WHERE import_batch_id = ?
+              AND TRIM(COALESCE(offer_code, '')) != ''
+          `,
+        )
+        .all(importBatchId) as Array<{ offer_code: string }>);
 
   return rows.map((row) => row.offer_code);
 }

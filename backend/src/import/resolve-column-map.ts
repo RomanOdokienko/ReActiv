@@ -7,12 +7,15 @@ export interface ColumnMapResult {
   missingRequiredFields: CanonicalField[];
 }
 
-export function resolveColumnMap(headers: unknown[]): ColumnMapResult {
+export function resolveColumnMap(
+  headers: unknown[],
+  headerAliases: Record<CanonicalField, string[]> = HEADER_ALIASES,
+): ColumnMapResult {
   const normalizedHeaders = headers.map((header) => normalizeHeader(header));
   const fieldToColumnIndex: Partial<Record<CanonicalField, number>> = {};
 
   for (const field of REQUIRED_IMPORT_FIELDS) {
-    const aliases = HEADER_ALIASES[field].map((alias) => normalizeHeader(alias));
+    const aliases = headerAliases[field].map((alias) => normalizeHeader(alias));
     const columnIndex = normalizedHeaders.findIndex((header) =>
       aliases.includes(header),
     );

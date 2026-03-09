@@ -13,6 +13,7 @@ import type {
   CatalogItemsResponse,
   CatalogSummaryResponse,
   ImportResponse,
+  ImportTenantId,
   PlatformMode,
   PlatformModeResponse,
   ResetAdminPasswordResponse,
@@ -473,16 +474,22 @@ export async function updateAdminUserMeta(
   }
 }
 
-export async function uploadImport(file: File): Promise<ImportResponse> {
+export async function uploadImport(
+  file: File,
+  tenantId: ImportTenantId,
+): Promise<ImportResponse> {
   const formData = new FormData();
   formData.append("file", file);
 
   try {
-    const response = await fetch(buildUrl("/imports"), {
+    const response = await fetch(
+      buildUrl(`/imports?tenantId=${encodeURIComponent(tenantId)}`),
+      {
       method: "POST",
       credentials: "include",
       body: formData,
-    });
+      },
+    );
 
     if (!response.ok) {
       let errorMessage = "Загрузка не удалась";
@@ -508,8 +515,14 @@ export async function uploadImport(file: File): Promise<ImportResponse> {
 
 export async function getImportBatches(
   limit = 20,
+  tenantId?: ImportTenantId,
 ): Promise<ImportBatchesResponse> {
-  const response = await fetch(buildUrl(`/imports?limit=${limit}`), {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (tenantId) {
+    params.set("tenantId", tenantId);
+  }
+
+  const response = await fetch(buildUrl(`/imports?${params.toString()}`), {
     credentials: "include",
   });
   if (!response.ok) {
@@ -531,9 +544,17 @@ export async function getImportBatchDetails(
   return (await response.json()) as ImportBatchDetailsResponse;
 }
 
-export async function clearImports(): Promise<ClearImportsResponse> {
+export async function clearImports(
+  tenantId?: ImportTenantId,
+): Promise<ClearImportsResponse> {
   try {
-    const response = await fetch(buildUrl("/imports"), {
+    const params = new URLSearchParams();
+    if (tenantId) {
+      params.set("tenantId", tenantId);
+    }
+    const query = params.toString();
+
+    const response = await fetch(buildUrl(`/imports${query ? `?${query}` : ""}`), {
       method: "DELETE",
       credentials: "include",
     });

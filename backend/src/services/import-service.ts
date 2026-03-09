@@ -12,6 +12,11 @@ import {
   replaceCurrentVehicleOffers,
   type StoredVehicleOfferRow,
 } from "../repositories/vehicle-offer-repository";
+import { HEADER_ALIASES } from "../import/header-aliases";
+import {
+  createImportTenantProfiles,
+  type ImportTenantId,
+} from "../import/import-tenants";
 import { normalizeVehicleOfferRow } from "../import/normalize-row";
 import { resolveColumnMap } from "../import/resolve-column-map";
 import { validateNormalizedRow } from "../import/validate-normalized-row";
@@ -21,6 +26,7 @@ import type { NormalizedVehicleOfferRow } from "../import/normalize-row";
 interface ImportServiceInput {
   filename: string;
   fileBuffer: Buffer;
+  tenantId: ImportTenantId;
   logger?: {
     info: (context: Record<string, unknown>, message: string) => void;
     error: (context: Record<string, unknown>, message: string) => void;
@@ -35,6 +41,7 @@ interface ImportServiceErrorItem {
 
 export interface ImportServiceResult {
   importBatchId: string;
+  tenantId: ImportTenantId;
   status: "completed" | "completed_with_errors" | "failed";
   summary: {
     totalRows: number;
@@ -50,6 +57,7 @@ export interface ImportServiceResult {
 
 const MAX_RESPONSE_ERRORS = 100;
 const BLOCKING_VALIDATION_FIELDS = new Set(["offer_code", "brand"]);
+const IMPORT_TENANT_PROFILES = createImportTenantProfiles(HEADER_ALIASES);
 
 function toComparableString(value: string | null): string | null {
   return value ?? null;
@@ -88,13 +96,16 @@ function mapStoredToNormalizedRow(row: StoredVehicleOfferRow): NormalizedVehicle
 }
 
 export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
+  const tenantProfile = IMPORT_TENANT_PROFILES[input.tenantId];
+
   backfillVehicleOfferSnapshotsIfEmpty();
-  const previousImportBatchId = getLatestSuccessfulImportBatchId();
+  const previousImportBatchId = getLatestSuccessfulImportBatchId(tenantProfile.id);
   const importBatchId = randomUUID();
 
   createImportBatch({
     id: importBatchId,
     filename: input.filename,
+    tenant_id: tenantProfile.id,
     status: "failed",
   });
 
@@ -111,6 +122,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
   input.logger?.info(
     {
       import_batch_id: importBatchId,
+      tenant_id: tenantProfile.id,
       filename: input.filename,
     },
     "import_started",
@@ -119,7 +131,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
   try {
     const previousRowsByOfferCode = new Map<string, NormalizedVehicleOfferRow>();
     if (previousImportBatchId) {
-      listVehicleOffersByImportBatchId(previousImportBatchId).forEach((row) => {
+      listVehicleOffersByImportBatchId(previousImportBatchId, tenantProfile.id).forEach((row) => {
         if (!row.offer_code) {
           return;
         }
@@ -131,13 +143,17 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
     totalRows = parsedWorkbook.rows.length;
     const rowsToImport: NormalizedVehicleOfferRow[] = [];
 
-    const columnMap = resolveColumnMap(parsedWorkbook.headers);
+    const columnMap = resolveColumnMap(
+      parsedWorkbook.headers,
+      tenantProfile.headerAliases,
+    );
 
     if (columnMap.missingRequiredFields.length > 0) {
       for (const missingField of columnMap.missingRequiredFields) {
         const message = `Missing required column: ${missingField}. Values will be imported as empty.`;
         insertImportError({
           import_batch_id: importBatchId,
+          tenant_id: tenantProfile.id,
           row_number: 1,
           field: missingField,
           message,
@@ -151,7 +167,9 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
 
     parsedWorkbook.rows.forEach((row, index) => {
       const rowNumber = index + 2;
-      const normalizedRow = normalizeVehicleOfferRow(row, columnMap.fieldToColumnIndex);
+      const normalizedRow = normalizeVehicleOfferRow(row, columnMap.fieldToColumnIndex, {
+        offerCodeNormalizer: tenantProfile.offerCodeNormalizer,
+      });
       const validationErrors = validateNormalizedRow(normalizedRow);
       const blockingErrors = validationErrors.filter((validationError) =>
         BLOCKING_VALIDATION_FIELDS.has(validationError.field),
@@ -167,6 +185,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
         for (const validationError of blockingErrors) {
           insertImportError({
             import_batch_id: importBatchId,
+            tenant_id: tenantProfile.id,
             row_number: rowNumber,
             field: validationError.field,
             message: validationError.message,
@@ -195,6 +214,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
 
         insertImportError({
           import_batch_id: importBatchId,
+          tenant_id: tenantProfile.id,
           row_number: rowNumber,
           field: "offer_code",
           message,
@@ -242,6 +262,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
 
           insertImportError({
             import_batch_id: importBatchId,
+            tenant_id: tenantProfile.id,
             row_number: rowNumber,
             field: validationError.field,
             message: validationError.message,
@@ -283,8 +304,8 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
       }
     });
 
-    appendVehicleOfferSnapshots(importBatchId, rowsToImport);
-    replaceCurrentVehicleOffers(importBatchId, rowsToImport);
+    appendVehicleOfferSnapshots(importBatchId, rowsToImport, tenantProfile.id);
+    replaceCurrentVehicleOffers(importBatchId, rowsToImport, tenantProfile.id);
     importedRows = rowsToImport.length;
 
     const status = errors.length > 0 ? "completed_with_errors" : "completed";
@@ -303,6 +324,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
 
     return {
       importBatchId,
+      tenantId: tenantProfile.id,
       status,
       summary: {
         totalRows,
@@ -319,6 +341,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
     const message = error instanceof Error ? error.message : "Unknown import error";
     insertImportError({
       import_batch_id: importBatchId,
+      tenant_id: tenantProfile.id,
       row_number: 0,
       field: null,
       message,
@@ -339,6 +362,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
     input.logger?.error(
       {
         import_batch_id: importBatchId,
+        tenant_id: tenantProfile.id,
         error: message,
       },
       "import_failed",
@@ -349,6 +373,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
     input.logger?.info(
       {
         import_batch_id: importBatchId,
+        tenant_id: tenantProfile.id,
         total_rows: totalRows,
         imported_rows: importedRows,
         skipped_rows: skippedRows,

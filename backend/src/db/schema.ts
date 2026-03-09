@@ -33,6 +33,7 @@ function createVehicleOffersTableSql(tableName: string): string {
     CREATE TABLE IF NOT EXISTS ${tableName} (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       import_batch_id TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'gpb',
       offer_code TEXT NOT NULL,
       status TEXT NOT NULL,
       brand TEXT NOT NULL,
@@ -63,6 +64,8 @@ function createVehicleOffersTableSql(tableName: string): string {
 
 function createVehicleOfferIndexes(): void {
   db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_vehicle_offers_tenant_id ON vehicle_offers(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_vehicle_offers_tenant_offer_code ON vehicle_offers(tenant_id, offer_code);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_offer_code ON vehicle_offers(offer_code);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_status ON vehicle_offers(status);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_brand ON vehicle_offers(brand);
@@ -90,10 +93,23 @@ function createVehicleOfferIndexes(): void {
 
 function createVehicleOfferSnapshotIndexes(): void {
   db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_vehicle_offer_snapshots_tenant_id ON vehicle_offer_snapshots(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_vehicle_offer_snapshots_tenant_offer_code ON vehicle_offer_snapshots(tenant_id, offer_code);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offer_snapshots_import_batch_id ON vehicle_offer_snapshots(import_batch_id);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offer_snapshots_offer_code ON vehicle_offer_snapshots(offer_code);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offer_snapshots_created_at ON vehicle_offer_snapshots(created_at);
   `);
+}
+
+function ensureTenantColumn(tableName: string): void {
+  const columns = db
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
+
+  const hasTenantColumn = columns.some((column) => column.name === "tenant_id");
+  if (!hasTenantColumn) {
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'gpb';`);
+  }
 }
 
 function ensureVehicleOffersNullableColumns(): void {
@@ -148,6 +164,7 @@ export function initializeSchema(): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS import_batches (
       id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL DEFAULT 'gpb',
       filename TEXT NOT NULL,
       status TEXT NOT NULL,
       total_rows INTEGER NOT NULL DEFAULT 0,
@@ -163,6 +180,7 @@ export function initializeSchema(): void {
     CREATE TABLE IF NOT EXISTS import_errors (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       import_batch_id TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'gpb',
       row_number INTEGER NOT NULL,
       field TEXT,
       message TEXT NOT NULL,
@@ -250,6 +268,14 @@ export function initializeSchema(): void {
   db.exec(createVehicleOffersTableSql("vehicle_offers"));
   db.exec(createVehicleOffersTableSql("vehicle_offer_snapshots"));
   ensureVehicleOffersNullableColumns();
+  ensureTenantColumn("import_batches");
+  ensureTenantColumn("import_errors");
+  ensureTenantColumn("vehicle_offers");
+  ensureTenantColumn("vehicle_offer_snapshots");
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_import_batches_tenant_created_at ON import_batches(tenant_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_import_errors_tenant_created_at ON import_errors(tenant_id, created_at);
+  `);
   createVehicleOfferIndexes();
   createVehicleOfferSnapshotIndexes();
 
@@ -257,6 +283,7 @@ export function initializeSchema(): void {
     .prepare(`PRAGMA table_info(import_batches)`)
     .all() as Array<{ name: string }>;
   const requiredImportBatchColumns = [
+    "tenant_id",
     "added_rows",
     "updated_rows",
     "removed_rows",
@@ -265,9 +292,15 @@ export function initializeSchema(): void {
   requiredImportBatchColumns.forEach((columnName) => {
     const hasColumn = importBatchColumns.some((column) => column.name === columnName);
     if (!hasColumn) {
-      db.exec(
-        `ALTER TABLE import_batches ADD COLUMN ${columnName} INTEGER NOT NULL DEFAULT 0;`,
-      );
+      if (columnName === "tenant_id") {
+        db.exec(
+          `ALTER TABLE import_batches ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'gpb';`,
+        );
+      } else {
+        db.exec(
+          `ALTER TABLE import_batches ADD COLUMN ${columnName} INTEGER NOT NULL DEFAULT 0;`,
+        );
+      }
     }
   });
 

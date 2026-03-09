@@ -1,5 +1,6 @@
 export type UserRole = "admin" | "manager" | "stock_owner";
 export type PlatformMode = "closed" | "open";
+export type ImportTenantId = "gpb" | "reso";
 
 export interface ImportErrorItem {
   rowNumber: number;
@@ -45,6 +46,7 @@ export interface ResetAdminPasswordResponse {
 
 export interface ImportResponse {
   importBatchId: string;
+  tenantId: ImportTenantId;
   status: "completed" | "completed_with_errors" | "failed";
   summary: {
     totalRows: number;
@@ -60,6 +62,7 @@ export interface ImportResponse {
 
 export interface ImportBatchListItem {
   id: string;
+  tenant_id: ImportTenantId;
   filename: string;
   status: "completed" | "completed_with_errors" | "failed";
   total_rows: number;
@@ -79,6 +82,7 @@ export interface ImportBatchesResponse {
 export interface ImportErrorRecord {
   id: number;
   import_batch_id: string;
+  tenant_id: ImportTenantId;
   row_number: number;
   field: string | null;
   message: string;

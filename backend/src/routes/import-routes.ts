@@ -4,6 +4,7 @@ import {
   getImportBatchById,
   listImportBatches,
 } from "../repositories/import-batch-repository";
+import { parseImportTenantId } from "../import/import-tenants";
 import { getImportErrorsByBatchId } from "../repositories/import-error-repository";
 import { importWorkbook } from "../services/import-service";
 
@@ -34,13 +35,29 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
         ? Math.min(Math.floor(parsedLimit), 100)
         : 20;
 
-    const imports = listImportBatches(limit);
+    const tenantId = parseImportTenantId(
+      (request.query as { tenantId?: unknown }).tenantId,
+    );
+
+    if ((request.query as { tenantId?: unknown }).tenantId !== undefined && !tenantId) {
+      return reply.code(400).send({ message: "Invalid tenantId" });
+    }
+
+    const imports = listImportBatches(limit, tenantId ?? undefined);
     return reply.code(200).send({ items: imports });
   });
 
   app.post("/api/imports", async (request, reply) => {
     if (rejectIfNoImportAccess(request, reply)) {
       return;
+    }
+
+    const tenantIdRaw = (request.query as { tenantId?: unknown }).tenantId;
+    const parsedTenantId = parseImportTenantId(tenantIdRaw);
+    const tenantId = parsedTenantId ?? "gpb";
+
+    if (tenantIdRaw !== undefined && !parsedTenantId) {
+      return reply.code(400).send({ message: "Invalid tenantId" });
     }
 
     const file = await request.file();
@@ -70,6 +87,7 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
       const result = importWorkbook({
         filename: file.filename,
         fileBuffer,
+        tenantId,
         logger: app.log,
       });
       return reply.code(200).send(result);
@@ -92,18 +110,28 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
       return;
     }
 
+    const tenantIdRaw = (_request.query as { tenantId?: unknown }).tenantId;
+    const tenantId = parseImportTenantId(tenantIdRaw);
+
+    if (tenantIdRaw !== undefined && !tenantId) {
+      return reply.code(400).send({ message: "Invalid tenantId" });
+    }
+
     try {
-      const deleted = clearImportedData();
+      const deleted = clearImportedData(tenantId ?? undefined);
 
       app.log.info(
         {
+          tenant_id: tenantId ?? "all",
           ...deleted,
         },
         "imports_cleared",
       );
 
       return reply.code(200).send({
-        message: "All imported data deleted",
+        message: tenantId
+          ? `Imported data deleted for tenant ${tenantId}`
+          : "All imported data deleted",
         ...deleted,
       });
     } catch (error) {

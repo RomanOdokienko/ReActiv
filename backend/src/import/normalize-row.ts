@@ -48,11 +48,17 @@ function getValue(
   return columnIndex === undefined ? null : row[columnIndex];
 }
 
+interface NormalizeVehicleOfferRowOptions {
+  offerCodeNormalizer?: (rawValue: unknown) => string | null;
+}
+
 export function normalizeVehicleOfferRow(
   row: unknown[],
   fieldToColumnIndex: ColumnMapResult["fieldToColumnIndex"],
+  options: NormalizeVehicleOfferRowOptions = {},
 ): NormalizedVehicleOfferRow {
-  const offerCode = normalizeOfferCode(getValue(row, fieldToColumnIndex, "offer_code"));
+  const offerCodeNormalizer = options.offerCodeNormalizer ?? normalizeOfferCode;
+  const offerCode = offerCodeNormalizer(getValue(row, fieldToColumnIndex, "offer_code"));
   const brand = normalizeString(getValue(row, fieldToColumnIndex, "brand")) || null;
   const model = normalizeString(getValue(row, fieldToColumnIndex, "model")) || null;
   const modification =

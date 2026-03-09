@@ -11,6 +11,7 @@ import type {
   ImportBatchDetailsResponse,
   ImportBatchListItem,
   ImportResponse,
+  ImportTenantId,
 } from "../types/api";
 
 interface UploadPageProps {
@@ -21,6 +22,15 @@ interface ImportWarningSummaryItem {
   field: string | null;
   summary: string;
   count: number;
+}
+
+const IMPORT_TENANTS: Array<{ id: ImportTenantId; label: string }> = [
+  { id: "gpb", label: "ГПБ Лизинг" },
+  { id: "reso", label: "РЕСО Лизинг" },
+];
+
+function getTenantLabel(tenantId: ImportTenantId): string {
+  return IMPORT_TENANTS.find((item) => item.id === tenantId)?.label ?? tenantId;
 }
 
 function isCriticalImportError(error: ImportResponse["errors"][number]): boolean {
@@ -54,6 +64,7 @@ function mapBatchDetailsToImportResponse(
 ): ImportResponse {
   return {
     importBatchId: details.importBatch.id,
+    tenantId: details.importBatch.tenant_id,
     status: details.importBatch.status,
     summary: {
       totalRows: details.importBatch.total_rows,
@@ -174,6 +185,7 @@ function buildWarningSummary(
 
 export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [tenantId, setTenantId] = useState<ImportTenantId>("gpb");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,7 +205,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   async function loadHistory() {
     try {
       setHistoryError(null);
-      const response = await getImportBatches(20);
+      const response = await getImportBatches(20, tenantId);
       setHistory(response.items);
       const latestImportId = response.items[0]?.id;
 
@@ -211,7 +223,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
   useEffect(() => {
     void loadHistory();
-  }, []);
+  }, [tenantId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -226,7 +238,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     setResult(null);
 
     try {
-      const response = await uploadImport(file);
+      const response = await uploadImport(file, tenantId);
       setResult(response);
       if (response.summary.importedRows > 0) {
         setSuccess(
@@ -263,7 +275,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     setSuccess(null);
 
     try {
-      const response = await clearImports();
+      const response = await clearImports(tenantId);
       setResult(null);
       await loadHistory();
       setSuccess(
@@ -284,6 +296,22 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     <section>
       <h1>Загрузите excel-файл с лотами</h1>
       <form className="panel upload-form" onSubmit={handleSubmit}>
+        <label htmlFor="tenantIdSelect">Лизингодатель</label>
+        <select
+          id="tenantIdSelect"
+          value={tenantId}
+          onChange={(event) => {
+            setTenantId(event.target.value as ImportTenantId);
+          }}
+          disabled={isSubmitting || isClearing}
+        >
+          {IMPORT_TENANTS.map((tenant) => (
+            <option key={tenant.id} value={tenant.id}>
+              {tenant.label}
+            </option>
+          ))}
+        </select>
+
         <input
           type="file"
           accept=".xlsx"
@@ -320,6 +348,13 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
           </div>
 
           <div className="summary-grid">
+            <div className="summary-item">
+              <span>Лизингодатель</span>
+              <strong>{getTenantLabel(result.tenantId)}</strong>
+              <p className="summary-item__hint">
+                профиль, по которому разобран текущий файл
+              </p>
+            </div>
             <div className="summary-item">
               <span>Новые поступления</span>
               <strong>{result.summary.addedRows}</strong>
@@ -529,6 +564,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
               <thead>
                 <tr>
                   <th>Дата</th>
+                  <th>Лизингодатель</th>
                   <th>Файл</th>
                   <th>Статус</th>
                   <th>Всего</th>
@@ -544,6 +580,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
                 {history.map((item) => (
                   <tr key={item.id}>
                     <td>{item.created_at}</td>
+                    <td>{getTenantLabel(item.tenant_id)}</td>
                     <td>{item.filename}</td>
                     <td>{getStatusLabel(item.status)}</td>
                     <td>{item.total_rows}</td>
@@ -566,6 +603,10 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
                   <span className="mobile-card__meta">{item.created_at}</span>
                 </div>
                 <dl className="mobile-card__list">
+                  <div className="mobile-card__row">
+                    <dt className="mobile-card__label">Лизингодатель</dt>
+                    <dd className="mobile-card__value">{getTenantLabel(item.tenant_id)}</dd>
+                  </div>
                   <div className="mobile-card__row">
                     <dt className="mobile-card__label">Статус</dt>
                     <dd className="mobile-card__value">{getStatusLabel(item.status)}</dd>

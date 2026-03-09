@@ -327,13 +327,19 @@ function filterRowsByNewThisWeek(rows: VehicleOfferDbRow[]): VehicleOfferDbRow[]
   }
 
   const currentRows = rows.filter((row) => row.import_batch_id === latestImportBatch.id);
-  const previousImportBatchId = getPreviousSuccessfulImportBatchId(latestImportBatch.id);
+  const previousImportBatchId = getPreviousSuccessfulImportBatchId(
+    latestImportBatch.id,
+    latestImportBatch.tenant_id,
+  );
   if (!previousImportBatchId) {
     return currentRows;
   }
 
   const previousOfferCodes = new Set(
-    listVehicleOfferSnapshotCodesByImportBatchId(previousImportBatchId),
+    listVehicleOfferSnapshotCodesByImportBatchId(
+      previousImportBatchId,
+      latestImportBatch.tenant_id,
+    ),
   );
 
   return currentRows.filter((row) => !previousOfferCodes.has(row.offer_code));
