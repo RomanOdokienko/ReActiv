@@ -229,7 +229,10 @@ export function App() {
 
     if (platformMode === "open") {
       const shouldShowPublicHeader =
-        location.pathname === "/" || location.pathname === "/showcase";
+        location.pathname === "/" ||
+        location.pathname === "/showcase" ||
+        location.pathname === "/login" ||
+        location.pathname === HIDDEN_ADMIN_LOGIN_PATH;
 
       return (
         <>
@@ -244,13 +247,25 @@ export function App() {
                     единый агрегатор изъятой лизинговой техники
                   </div>
                 </div>
-                <Link
-                  to="/login"
-                  state={{ activitySource: "public_showcase_header" }}
-                  className="public-showcase-login-link"
-                >
-                  Вход / Регистрация
-                </Link>
+                <nav className="public-showcase-nav" aria-label="Публичная навигация">
+                  <NavLink
+                    to="/showcase"
+                    className={({ isActive }) =>
+                      isActive ? "public-showcase-nav__link is-active" : "public-showcase-nav__link"
+                    }
+                  >
+                    Каталог техники
+                  </NavLink>
+                  <NavLink
+                    to="/login"
+                    state={{ activitySource: "public_showcase_header" }}
+                    className={({ isActive }) =>
+                      isActive ? "public-showcase-nav__link is-active" : "public-showcase-nav__link"
+                    }
+                  >
+                    Личный кабинет для ЮЛ
+                  </NavLink>
+                </nav>
               </div>
             )}
 
