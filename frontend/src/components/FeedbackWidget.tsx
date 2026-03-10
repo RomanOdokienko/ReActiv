@@ -12,38 +12,60 @@ function getBaseDockOffset(viewportWidth: number): DockOffset {
   return { right: 26, bottom: 112 };
 }
 
-function findJivoPanelRect(): DOMRect | null {
+function findBottomRightOverlayRect(feedbackRoot: HTMLElement | null): DOMRect | null {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return null;
   }
 
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const candidates = Array.from(
-    document.querySelectorAll<HTMLElement>(
-      'iframe[src*="jivo"], [class*="jivo"], [id*="jivo"]',
-    ),
-  );
+  const probePoints: Array<[number, number]> = [
+    [viewportWidth - 8, viewportHeight - 8],
+    [viewportWidth - 32, viewportHeight - 8],
+    [viewportWidth - 8, viewportHeight - 32],
+    [viewportWidth - 120, viewportHeight - 12],
+    [viewportWidth - 12, viewportHeight - 120],
+  ];
 
-  const fixedRects = candidates
-    .map((element) => {
+  let bestRect: DOMRect | null = null;
+  let bestArea = 0;
+
+  for (const [x, y] of probePoints) {
+    const elements = document.elementsFromPoint(x, y) as HTMLElement[];
+    for (const element of elements) {
+      if (!element || element === document.body || element === document.documentElement) {
+        continue;
+      }
+      if (feedbackRoot && (element === feedbackRoot || feedbackRoot.contains(element))) {
+        continue;
+      }
+
       const rect = element.getBoundingClientRect();
-      return { element, rect };
-    })
-    .filter(({ rect }) => rect.width > 0 && rect.height > 0)
-    .filter(({ element, rect }) => {
-      const style = window.getComputedStyle(element);
-      if (style.position !== "fixed") {
-        return false;
+      if (rect.width < 40 || rect.height < 40) {
+        continue;
       }
-      if (rect.right < viewportWidth - 24 || rect.bottom < viewportHeight - 24) {
-        return false;
+      if (rect.right < viewportWidth - 2 || rect.bottom < viewportHeight - 2) {
+        continue;
       }
-      return rect.width >= 220 && rect.height >= 160;
-    })
-    .sort((left, right) => right.rect.width * right.rect.height - left.rect.width * left.rect.height);
+      if (rect.left > viewportWidth - 8 || rect.top > viewportHeight - 8) {
+        continue;
+      }
+      if (rect.left < viewportWidth - 520 && rect.top < viewportHeight - 520) {
+        continue;
+      }
+      if (rect.width > viewportWidth * 0.95 && rect.height > viewportHeight * 0.95) {
+        continue;
+      }
 
-  return fixedRects[0]?.rect ?? null;
+      const area = rect.width * rect.height;
+      if (area > bestArea) {
+        bestArea = area;
+        bestRect = rect;
+      }
+    }
+  }
+
+  return bestRect;
 }
 
 export function FeedbackWidget() {
@@ -51,6 +73,7 @@ export function FeedbackWidget() {
   const [isHovered, setIsHovered] = useState(false);
   const [isOpenByClick, setIsOpenByClick] = useState(false);
   const [dockOffset, setDockOffset] = useState<DockOffset>({ right: 26, bottom: 112 });
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -92,21 +115,25 @@ export function FeedbackWidget() {
       const baseOffset = getBaseDockOffset(viewportWidth);
       const buttonSize = viewportWidth <= 760 ? 56 : 60;
       const gap = viewportWidth <= 760 ? 10 : 12;
-      const jivoPanelRect = findJivoPanelRect();
+      const overlayRect = findBottomRightOverlayRect(rootRef.current);
 
       let nextRight = baseOffset.right;
       let nextBottom = baseOffset.bottom;
 
-      if (jivoPanelRect) {
+      if (overlayRect) {
         const maxRight = Math.max(baseOffset.right, viewportWidth - buttonSize - 8);
-        const preferredRight = baseOffset.right + jivoPanelRect.width + gap;
+        const preferredRight = baseOffset.right + (viewportWidth - overlayRect.left) + gap;
 
         if (preferredRight <= maxRight) {
           nextRight = preferredRight;
         } else {
           const maxBottom = Math.max(baseOffset.bottom, viewportHeight - buttonSize - 8);
-          const preferredBottom = baseOffset.bottom + (viewportHeight - jivoPanelRect.top) + gap;
-          nextBottom = Math.min(preferredBottom, maxBottom);
+          const preferredBottom = baseOffset.bottom + (viewportHeight - overlayRect.top) + gap;
+          if (preferredBottom <= maxBottom) {
+            nextBottom = preferredBottom;
+          } else {
+            nextRight = maxRight;
+          }
         }
       }
 
@@ -169,6 +196,7 @@ export function FeedbackWidget() {
 
   return (
     <div
+      ref={rootRef}
       className="feedback-widget"
       style={{ right: `${dockOffset.right}px`, bottom: `${dockOffset.bottom}px` }}
       onMouseEnter={() => {
