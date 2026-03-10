@@ -139,11 +139,11 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 40px;
   padding: 10px 12px;
   border: 1px solid #d5deea;
   border-radius: 14px;
-  background: #e3e8ef;
+  background: #ffffff;
 }
 
 .public-showcase-topbar__left {
@@ -1119,7 +1119,11 @@ button:disabled {
 .showcase-filter-panel {
   display: grid;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 40px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #ffffff;
 }
 
 .showcase-filter-mobile-header,
@@ -2682,6 +2686,7 @@ tbody tr:nth-child(even) {
   }
 
   .public-showcase-topbar {
+    margin-bottom: 12px;
     padding: 8px 10px;
   }
 
@@ -2820,6 +2825,7 @@ tbody tr:nth-child(even) {
     padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
     border-radius: 16px 16px 0 0;
     background: #ffffff;
+    border: 0;
     box-shadow: 0 -14px 34px rgba(16, 31, 62, 0.22);
     max-height: 88vh;
     overflow-y: auto;
@@ -2829,6 +2835,7 @@ tbody tr:nth-child(even) {
     scrollbar-gutter: stable;
     transform: translateY(104%);
     transition: transform 220ms ease;
+    margin-bottom: 0;
   }
 
   .showcase-filter-drawer--open .showcase-filter-panel {
