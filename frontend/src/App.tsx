@@ -22,6 +22,35 @@ type PlatformModeState = "checking" | PlatformMode;
 
 const HIDDEN_ADMIN_LOGIN_PATH = "/staff-login-reactiv";
 const ACTIVITY_VIEWER_LOGINS = new Set(["alexey"]);
+const PUBLIC_TITLE = "ReActiv — агрегатор изъятой лизинговой техники";
+
+function upsertMetaByName(name: string, content: string): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  let element = document.head.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute("name", name);
+    document.head.appendChild(element);
+  }
+  element.setAttribute("content", content);
+}
+
+function upsertCanonicalLink(href: string): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  let element = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!element) {
+    element = document.createElement("link");
+    element.setAttribute("rel", "canonical");
+    document.head.appendChild(element);
+  }
+  element.setAttribute("href", href);
+}
 
 function PublicLegalFooter() {
   return (
@@ -49,6 +78,34 @@ export function App() {
   const canAccessCatalog = isAdmin;
   const showMainNav = isAdmin || canAccessUpload || canViewActivity;
   const defaultAuthorizedPath = canAccessUpload ? "/upload" : "/showcase";
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const pathname = location.pathname;
+    const isServicePath =
+      pathname === "/login" ||
+      pathname === HIDDEN_ADMIN_LOGIN_PATH ||
+      pathname === "/upload" ||
+      pathname === "/catalog" ||
+      pathname.startsWith("/admin");
+    const isItemPage = pathname.startsWith("/showcase/");
+
+    const title = isServicePath
+      ? "ReActiv"
+      : isItemPage
+        ? "Лот техники — ReActiv"
+        : PUBLIC_TITLE;
+    document.title = title;
+
+    upsertMetaByName("robots", isServicePath ? "noindex, nofollow" : "index, follow");
+
+    const canonicalPath =
+      pathname === "/" || pathname === "/showcase" ? "/" : pathname;
+    upsertCanonicalLink(`https://reactiv.pro${canonicalPath}`);
+  }, [location.pathname]);
 
   useEffect(() => {
     let isMounted = true;

@@ -1094,7 +1094,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
       {error && <p className="error">{error}</p>}
 
       <main className="showcase-main">
-        <div className="showcase-mobile-filter-bar">
+        <div className="showcase-mobile-filter-bar" data-nosnippet>
           <button
             type="button"
             className="showcase-mobile-filter-toggle"
@@ -1110,6 +1110,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
         </div>
 
         <div
+          data-nosnippet
           className={
             isMobileFiltersOpen
               ? "showcase-filter-drawer showcase-filter-drawer--open"
@@ -1389,7 +1390,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
               </button>
             )}
           </div>
-          <div className="showcase-meta-controls">
+          <div className="showcase-meta-controls" data-nosnippet>
             <div className="showcase-sort showcase-sort--split">
               <select
                 className="showcase-filter showcase-filter--select showcase-sort-select"
