@@ -104,9 +104,16 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           {"\u0420\u0435"}
           <span>{"\u0410\u043a\u0442\u0438\u0432"}</span>
         </Link>
-        <Link to="/showcase" className="auth-back-link" onClick={resetShowcaseState}>
-          {"\u041a\u0430\u0442\u0430\u043b\u043e\u0433 \u0442\u0435\u0445\u043d\u0438\u043a\u0438"}
-        </Link>
+        <nav className="auth-top-nav" aria-label="Навигация входа">
+          <Link
+            to="/showcase"
+            className="auth-top-nav__link"
+            onClick={resetShowcaseState}
+          >
+            Каталог техники
+          </Link>
+          <span className="auth-top-nav__link is-active">Личный кабинет для ЮЛ</span>
+        </nav>
 
         <div className="auth-landing-grid">
           <div className="panel auth-panel auth-panel--landing">
