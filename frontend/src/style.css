@@ -414,19 +414,21 @@ a {
 }
 
 .auth-registration-title {
-  margin: 0 0 18px;
+  margin: 0 0 20px;
   color: #1f242b;
-  font-size: 54px;
-  line-height: 1.06;
-  letter-spacing: -0.03em;
+  font-size: 32px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
 }
 
 .auth-panel--registration h1 {
-  margin: 0 0 18px;
+  margin: 0 0 20px;
   color: #1f242b;
-  font-size: 54px;
-  line-height: 1.06;
-  letter-spacing: -0.02em;
+  font-size: 32px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
 }
 
 .auth-registration-subtitle {
@@ -438,12 +440,13 @@ a {
 
 .auth-registration-form-frame {
   margin-top: 0;
-  border: 0;
-  border-radius: 18px;
+  border: 1px solid #d9e1ed;
+  border-radius: 22px;
   background: #ffffff;
   overflow: hidden;
   position: relative;
-  max-width: 650px;
+  width: 650px;
+  max-width: 100%;
   margin-inline: auto;
 }
 
@@ -453,15 +456,16 @@ a {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 28px;
+  height: 84px;
   background: #ffffff;
   pointer-events: none;
 }
 
 .auth-registration-iframe {
-  width: 100%;
-  min-height: 560px;
-  height: 560px;
+  width: 650px;
+  max-width: 100%;
+  min-height: 560px !important;
+  height: 560px !important;
   display: block;
 }
 
@@ -2847,8 +2851,8 @@ tbody tr:nth-child(even) {
   }
 
   .auth-registration-iframe {
-    min-height: 560px;
-    height: 560px;
+    min-height: 560px !important;
+    height: 560px !important;
   }
 
   .catalog-layout {
@@ -3298,8 +3302,9 @@ tbody tr:nth-child(even) {
   }
 
   .auth-registration-title {
-    font-size: clamp(30px, 7vw, 40px);
+    font-size: clamp(28px, 7vw, 32px);
     line-height: 1.12;
+    white-space: normal;
   }
 
   .auth-registration-form-frame {
@@ -3308,8 +3313,9 @@ tbody tr:nth-child(even) {
   }
 
   .auth-registration-iframe {
-    min-height: 620px;
-    height: 620px;
+    width: 100%;
+    min-height: 620px !important;
+    height: 620px !important;
   }
 
   .auth-registration-switch,
