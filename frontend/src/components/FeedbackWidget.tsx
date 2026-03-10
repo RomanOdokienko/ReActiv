@@ -150,7 +150,6 @@ export function FeedbackWidget() {
       let nextRight = baseOffset.right;
       let nextBottom = baseOffset.bottom;
 
-      const maxRight = Math.max(baseOffset.right, viewportWidth - buttonSize - 8);
       const maxBottom = Math.max(baseOffset.bottom, viewportHeight - buttonSize - 8);
 
       for (const obstacle of obstacles) {
@@ -165,20 +164,8 @@ export function FeedbackWidget() {
           continue;
         }
 
-        const preferredRight = viewportWidth - obstacle.left + gap;
-        if (preferredRight <= maxRight) {
-          nextRight = Math.max(nextRight, preferredRight);
-          continue;
-        }
-
         const preferredBottom = viewportHeight - obstacle.top + gap;
-        if (preferredBottom <= maxBottom) {
-          nextBottom = Math.max(nextBottom, preferredBottom);
-          continue;
-        }
-
-        nextRight = maxRight;
-        nextBottom = maxBottom;
+        nextBottom = Math.max(nextBottom, Math.min(preferredBottom, maxBottom));
       }
 
       setDockOffset((current) => {
