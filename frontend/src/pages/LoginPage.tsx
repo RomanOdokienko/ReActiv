@@ -135,7 +135,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         <Link to="/showcase" className="auth-top-logo" onClick={resetShowcaseState}>
           Ре<span>Актив</span>
         </Link>
-        <nav className="auth-top-nav" aria-label="Навигация личного кабинета">
+        {isRegistrationMode && (
+          <p className="auth-top-logo__subtitle">единый агрегатор лизинговой техники</p>
+        )}
+        <nav
+          className={`auth-top-nav${isRegistrationMode ? " auth-top-nav--registration" : ""}`}
+          aria-label="Навигация личного кабинета"
+        >
           <Link to="/showcase" className="auth-top-nav__link" onClick={resetShowcaseState}>
             Каталог техники
           </Link>
@@ -201,6 +207,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         ) : (
           <div className="auth-registration-layout">
             <div className="panel auth-panel auth-panel--registration">
+              <h1 className="auth-registration-title">Регистрация для владельцев лотов</h1>
               <div className="auth-registration-form-frame" aria-label="Форма регистрации">
                 <iframe
                   src={REGISTRATION_FORM_IFRAME_SRC}
