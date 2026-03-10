@@ -12,60 +12,90 @@ function getBaseDockOffset(viewportWidth: number): DockOffset {
   return { right: 26, bottom: 112 };
 }
 
-function findBottomRightOverlayRect(feedbackRoot: HTMLElement | null): DOMRect | null {
+interface RectBox {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+function buildButtonRect(
+  viewportWidth: number,
+  viewportHeight: number,
+  buttonSize: number,
+  right: number,
+  bottom: number,
+): RectBox {
+  const left = viewportWidth - right - buttonSize;
+  const top = viewportHeight - bottom - buttonSize;
+  return {
+    left,
+    top,
+    right: left + buttonSize,
+    bottom: top + buttonSize,
+    width: buttonSize,
+    height: buttonSize,
+  };
+}
+
+function rectsIntersect(a: RectBox, b: RectBox, padding = 0): boolean {
+  return !(
+    a.right + padding <= b.left ||
+    a.left - padding >= b.right ||
+    a.bottom + padding <= b.top ||
+    a.top - padding >= b.bottom
+  );
+}
+
+function getFloatingObstacles(feedbackRoot: HTMLElement | null): RectBox[] {
   if (typeof window === "undefined" || typeof document === "undefined") {
-    return null;
+    return [];
   }
 
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
-  const probePoints: Array<[number, number]> = [
-    [viewportWidth - 8, viewportHeight - 8],
-    [viewportWidth - 32, viewportHeight - 8],
-    [viewportWidth - 8, viewportHeight - 32],
-    [viewportWidth - 120, viewportHeight - 12],
-    [viewportWidth - 12, viewportHeight - 120],
-  ];
+  const allElements = Array.from(document.querySelectorAll<HTMLElement>("body *"));
+  const obstacles: RectBox[] = [];
 
-  let bestRect: DOMRect | null = null;
-  let bestArea = 0;
-
-  for (const [x, y] of probePoints) {
-    const elements = document.elementsFromPoint(x, y) as HTMLElement[];
-    for (const element of elements) {
-      if (!element || element === document.body || element === document.documentElement) {
-        continue;
-      }
-      if (feedbackRoot && (element === feedbackRoot || feedbackRoot.contains(element))) {
-        continue;
-      }
-
-      const rect = element.getBoundingClientRect();
-      if (rect.width < 40 || rect.height < 40) {
-        continue;
-      }
-      if (rect.right < viewportWidth - 2 || rect.bottom < viewportHeight - 2) {
-        continue;
-      }
-      if (rect.left > viewportWidth - 8 || rect.top > viewportHeight - 8) {
-        continue;
-      }
-      if (rect.left < viewportWidth - 520 && rect.top < viewportHeight - 520) {
-        continue;
-      }
-      if (rect.width > viewportWidth * 0.95 && rect.height > viewportHeight * 0.95) {
-        continue;
-      }
-
-      const area = rect.width * rect.height;
-      if (area > bestArea) {
-        bestArea = area;
-        bestRect = rect;
-      }
+  for (const element of allElements) {
+    if (feedbackRoot && (element === feedbackRoot || feedbackRoot.contains(element))) {
+      continue;
     }
+    const style = window.getComputedStyle(element);
+    if (style.position !== "fixed") {
+      continue;
+    }
+    if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+      continue;
+    }
+
+    const rect = element.getBoundingClientRect();
+    if (rect.width < 48 || rect.height < 48) {
+      continue;
+    }
+    if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= viewportWidth || rect.top >= viewportHeight) {
+      continue;
+    }
+    if (rect.right < viewportWidth * 0.45 || rect.bottom < viewportHeight * 0.45) {
+      continue;
+    }
+    if (rect.width > viewportWidth * 0.98 && rect.height > viewportHeight * 0.98) {
+      continue;
+    }
+
+    obstacles.push({
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height,
+    });
   }
 
-  return bestRect;
+  return obstacles.sort((left, right) => right.width * right.height - left.width * left.height);
 }
 
 export function FeedbackWidget() {
@@ -115,26 +145,40 @@ export function FeedbackWidget() {
       const baseOffset = getBaseDockOffset(viewportWidth);
       const buttonSize = viewportWidth <= 760 ? 56 : 60;
       const gap = viewportWidth <= 760 ? 10 : 12;
-      const overlayRect = findBottomRightOverlayRect(rootRef.current);
+      const obstacles = getFloatingObstacles(rootRef.current);
 
       let nextRight = baseOffset.right;
       let nextBottom = baseOffset.bottom;
 
-      if (overlayRect) {
-        const maxRight = Math.max(baseOffset.right, viewportWidth - buttonSize - 8);
-        const preferredRight = baseOffset.right + (viewportWidth - overlayRect.left) + gap;
+      const maxRight = Math.max(baseOffset.right, viewportWidth - buttonSize - 8);
+      const maxBottom = Math.max(baseOffset.bottom, viewportHeight - buttonSize - 8);
 
-        if (preferredRight <= maxRight) {
-          nextRight = preferredRight;
-        } else {
-          const maxBottom = Math.max(baseOffset.bottom, viewportHeight - buttonSize - 8);
-          const preferredBottom = baseOffset.bottom + (viewportHeight - overlayRect.top) + gap;
-          if (preferredBottom <= maxBottom) {
-            nextBottom = preferredBottom;
-          } else {
-            nextRight = maxRight;
-          }
+      for (const obstacle of obstacles) {
+        const buttonRect = buildButtonRect(
+          viewportWidth,
+          viewportHeight,
+          buttonSize,
+          nextRight,
+          nextBottom,
+        );
+        if (!rectsIntersect(buttonRect, obstacle, 8)) {
+          continue;
         }
+
+        const preferredRight = viewportWidth - obstacle.left + gap;
+        if (preferredRight <= maxRight) {
+          nextRight = Math.max(nextRight, preferredRight);
+          continue;
+        }
+
+        const preferredBottom = viewportHeight - obstacle.top + gap;
+        if (preferredBottom <= maxBottom) {
+          nextBottom = Math.max(nextBottom, preferredBottom);
+          continue;
+        }
+
+        nextRight = maxRight;
+        nextBottom = maxBottom;
       }
 
       setDockOffset((current) => {
