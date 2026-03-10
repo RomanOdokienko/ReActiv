@@ -201,11 +201,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         ) : (
           <div className="auth-registration-layout">
             <div className="panel auth-panel auth-panel--registration">
-              <h1>Регистрация для владельцев лотов</h1>
-              <p className="auth-registration-subtitle">
-                Заполните форму, и мы отправим данные для доступа в личный кабинет.
-              </p>
-              <div className="auth-registration-form-frame">
+              <div className="auth-registration-form-frame" aria-label="Форма регистрации">
                 <iframe
                   src={REGISTRATION_FORM_IFRAME_SRC}
                   frameBorder="0"

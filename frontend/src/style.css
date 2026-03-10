@@ -304,7 +304,7 @@ a {
 }
 
 .auth-shell--registration {
-  width: min(100%, 760px);
+  width: min(100%, 1120px);
 }
 
 .auth-top-logo {
@@ -368,6 +368,7 @@ a {
 
 .auth-registration-layout {
   display: grid;
+  width: 100%;
   justify-items: center;
 }
 
@@ -391,12 +392,12 @@ a {
 }
 
 .auth-panel.auth-panel--registration {
-  width: min(100%, 680px);
-  border-radius: 20px;
+  width: min(100%, 1020px);
+  border-radius: 0;
   border: 0;
   box-shadow: none;
-  background: #ffffff;
-  padding: 28px;
+  background: transparent;
+  padding: 0;
   margin: 0;
 }
 
@@ -416,21 +417,34 @@ a {
 }
 
 .auth-registration-form-frame {
-  margin-top: 20px;
-  border: 1px solid #d8e2ef;
-  border-radius: 16px;
+  margin-top: 0;
+  border: 0;
+  border-radius: 24px;
   background: #ffffff;
   overflow: hidden;
+  position: relative;
+}
+
+.auth-registration-form-frame::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 38px;
+  background: #ffffff;
+  pointer-events: none;
 }
 
 .auth-registration-iframe {
   width: 100%;
-  min-height: 840px;
+  min-height: 1240px;
+  height: 1240px;
   display: block;
 }
 
 .auth-registration-switch {
-  margin: 16px 0 0;
+  margin: 14px 4px 0;
   color: #66788f;
   font-size: 15px;
   line-height: 1.45;
@@ -604,7 +618,7 @@ a {
 }
 
 .auth-legal-note--registration {
-  margin-top: 8px;
+  margin: 8px 4px 0;
 }
 
 .auth-promo-card {
@@ -2777,11 +2791,12 @@ tbody tr:nth-child(even) {
   }
 
   .auth-panel.auth-panel--registration {
-    width: min(100%, 680px);
+    width: min(100%, 980px);
   }
 
   .auth-registration-iframe {
-    min-height: 780px;
+    min-height: 1180px;
+    height: 1180px;
   }
 
   .catalog-layout {
@@ -3212,8 +3227,9 @@ tbody tr:nth-child(even) {
   }
 
   .auth-panel.auth-panel--registration {
-    padding: 20px 16px;
-    border-radius: 18px;
+    width: 100%;
+    padding: 0;
+    border-radius: 0;
   }
 
   .auth-panel--registration h1 {
@@ -3226,12 +3242,13 @@ tbody tr:nth-child(even) {
   }
 
   .auth-registration-form-frame {
-    margin-top: 16px;
-    border-radius: 14px;
+    margin-top: 0;
+    border-radius: 18px;
   }
 
   .auth-registration-iframe {
-    min-height: 720px;
+    min-height: 1120px;
+    height: 1120px;
   }
 
   .auth-form {
