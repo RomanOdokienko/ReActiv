@@ -10,6 +10,7 @@ import { registerCatalogRoutes } from "./routes/catalog-routes";
 import { registerImportRoutes } from "./routes/import-routes";
 import { registerMediaRoutes } from "./routes/media-routes";
 import { registerPlatformRoutes } from "./routes/platform-routes";
+import { registerShareRoutes } from "./routes/share-routes";
 import { getPlatformMode } from "./repositories/platform-settings-repository";
 import { authenticateRequest } from "./services/auth-service";
 import { ensureBootstrapAdmin } from "./startup/bootstrap-admin";
@@ -32,6 +33,7 @@ const ALWAYS_PUBLIC_PATHS = new Set([
   "/api/platform/mode",
   "/api/public/activity/events",
 ]);
+const ALWAYS_PUBLIC_PREFIXES = ["/showcase/"];
 
 const OPEN_MODE_PUBLIC_PREFIXES = [
   "/api/catalog/summary",
@@ -76,6 +78,9 @@ async function startServer(): Promise<void> {
     if (ALWAYS_PUBLIC_PATHS.has(requestPath)) {
       return;
     }
+    if (ALWAYS_PUBLIC_PREFIXES.some((prefix) => requestPath.startsWith(prefix))) {
+      return;
+    }
 
     if (isOpenModePublicPath(requestPath) && getPlatformMode() === "open") {
       return;
@@ -92,6 +97,7 @@ async function startServer(): Promise<void> {
   await registerImportRoutes(app);
   await registerCatalogRoutes(app);
   await registerMediaRoutes(app);
+  await registerShareRoutes(app);
   await registerAdminUserRoutes(app);
   await registerActivityRoutes(app);
 

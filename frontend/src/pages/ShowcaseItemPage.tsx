@@ -7,6 +7,7 @@
 } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  buildTelegramShareUrl,
   getCatalogItemById,
   getMediaGalleryUrls,
   getMediaPreviewImageUrl,
@@ -101,6 +102,13 @@ function formatInteger(value: number | null, suffix = ""): string {
 
   const formatted = value.toLocaleString("ru-RU");
   return suffix ? `${formatted} ${suffix}` : formatted;
+}
+
+function buildShareMessage(item: CatalogItem): string {
+  const baseName = item.title.trim() || `${item.brand} ${item.model}`.trim() || "лот";
+  const carWithYear = item.year ? `${baseName} ${item.year} года` : baseName;
+  const priceText = item.price === null ? "цену по запросу" : `${item.price.toLocaleString("ru-RU")} ₽`;
+  return `Смотрите, какая машина: ${carWithYear} за ${priceText} на платформе РеАктив!`;
 }
 
 interface DetailSpec {
@@ -235,6 +243,7 @@ export function ShowcaseItemPage() {
     : "Добрый день. Вопрос по лоту";
   const encodedContactMessage = encodeURIComponent(contactMessage);
   const encodedMailSubject = encodeURIComponent(`Вопрос по лоту ${item?.offerCode ?? ""}`.trim());
+  const telegramShareUrl = item ? buildTelegramShareUrl(item.id, buildShareMessage(item)) : "#";
   const cameFromShowcase = Boolean(
     (location.state as { fromShowcase?: boolean } | null)?.fromShowcase,
   );
@@ -422,6 +431,34 @@ export function ShowcaseItemPage() {
 
             <aside className="detail-cta-card">
               <p className="detail-cta-caption">Нужна дополнительная информация по лоту?</p>
+              <a
+                className="detail-cta-button detail-cta-button--share"
+                href={telegramShareUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  if (!item) {
+                    return;
+                  }
+
+                  void logActivityEvent({
+                    eventType: "showcase_contact_click",
+                    page: location.pathname,
+                    entityType: "catalog_item",
+                    entityId: String(item.id),
+                    payload: {
+                      channel: "telegram_share",
+                    },
+                  });
+                }}
+              >
+                <span className="detail-cta-button__icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M9.8 14.7l-.4 4.1c.6 0 .9-.3 1.2-.6l2.9-2.8 6-4.4c1-.7-.2-1.1-1.5-.6l-7.4 2.8-3.2-1c-1.3-.4-1.3-1.3.3-1.9l12.6-4.9c1.2-.4 2.2.3 1.8 1.9l-2.1 10.3c-.3 1.3-1.1 1.7-2.2 1.1l-6-4.4-2.9 2.8c-.3.3-.6.6-1.1.6z" />
+                  </svg>
+                </span>
+                <span className="detail-cta-button__text">Поделиться в Telegram</span>
+              </a>
               <a
                 className="detail-cta-button"
                 href={`mailto:romanodokienko@gmail.com?subject=${encodedMailSubject}&body=${encodedContactMessage}`}

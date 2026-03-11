@@ -29,6 +29,33 @@ function buildUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
 }
 
+function resolveApiOrigin(): string | null {
+  try {
+    return new URL(API_BASE_URL).origin;
+  } catch {
+    return null;
+  }
+}
+
+export function buildPublicShareUrl(itemId: number): string {
+  const apiOrigin = resolveApiOrigin();
+  if (apiOrigin) {
+    return `${apiOrigin}/showcase/${itemId}`;
+  }
+
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/showcase/${itemId}`;
+  }
+
+  return `https://api.reactiv.pro/showcase/${itemId}`;
+}
+
+export function buildTelegramShareUrl(itemId: number, message: string): string {
+  const shareUrl = encodeURIComponent(buildPublicShareUrl(itemId));
+  const encodedMessage = encodeURIComponent(message);
+  return `https://t.me/share/url?url=${shareUrl}&text=${encodedMessage}`;
+}
+
 function createActivitySessionId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
