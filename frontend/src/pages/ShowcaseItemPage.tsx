@@ -15,7 +15,7 @@ import {
 } from "../api/client";
 import type { CatalogItem } from "../types/api";
 
-const RESO_TEST_VIN = "LGJ509EZPPR000290";
+const RESO_TEST_VINS = new Set(["LGJ509EZPPR000290", "LGJ509EZKRR000360"]);
 
 function formatPrice(price: number | null): string {
   if (price === null) {
@@ -173,7 +173,7 @@ export function ShowcaseItemPage() {
       return urls;
     }
 
-    if (item.offerCode === RESO_TEST_VIN) {
+    if (RESO_TEST_VINS.has(item.offerCode)) {
       return [`reso-vin:${item.offerCode}`];
     }
 
