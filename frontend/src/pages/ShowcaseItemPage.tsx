@@ -168,13 +168,13 @@ export function ShowcaseItemPage() {
       return [];
     }
 
+    if (RESO_TEST_VINS.has(item.offerCode)) {
+      return [`reso-vin:${item.offerCode}`];
+    }
+
     const urls = extractMediaUrls(item.yandexDiskUrl);
     if (urls.length > 0) {
       return urls;
-    }
-
-    if (RESO_TEST_VINS.has(item.offerCode)) {
-      return [`reso-vin:${item.offerCode}`];
     }
 
     return [];

@@ -1848,9 +1848,9 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
           <>
             <div className={effectiveViewMode === "list" ? "cards-grid cards-grid--list" : "cards-grid"}>
               {items.map((item, index) => {
-                const primaryMediaUrl =
-                  extractMediaUrls(item.yandexDiskUrl)[0] ??
-                  (RESO_TEST_VINS.has(item.offerCode) ? `reso-vin:${item.offerCode}` : undefined);
+                const primaryMediaUrl = RESO_TEST_VINS.has(item.offerCode)
+                  ? `reso-vin:${item.offerCode}`
+                  : extractMediaUrls(item.yandexDiskUrl)[0];
 
                 return (
                   <Link
