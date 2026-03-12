@@ -368,7 +368,7 @@ function formatPrice(price: number | null): string {
   if (price === null) {
     return "—";
   }
-  return `${price.toLocaleString("ru-RU")} ?`;
+  return `${price.toLocaleString("ru-RU")} ₽`;
 }
 
 function extractMediaUrls(rawValue: string): string[] {
@@ -1701,7 +1701,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
                   type="text"
                   inputMode="numeric"
                   className={priceMin ? "showcase-filter is-active" : "showcase-filter"}
-                  placeholder="Цена от, ?"
+                  placeholder="Цена от, ₽"
                   value={formatIntegerWithSpaces(priceMin)}
                   onChange={(event) => {
                     setPage(1);
@@ -1713,7 +1713,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
                   type="text"
                   inputMode="numeric"
                   className={priceMax ? "showcase-filter is-active" : "showcase-filter"}
-                  placeholder="Цена до, ?"
+                  placeholder="Цена до, ₽"
                   value={formatIntegerWithSpaces(priceMax)}
                   onChange={(event) => {
                     setPage(1);
