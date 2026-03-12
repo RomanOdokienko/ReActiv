@@ -1947,26 +1947,16 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
                             }}
                           />
                           <span className="vehicle-card__fallback">
-                            <span className="vehicle-card__fallback-icon" aria-hidden>
-                              <svg viewBox="0 0 24 24" focusable="false">
-                                <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" />
-                                <circle cx="8.25" cy="10" r="1.5" />
-                                <path d="M5.5 16l4.1-4.1a1.2 1.2 0 0 1 1.7 0l1.8 1.8a1.2 1.2 0 0 0 1.7 0l1.7-1.7a1.2 1.2 0 0 1 1.7 0L20.5 14.3" />
-                              </svg>
+                            <span className="vehicle-card__fallback-text">
+                              Фото пока нет. Но они скоро появятся
                             </span>
-                            <span className="vehicle-card__fallback-text">Нет фотографии</span>
                           </span>
                         </>
                       ) : (
                         <span className="vehicle-card__fallback vehicle-card__fallback--visible">
-                          <span className="vehicle-card__fallback-icon" aria-hidden>
-                            <svg viewBox="0 0 24 24" focusable="false">
-                              <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" />
-                              <circle cx="8.25" cy="10" r="1.5" />
-                              <path d="M5.5 16l4.1-4.1a1.2 1.2 0 0 1 1.7 0l1.8 1.8a1.2 1.2 0 0 0 1.7 0l1.7-1.7a1.2 1.2 0 0 1 1.7 0L20.5 14.3" />
-                            </svg>
+                          <span className="vehicle-card__fallback-text">
+                            Фото пока нет. Но они скоро появятся
                           </span>
-                          <span className="vehicle-card__fallback-text">Нет фотографии</span>
                         </span>
                       )}
                     </div>
