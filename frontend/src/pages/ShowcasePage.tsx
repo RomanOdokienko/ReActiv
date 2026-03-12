@@ -1126,14 +1126,56 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
   }, [isLoading, itemsResponse, items.length]);
 
   useEffect(() => {
-    if (vehicleTypeOptions.length === 0) {
+    if (!filters || vehicleTypeOptions.length === 0) {
       return;
     }
 
-    setSelectedVehicleTypes((current) =>
-      current.filter((value) => vehicleTypeOptions.includes(value)),
-    );
-  }, [vehicleTypeOptions]);
+    const vehicleTypeByKey = new Map<string, string>();
+    vehicleTypeOptions.forEach((value) => {
+      vehicleTypeByKey.set(normalizeFilterValueForCompare(value), value);
+    });
+
+    let changed = false;
+    setSelectedVehicleTypes((current) => {
+      if (current.length === 0) {
+        return current;
+      }
+
+      const seen = new Set<string>();
+      const next: string[] = [];
+
+      current.forEach((value) => {
+        const matchedValue = vehicleTypeByKey.get(normalizeFilterValueForCompare(value));
+        if (!matchedValue) {
+          changed = true;
+          return;
+        }
+
+        const key = normalizeFilterValueForCompare(matchedValue);
+        if (seen.has(key)) {
+          changed = true;
+          return;
+        }
+
+        seen.add(key);
+        next.push(matchedValue);
+      });
+
+      if (
+        next.length !== current.length ||
+        next.some((value, index) => value !== current[index])
+      ) {
+        changed = true;
+        return next;
+      }
+
+      return current;
+    });
+
+    if (changed) {
+      setPage(1);
+    }
+  }, [filters, vehicleTypeOptions]);
 
   const availableBrands = useMemo(() => {
     if (!filters) {
@@ -1264,6 +1306,26 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     setModel("");
     setPage(1);
   }, [availableModels, filters, model]);
+
+  useEffect(() => {
+    if (!filters || !city) {
+      return;
+    }
+
+    const matchedCity = (filters.city ?? []).find(
+      (value) => normalizeFilterValueForCompare(value) === normalizeFilterValueForCompare(city),
+    );
+
+    if (matchedCity) {
+      if (matchedCity !== city) {
+        setCity(matchedCity);
+      }
+      return;
+    }
+
+    setCity("");
+    setPage(1);
+  }, [city, filters]);
 
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
