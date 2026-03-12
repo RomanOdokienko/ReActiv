@@ -16,7 +16,12 @@ interface ShowcasePageProps {
   publicMode?: boolean;
 }
 
-const RESO_TEST_VINS = new Set(["LGJ509EZPPR000290", "LGJ509EZKRR000360"]);
+const RESO_TEST_MEDIA_BY_OFFER_CODE: Record<string, string> = {
+  LGJ509EZPPR000290:
+    "https://api-sale.resoleasing.com/upload/resize_cache/iblock/5b8/480_300_2d42db8e25ea118a20d6873f14b9565f0/2024-09-25_PHOTO_61c87740f0be11ee8c67005056b521a7_adc2cced7b1f11ef8c6f005056b521a7.jpg",
+  LGJ509EZKRR000360:
+    "https://api-sale.resoleasing.com/upload/resize_cache/iblock/2a1/768_1024_1d42db8e25ea118a20d6873f14b9565f0/2026-01-12_PHOTO_62eccc3d7b4611ef8c6f005056b521a7_69cfdc33eff911f08c7b005056b521a7.jpg",
+};
 type BookingPreset = "Свободен" | "Забронирован" | "На согласовании";
 
 const BOOKING_PRESETS: BookingPreset[] = [
@@ -1848,9 +1853,9 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
           <>
             <div className={effectiveViewMode === "list" ? "cards-grid cards-grid--list" : "cards-grid"}>
               {items.map((item, index) => {
-                const primaryMediaUrl = RESO_TEST_VINS.has(item.offerCode)
-                  ? `reso-vin:${item.offerCode}`
-                  : extractMediaUrls(item.yandexDiskUrl)[0];
+                const primaryMediaUrl =
+                  RESO_TEST_MEDIA_BY_OFFER_CODE[item.offerCode] ??
+                  extractMediaUrls(item.yandexDiskUrl)[0];
 
                 return (
                   <Link
