@@ -22,6 +22,7 @@ import { resolveColumnMap } from "../import/resolve-column-map";
 import { validateNormalizedRow } from "../import/validate-normalized-row";
 import { readExcel } from "./excel-reader";
 import type { NormalizedVehicleOfferRow } from "../import/normalize-row";
+import { runResoMediaEnrichmentInBackground } from "./reso-media-enrichment-service";
 
 interface ImportServiceInput {
   filename: string;
@@ -307,6 +308,12 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
     appendVehicleOfferSnapshots(importBatchId, rowsToImport, tenantProfile.id);
     replaceCurrentVehicleOffers(importBatchId, rowsToImport, tenantProfile.id);
     importedRows = rowsToImport.length;
+    if (tenantProfile.id === "reso") {
+      runResoMediaEnrichmentInBackground({
+        tenantId: "reso",
+        logger: input.logger,
+      });
+    }
 
     const status = errors.length > 0 ? "completed_with_errors" : "completed";
 

@@ -30,6 +30,11 @@ export interface StoredVehicleOfferRow {
   created_at: string;
 }
 
+export interface VehicleOfferMediaCandidate {
+  offerCode: string;
+  yandexDiskUrl: string | null;
+}
+
 function toDbText(value: string | null): string {
   return value ?? "";
 }
@@ -381,4 +386,55 @@ export function listVehicleOfferSnapshotCodesByImportBatchId(
         .all(importBatchId) as Array<{ offer_code: string }>);
 
   return rows.map((row) => row.offer_code);
+}
+
+export function listVehicleOfferMediaCandidatesByTenant(
+  tenantId: string,
+): VehicleOfferMediaCandidate[] {
+  const rows = db
+    .prepare(
+      `
+        SELECT offer_code, yandex_disk_url
+        FROM vehicle_offers
+        WHERE tenant_id = ?
+          AND TRIM(COALESCE(offer_code, '')) != ''
+        ORDER BY id ASC
+      `,
+    )
+    .all(tenantId) as Array<{ offer_code: string; yandex_disk_url: string }>;
+
+  return rows.map((row) => ({
+    offerCode: row.offer_code,
+    yandexDiskUrl: mapDbText(row.yandex_disk_url),
+  }));
+}
+
+export function updateVehicleOfferMediaUrlsByOfferCode(
+  tenantId: string,
+  updates: Array<{ offerCode: string; yandexDiskUrl: string }>,
+): number {
+  if (updates.length === 0) {
+    return 0;
+  }
+
+  const updateStatement = db.prepare(
+    `
+      UPDATE vehicle_offers
+      SET yandex_disk_url = ?
+      WHERE tenant_id = ?
+        AND offer_code = ?
+    `,
+  );
+
+  return db.transaction(() => {
+    let updatedRows = 0;
+    for (const update of updates) {
+      updatedRows += updateStatement.run(
+        update.yandexDiskUrl,
+        tenantId,
+        update.offerCode,
+      ).changes;
+    }
+    return updatedRows;
+  })();
 }

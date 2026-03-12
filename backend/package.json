@@ -8,7 +8,8 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "create-user": "tsx src/scripts/create-user.ts",
-    "set-user-password": "tsx src/scripts/set-user-password.ts"
+    "set-user-password": "tsx src/scripts/set-user-password.ts",
+    "enrich-reso-media": "tsx src/scripts/enrich-reso-media.ts"
   },
   "keywords": [],
   "author": "",
