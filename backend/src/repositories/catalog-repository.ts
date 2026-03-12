@@ -711,7 +711,9 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     externalId: distinct("external_id"),
     crmRef: distinct("crm_ref"),
     websiteUrl: distinct("website_url"),
-    yandexDiskUrl: distinct("yandex_disk_url"),
+    // Media URLs can be very large (multi-line galleries) and are not used in showcase filter UI.
+    // Returning distinct values here can make /catalog/filters payload too heavy.
+    yandexDiskUrl: [],
     modelsByBrand,
     brandsByVehicleType,
     modelsByBrandAndVehicleType,
