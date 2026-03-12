@@ -1,4 +1,5 @@
 import { db } from "./connection";
+import { normalizeBrand } from "../import/normalize-brand";
 import { normalizeVehicleType } from "../import/normalize-vehicle-type";
 
 const VEHICLE_OFFER_COLUMNS = [
@@ -126,6 +127,26 @@ function normalizeVehicleTypeLabels(tableName: "vehicle_offers" | "vehicle_offer
     rows.forEach((row) => {
       const normalized = normalizeVehicleType(row.vehicle_type);
       if (!normalized || normalized === row.vehicle_type) {
+        return;
+      }
+      update.run(normalized, row.id);
+    });
+  })();
+}
+
+function normalizeBrandLabels(tableName: "vehicle_offers" | "vehicle_offer_snapshots"): void {
+  const rows = db
+    .prepare(`SELECT id, brand FROM ${tableName}`)
+    .all() as Array<{ id: number; brand: string }>;
+
+  const update = db.prepare(
+    `UPDATE ${tableName} SET brand = ? WHERE id = ?`,
+  );
+
+  db.transaction(() => {
+    rows.forEach((row) => {
+      const normalized = normalizeBrand(row.brand);
+      if (!normalized || normalized === row.brand) {
         return;
       }
       update.run(normalized, row.id);
@@ -299,6 +320,8 @@ export function initializeSchema(): void {
   `);
   normalizeVehicleTypeLabels("vehicle_offers");
   normalizeVehicleTypeLabels("vehicle_offer_snapshots");
+  normalizeBrandLabels("vehicle_offers");
+  normalizeBrandLabels("vehicle_offer_snapshots");
   createVehicleOfferIndexes();
   createVehicleOfferSnapshotIndexes();
 
