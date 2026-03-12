@@ -1490,11 +1490,6 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     setNewThisWeekOnly((current) => !current);
   }
 
-  function toggleBookingPreset(nextPreset: BookingPreset): void {
-    setPage(1);
-    setBookingPreset((current) => (current === nextPreset ? "" : nextPreset));
-  }
-
   function toggleVehicleType(value: string): void {
     setPage(1);
     setSelectedVehicleTypes((current) => {
@@ -1509,21 +1504,6 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
   function clearVehicleTypeSelection(): void {
     setPage(1);
     setSelectedVehicleTypes([]);
-  }
-
-  function getBookingPresetChipClassName(preset: BookingPreset): string {
-    const baseClass = "chip chip--booking";
-    const isActive = bookingPreset === preset;
-
-    if (preset === "Свободен") {
-      return `${baseClass} chip--booking-free${isActive ? " active" : ""}`;
-    }
-
-    if (preset === "Забронирован") {
-      return `${baseClass} chip--booking-booked${isActive ? " active" : ""}`;
-    }
-
-    return `${baseClass} chip--booking-review${isActive ? " active" : ""}`;
   }
 
   function getVehicleTypeLabel(value: string): string {
@@ -1582,22 +1562,6 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
               >
                 Закрыть
               </button>
-            </div>
-
-            <div className="showcase-filter-group">
-              <p className="showcase-filter-group-title">Статус техники</p>
-              <div className="showcase-presets">
-                {BOOKING_PRESETS.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    className={getBookingPresetChipClassName(preset)}
-                    onClick={() => toggleBookingPreset(preset)}
-                  >
-                    {preset}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div className="showcase-filter-grid showcase-filter-grid--type">
