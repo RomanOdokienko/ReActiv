@@ -405,7 +405,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
           </p>
 
           <p>
-            <Link className="summary-link" to={canAccessCatalog ? "/catalog" : "/showcase"}>
+            <Link className="summary-link" to={canAccessCatalog ? "/catalog" : "/"}>
               {canAccessCatalog ? "Открыть каталог" : "Открыть витрину"}
             </Link>
           </p>

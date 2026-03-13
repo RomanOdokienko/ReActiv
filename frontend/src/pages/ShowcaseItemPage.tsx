@@ -406,7 +406,7 @@ export function ShowcaseItemPage() {
     <section className="showcase-detail-page">
       <Link
         className="detail-back-link"
-        to="/showcase"
+        to="/"
         onClick={(event) => {
           if (!cameFromShowcase) {
             return;

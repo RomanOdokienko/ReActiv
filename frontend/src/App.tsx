@@ -77,7 +77,7 @@ export function App() {
     authUser?.role === "admin" || authUser?.role === "stock_owner";
   const canAccessCatalog = isAdmin;
   const showMainNav = isAdmin || canAccessUpload || canViewActivity;
-  const defaultAuthorizedPath = canAccessUpload ? "/upload" : "/showcase";
+  const defaultAuthorizedPath = canAccessUpload ? "/upload" : "/";
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -237,7 +237,7 @@ export function App() {
             {shouldShowPublicHeader && (
               <div className="public-showcase-topbar">
                 <div className="public-showcase-topbar__left">
-                  <Link to="/showcase" className="public-showcase-brand">
+                  <Link to="/" className="public-showcase-brand">
                     <span>ре</span>Актив
                   </Link>
                   <div className="public-showcase-tagline">
@@ -246,10 +246,11 @@ export function App() {
                 </div>
                 <nav className="public-showcase-nav" aria-label="Публичная навигация">
                   <NavLink
-                    to="/showcase"
+                    to="/"
                     className={({ isActive }) =>
                       isActive ? "public-showcase-nav__link is-active" : "public-showcase-nav__link"
                     }
+                    end
                   >
                     Каталог техники
                   </NavLink>
@@ -267,12 +268,12 @@ export function App() {
             )}
 
             <Routes>
-              <Route path="/" element={<Navigate to="/showcase" replace />} />
-              <Route path="/showcase" element={<ShowcasePage publicMode />} />
+              <Route path="/" element={<ShowcasePage publicMode />} />
+              <Route path="/showcase" element={<Navigate to="/" replace />} />
               <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
               <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
               <Route path="/login" element={loginElement} />
-              <Route path="*" element={<Navigate to="/showcase" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <PublicLegalFooter />
           </div>
@@ -312,7 +313,7 @@ export function App() {
                 Каталог
               </NavLink>
             )}
-            <NavLink to="/showcase" className={({ isActive }) => (isActive ? "active" : "")}>
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
               Витрина
             </NavLink>
             {isAdmin && (
@@ -341,7 +342,7 @@ export function App() {
         <Routes>
           <Route
             path="/"
-            element={<Navigate to={defaultAuthorizedPath} replace />}
+            element={canAccessUpload ? <Navigate to="/upload" replace /> : <ShowcasePage />}
           />
           <Route
             path="/upload"
@@ -349,23 +350,23 @@ export function App() {
               canAccessUpload ? (
                 <UploadPage canAccessCatalog={canAccessCatalog} />
               ) : (
-                <Navigate to="/showcase" replace />
+                <Navigate to="/" replace />
               )
             }
           />
           <Route
             path="/catalog"
-            element={isAdmin ? <CatalogPage /> : <Navigate to="/showcase" replace />}
+            element={isAdmin ? <CatalogPage /> : <Navigate to="/" replace />}
           />
-          <Route path="/showcase" element={<ShowcasePage />} />
+          <Route path="/showcase" element={<Navigate to="/" replace />} />
           <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
           <Route
             path="/admin/users"
-            element={isAdmin ? <AdminUsersPage /> : <Navigate to="/showcase" replace />}
+            element={isAdmin ? <AdminUsersPage /> : <Navigate to="/" replace />}
           />
           <Route
             path="/admin/activity"
-            element={canViewActivity ? <AdminActivityPage /> : <Navigate to="/showcase" replace />}
+            element={canViewActivity ? <AdminActivityPage /> : <Navigate to="/" replace />}
           />
           <Route
             path="/login"

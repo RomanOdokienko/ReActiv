@@ -295,7 +295,7 @@ export function CatalogPage() {
               <option value="20">20</option>
               <option value="50">50</option>
             </select>
-            <Link className="switch-link" to="/showcase">
+            <Link className="switch-link" to="/">
               Открыть витрину
             </Link>
             <button type="button" className="secondary-button" onClick={clearFilters}>

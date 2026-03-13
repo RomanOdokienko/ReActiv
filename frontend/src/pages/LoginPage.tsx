@@ -132,7 +132,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   return (
     <section className="auth-layout auth-layout--landing">
       <div className={`auth-shell${isRegistrationMode ? " auth-shell--registration" : ""}`}>
-        <Link to="/showcase" className="auth-top-logo" onClick={resetShowcaseState}>
+        <Link to="/" className="auth-top-logo" onClick={resetShowcaseState}>
           Ре<span>Актив</span>
         </Link>
         {isRegistrationMode && (
@@ -142,7 +142,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           className={`auth-top-nav${isRegistrationMode ? " auth-top-nav--registration" : ""}`}
           aria-label="Навигация личного кабинета"
         >
-          <Link to="/showcase" className="auth-top-nav__link" onClick={resetShowcaseState}>
+          <Link to="/" className="auth-top-nav__link" onClick={resetShowcaseState}>
             Каталог техники
           </Link>
           <span className="auth-top-nav__link is-active">Личный кабинет для ЮЛ</span>
