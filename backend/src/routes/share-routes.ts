@@ -86,10 +86,12 @@ function buildShareHtml(args: {
   title: string;
   description: string;
   shareUrl: string;
+  imageUrl: string;
 }): string {
   const title = escapeHtml(args.title);
   const description = escapeHtml(args.description);
   const shareUrl = escapeHtml(args.shareUrl);
+  const imageUrl = escapeHtml(args.imageUrl);
 
   return `<!doctype html>
 <html lang="ru">
@@ -103,14 +105,36 @@ function buildShareHtml(args: {
     <meta property="og:title" content="${title}" />
     <meta property="og:description" content="${description}" />
     <meta property="og:url" content="${shareUrl}" />
+    <meta property="og:image" content="${imageUrl}" />
+    <meta property="og:image:alt" content="${title}" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${title}" />
     <meta name="twitter:description" content="${description}" />
+    <meta name="twitter:image" content="${imageUrl}" />
   </head>
   <body>
     <p>Preview metadata page.</p>
   </body>
 </html>`;
+}
+
+async function resolvePreviewImageUrlForShare(args: {
+  itemId: number;
+  yandexDiskUrl: string;
+  webBaseUrl: string;
+  shareBaseUrl: string;
+}): Promise<string> {
+  const sourceUrl = await resolvePreviewImageSourceUrl(args.yandexDiskUrl);
+  if (!sourceUrl) {
+    return `${args.webBaseUrl}${FALLBACK_PREVIEW_IMAGE_PATH}`;
+  }
+
+  const resolved = await resolvePreviewUrl(sourceUrl);
+  if (!resolved.previewUrl) {
+    return `${args.webBaseUrl}${FALLBACK_PREVIEW_IMAGE_PATH}`;
+  }
+
+  return `${args.shareBaseUrl}/showcase/${args.itemId}/preview-image`;
 }
 
 function fallbackImageUrl(): string {
@@ -188,12 +212,19 @@ export async function registerShareRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const shareUrl = `${shareBaseUrl}/showcase/${item.id}`;
+    const previewImageUrl = await resolvePreviewImageUrlForShare({
+      itemId: item.id,
+      yandexDiskUrl: item.yandexDiskUrl,
+      webBaseUrl,
+      shareBaseUrl,
+    });
     const title = `Смотрите, какая машина: ${buildCarNameForShare(item)} за ${formatPriceForShare(item.price)} на платформе РеАктив!`;
 
     const html = buildShareHtml({
       title,
       description: SHARE_DESCRIPTION,
       shareUrl,
+      imageUrl: previewImageUrl,
     });
 
     return reply
