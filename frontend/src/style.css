@@ -2467,31 +2467,25 @@ tbody tr:nth-child(even) {
 }
 
 .detail-thumbnails {
-  display: flex;
-  flex-wrap: nowrap;
+  --thumb-columns: 8;
+  display: grid;
+  grid-template-columns: repeat(var(--thumb-columns), minmax(84px, 1fr));
   gap: 6px;
   overflow-x: auto;
+  overflow-y: visible;
   scrollbar-width: thin;
+  align-content: start;
 }
 
 .detail-thumbnails--expanded {
-  flex-wrap: wrap;
-  overflow-x: hidden;
-  overflow-y: visible;
-  align-content: flex-start;
-}
-
-.detail-thumbnails--expanded .detail-thumb {
-  flex: 0 0 88px;
-  min-width: 88px;
-  max-width: 88px;
+  --thumb-columns: 9;
 }
 
 .detail-thumb {
   display: block;
-  flex: 1 1 0;
-  min-width: 78px;
-  max-width: 108px;
+  width: 100%;
+  min-width: 84px;
+  max-width: none;
   position: relative;
   min-height: auto;
   padding: 0;
