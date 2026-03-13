@@ -29,6 +29,14 @@ function isCrawlerRequest(userAgent: string | undefined): boolean {
   return BOT_USER_AGENT_PATTERN.test(userAgent);
 }
 
+function isTelegramBotRequest(userAgent: string | undefined): boolean {
+  if (!userAgent) {
+    return false;
+  }
+
+  return /telegrambot/i.test(userAgent);
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -106,11 +114,22 @@ function buildShareHtml(args: {
   description: string;
   shareUrl: string;
   imageUrl: string;
+  compactPreview: boolean;
 }): string {
   const title = escapeHtml(args.title);
   const description = escapeHtml(args.description);
   const shareUrl = escapeHtml(args.shareUrl);
   const imageUrl = escapeHtml(args.imageUrl);
+  const twitterCard = args.compactPreview ? "summary" : "summary_large_image";
+  const ogImageTags = args.compactPreview
+    ? ""
+    : `
+    <meta property="og:image" content="${imageUrl}" />
+    <meta property="og:image:alt" content="${title}" />`;
+  const twitterImageTags = args.compactPreview
+    ? ""
+    : `
+    <meta name="twitter:image" content="${imageUrl}" />`;
 
   return `<!doctype html>
 <html lang="ru">
@@ -124,12 +143,11 @@ function buildShareHtml(args: {
     <meta property="og:title" content="${title}" />
     <meta property="og:description" content="${description}" />
     <meta property="og:url" content="${shareUrl}" />
-    <meta property="og:image" content="${imageUrl}" />
-    <meta property="og:image:alt" content="${title}" />
-    <meta name="twitter:card" content="summary_large_image" />
+    ${ogImageTags}
+    <meta name="twitter:card" content="${twitterCard}" />
     <meta name="twitter:title" content="${title}" />
     <meta name="twitter:description" content="${description}" />
-    <meta name="twitter:image" content="${imageUrl}" />
+    ${twitterImageTags}
   </head>
   <body>
     <p>Preview metadata page.</p>
@@ -212,12 +230,15 @@ export async function registerShareRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const shareUrl = `${shareBaseUrl}/showcase/${item.id}`;
-    const previewImageUrl = await resolvePreviewImageUrlForShare({
-      itemId: item.id,
-      yandexDiskUrl: item.yandexDiskUrl,
-      webBaseUrl,
-      shareBaseUrl,
-    });
+    const compactPreview = isTelegramBotRequest(userAgent);
+    const previewImageUrl = compactPreview
+      ? fallbackImageUrl()
+      : await resolvePreviewImageUrlForShare({
+          itemId: item.id,
+          yandexDiskUrl: item.yandexDiskUrl,
+          webBaseUrl,
+          shareBaseUrl,
+        });
     const title = `Смотрите, какая машина: ${buildCarNameForShare(item)} за ${formatPriceForShare(item.price)} на платформе РеАктив!`;
 
     const html = buildShareHtml({
@@ -225,6 +246,7 @@ export async function registerShareRoutes(app: FastifyInstance): Promise<void> {
       description: SHARE_DESCRIPTION,
       shareUrl,
       imageUrl: previewImageUrl,
+      compactPreview,
     });
 
     return reply
