@@ -2478,7 +2478,7 @@ tbody tr:nth-child(even) {
 }
 
 .detail-thumbnails--expanded {
-  --thumb-columns: 9;
+  --thumb-columns: 8;
 }
 
 .detail-thumb {

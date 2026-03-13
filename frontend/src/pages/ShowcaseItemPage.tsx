@@ -240,16 +240,14 @@ export function ShowcaseItemPage() {
   const hasHiddenThumbnails = mediaUrls.length > maxThumbnailCount;
   const collapsedPreviewCount = maxThumbnailCount - 1;
   const visibleThumbnails = hasHiddenThumbnails
-    ? isThumbnailListExpanded
-      ? mediaUrls.slice(0, maxThumbnailCount)
-      : mediaUrls.slice(0, collapsedPreviewCount)
+    ? mediaUrls.slice(0, collapsedPreviewCount)
     : mediaUrls;
   const hiddenThumbnailCount = hasHiddenThumbnails
     ? mediaUrls.length - collapsedPreviewCount
     : 0;
   const hiddenThumbnails = hasHiddenThumbnails
     ? isThumbnailListExpanded
-      ? mediaUrls.slice(maxThumbnailCount)
+      ? mediaUrls.slice(collapsedPreviewCount)
       : []
     : [];
   const contactMessage = item
@@ -703,7 +701,7 @@ export function ShowcaseItemPage() {
                       key={`${url}-${index}`}
                       className={url === selectedImage ? "detail-thumb active" : "detail-thumb"}
                       onClick={() => openLightbox(url, "hidden_thumbnails")}
-                      aria-label={`Фото ${maxThumbnailCount + index + 1}`}
+                      aria-label={`Фото ${collapsedPreviewCount + index + 1}`}
                       title="Открыть полноэкранный просмотр"
                     >
                       <ProxyAwareImage
