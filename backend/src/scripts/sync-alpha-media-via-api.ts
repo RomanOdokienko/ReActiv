@@ -42,6 +42,20 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
+function isSupportedAlphaSourceUrl(value: string): boolean {
+  if (!isValidHttpUrl(value)) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    return host === "alfaleasing.ru" || host === "www.alfaleasing.ru";
+  } catch {
+    return false;
+  }
+}
+
 function extractAlphaPhotoUrlsFromHtml(html: string): string[] {
   const matches = html.match(ALPHA_IMAGE_REGEX) ?? [];
   return [...new Set(matches)]
@@ -128,22 +142,38 @@ async function main(): Promise<void> {
   }
 
   const candidatesPayload = (await candidateResponse.json()) as CandidateResponse;
-  const candidates = candidatesPayload.items.filter((item) => isValidHttpUrl(item.websiteUrl));
+  const candidates = candidatesPayload.items.filter((item) =>
+    isSupportedAlphaSourceUrl(item.websiteUrl),
+  );
+  const skippedUnsupportedSourceCount = candidatesPayload.items.length - candidates.length;
 
   let fetchErrorCount = 0;
   let noMediaCount = 0;
+  const responseStatusCounts = new Map<number, number>();
   const updates: Array<{ offerCode: string; mediaUrls: string[] }> = [];
 
   await runConcurrently(candidates, concurrency, async (candidate) => {
     try {
       const response = await fetchWithTimeout(
         candidate.websiteUrl,
-        { method: "GET", redirect: "follow" },
+        {
+          method: "GET",
+          redirect: "follow",
+          headers: {
+            "user-agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          },
+        },
         DEFAULT_TIMEOUT_MS,
       );
 
       if (!response.ok) {
         fetchErrorCount += 1;
+        responseStatusCounts.set(
+          response.status,
+          (responseStatusCounts.get(response.status) ?? 0) + 1,
+        );
         return;
       }
 
@@ -223,10 +253,13 @@ async function main(): Promise<void> {
 
   // eslint-disable-next-line no-console
   console.log("alpha_media_sync_result", {
+    candidatesRequested: candidatesPayload.items.length,
     candidatesTotal: candidates.length,
+    skippedUnsupportedSourceCount,
     updatesPrepared: updates.length,
     noMediaCount,
     fetchErrorCount,
+    responseStatusCounts: Object.fromEntries(responseStatusCounts.entries()),
     updatedRowsTotal,
     failedItems,
     batchesSent: chunks.length,

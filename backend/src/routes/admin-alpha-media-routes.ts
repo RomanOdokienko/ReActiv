@@ -66,6 +66,20 @@ function isValidHttpUrl(value: string | null): boolean {
   }
 }
 
+function isSupportedAlphaSourceUrl(value: string | null): boolean {
+  if (!isValidHttpUrl(value)) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(value as string);
+    const host = parsed.hostname.toLowerCase();
+    return host === "alfaleasing.ru" || host === "www.alfaleasing.ru";
+  } catch {
+    return false;
+  }
+}
+
 export async function registerAdminAlphaMediaRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/admin/alpha-media/candidates", async (request, reply) => {
     if (rejectIfInvalidSyncToken(request, reply)) {
@@ -76,7 +90,7 @@ export async function registerAdminAlphaMediaRoutes(app: FastifyInstance): Promi
       const query = candidatesQuerySchema.parse(request.query);
       const rows = listVehicleOfferMediaCandidatesWithWebsiteByTenant("alpha");
       const filtered = rows
-        .filter((row) => isValidHttpUrl(row.websiteUrl))
+        .filter((row) => isSupportedAlphaSourceUrl(row.websiteUrl))
         .filter((row) => (query.onlyMissingMedia ? !row.yandexDiskUrl?.trim() : true));
       const items = typeof query.limit === "number" ? filtered.slice(0, query.limit) : filtered;
 
