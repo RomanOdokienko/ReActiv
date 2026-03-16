@@ -117,6 +117,101 @@ function addInFilter(
   params.push(...values);
 }
 
+function normalizeComparableText(value: string): string {
+  return value
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim()
+    .toLocaleLowerCase("ru-RU");
+}
+
+function isAllUppercaseWord(value: string): boolean {
+  const lettersOnly = value.replace(/[^A-Za-zА-Яа-яЁё]/g, "");
+  if (lettersOnly.length < 2) {
+    return false;
+  }
+
+  return (
+    lettersOnly === lettersOnly.toLocaleUpperCase("ru-RU") &&
+    lettersOnly !== lettersOnly.toLocaleLowerCase("ru-RU")
+  );
+}
+
+function pickPreferredDisplayLabel(currentValue: string, candidateValue: string): string {
+  if (currentValue === candidateValue) {
+    return currentValue;
+  }
+
+  const currentIsUpper = isAllUppercaseWord(currentValue);
+  const candidateIsUpper = isAllUppercaseWord(candidateValue);
+  if (currentIsUpper !== candidateIsUpper) {
+    return currentIsUpper ? candidateValue : currentValue;
+  }
+
+  return currentValue.length <= candidateValue.length ? currentValue : candidateValue;
+}
+
+function cleanDisplayValue(value: string): string {
+  return value
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim();
+}
+
+function buildDisplayLabelMap(values: string[]): Map<string, string> {
+  const labelsByKey = new Map<string, string>();
+
+  values.forEach((rawValue) => {
+    const cleanedValue = cleanDisplayValue(rawValue);
+    if (!cleanedValue) {
+      return;
+    }
+
+    const key = normalizeComparableText(cleanedValue);
+    const existing = labelsByKey.get(key);
+    if (!existing) {
+      labelsByKey.set(key, cleanedValue);
+      return;
+    }
+
+    labelsByKey.set(key, pickPreferredDisplayLabel(existing, cleanedValue));
+  });
+
+  return labelsByKey;
+}
+
+function sortDisplayValues(values: Iterable<string>): string[] {
+  return Array.from(values).sort((left, right) =>
+    left.localeCompare(right, "ru", { sensitivity: "base" }),
+  );
+}
+
+function toSqlNormalizedTextExpression(column: string): string {
+  return `LOWER(TRIM(REPLACE(REPLACE(REPLACE(REPLACE(${column}, char(8203), ''), char(8204), ''), char(8205), ''), char(65279), '')))`;
+}
+
+function addNormalizedTextInFilter(
+  clauses: string[],
+  params: unknown[],
+  column: string,
+  values?: string[],
+): void {
+  if (!values || values.length === 0) {
+    return;
+  }
+
+  const normalizedValues = Array.from(
+    new Set(values.map((value) => normalizeComparableText(value)).filter(Boolean)),
+  );
+  if (normalizedValues.length === 0) {
+    return;
+  }
+
+  const placeholders = normalizedValues.map(() => "?").join(", ");
+  clauses.push(`${toSqlNormalizedTextExpression(column)} IN (${placeholders})`);
+  params.push(...normalizedValues);
+}
+
 function addLikeAnyFilter(
   clauses: string[],
   params: unknown[],
@@ -399,8 +494,8 @@ function buildWhere(filters: CatalogQuery): { whereClause: string; params: unkno
 
   addInFilter(clauses, params, "offer_code", filters.offerCode);
   addInFilter(clauses, params, "status", filters.status);
-  addInFilter(clauses, params, "brand", filters.brand);
-  addInFilter(clauses, params, "model", filters.model);
+  addNormalizedTextInFilter(clauses, params, "brand", filters.brand);
+  addNormalizedTextInFilter(clauses, params, "model", filters.model);
   addInFilter(clauses, params, "modification", filters.modification);
   addInFilter(clauses, params, "vehicle_type", filters.vehicleType);
   addInFilter(clauses, params, "pts_type", filters.ptsType);
@@ -611,6 +706,28 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     )
     .get() as Record<string, number | null>;
 
+  const brandDisplayMap = buildDisplayLabelMap(distinct("brand"));
+  const modelDisplayMap = buildDisplayLabelMap(distinct("model"));
+
+  const mergeDisplayValue = (
+    target: Map<string, string>,
+    rawValue: string,
+  ): void => {
+    const cleaned = cleanDisplayValue(rawValue);
+    if (!cleaned) {
+      return;
+    }
+
+    const key = normalizeComparableText(cleaned);
+    const current = target.get(key);
+    if (!current) {
+      target.set(key, cleaned);
+      return;
+    }
+
+    target.set(key, pickPreferredDisplayLabel(current, cleaned));
+  };
+
   const modelsByBrandRows = db
     .prepare(
       `
@@ -623,16 +740,33 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     )
     .all() as Array<{ brand: string; model: string }>;
 
-  const modelsByBrand = modelsByBrandRows.reduce<Record<string, string[]>>(
-    (accumulator, row) => {
-      if (!accumulator[row.brand]) {
-        accumulator[row.brand] = [];
-      }
-      accumulator[row.brand].push(row.model);
+  const modelsByBrandMap = new Map<string, Map<string, string>>();
+  modelsByBrandRows.forEach((row) => {
+    const brandKey = normalizeComparableText(row.brand);
+    const brandLabel = brandDisplayMap.get(brandKey) ?? cleanDisplayValue(row.brand);
+    if (!brandLabel) {
+      return;
+    }
+
+    if (!modelsByBrandMap.has(brandLabel)) {
+      modelsByBrandMap.set(brandLabel, new Map<string, string>());
+    }
+
+    const modelMap = modelsByBrandMap.get(brandLabel);
+    if (!modelMap) {
+      return;
+    }
+
+    mergeDisplayValue(modelMap, row.model);
+  });
+
+  const modelsByBrand = Array.from(modelsByBrandMap.keys())
+    .sort((left, right) => left.localeCompare(right, "ru", { sensitivity: "base" }))
+    .reduce<Record<string, string[]>>((accumulator, brandLabel) => {
+      const modelMap = modelsByBrandMap.get(brandLabel);
+      accumulator[brandLabel] = modelMap ? sortDisplayValues(modelMap.values()) : [];
       return accumulator;
-    },
-    {},
-  );
+    }, {});
 
   const brandsByVehicleTypeRows = db
     .prepare(
@@ -646,16 +780,44 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     )
     .all() as Array<{ vehicle_type: string; brand: string }>;
 
-  const brandsByVehicleType = brandsByVehicleTypeRows.reduce<Record<string, string[]>>(
-    (accumulator, row) => {
-      if (!accumulator[row.vehicle_type]) {
-        accumulator[row.vehicle_type] = [];
-      }
-      accumulator[row.vehicle_type].push(row.brand);
+  const brandsByVehicleTypeMap = new Map<string, Map<string, string>>();
+  brandsByVehicleTypeRows.forEach((row) => {
+    const vehicleType = cleanDisplayValue(row.vehicle_type);
+    if (!vehicleType) {
+      return;
+    }
+
+    if (!brandsByVehicleTypeMap.has(vehicleType)) {
+      brandsByVehicleTypeMap.set(vehicleType, new Map<string, string>());
+    }
+
+    const brandMap = brandsByVehicleTypeMap.get(vehicleType);
+    if (!brandMap) {
+      return;
+    }
+
+    const brandKey = normalizeComparableText(row.brand);
+    const brandLabel = brandDisplayMap.get(brandKey) ?? cleanDisplayValue(row.brand);
+    if (!brandLabel) {
+      return;
+    }
+
+    const current = brandMap.get(brandKey);
+    if (!current) {
+      brandMap.set(brandKey, brandLabel);
+      return;
+    }
+
+    brandMap.set(brandKey, pickPreferredDisplayLabel(current, brandLabel));
+  });
+
+  const brandsByVehicleType = Array.from(brandsByVehicleTypeMap.keys())
+    .sort((left, right) => left.localeCompare(right, "ru", { sensitivity: "base" }))
+    .reduce<Record<string, string[]>>((accumulator, vehicleType) => {
+      const brandMap = brandsByVehicleTypeMap.get(vehicleType);
+      accumulator[vehicleType] = brandMap ? sortDisplayValues(brandMap.values()) : [];
       return accumulator;
-    },
-    {},
-  );
+    }, {});
 
   const modelsByBrandAndVehicleTypeRows = db
     .prepare(
@@ -669,18 +831,63 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     )
     .all() as Array<{ vehicle_type: string; brand: string; model: string }>;
 
-  const modelsByBrandAndVehicleType = modelsByBrandAndVehicleTypeRows.reduce<
-    Record<string, Record<string, string[]>>
-  >((accumulator, row) => {
-    if (!accumulator[row.vehicle_type]) {
-      accumulator[row.vehicle_type] = {};
+  const modelsByBrandAndVehicleTypeMap = new Map<
+    string,
+    Map<string, Map<string, string>>
+  >();
+  modelsByBrandAndVehicleTypeRows.forEach((row) => {
+    const vehicleType = cleanDisplayValue(row.vehicle_type);
+    if (!vehicleType) {
+      return;
     }
-    if (!accumulator[row.vehicle_type][row.brand]) {
-      accumulator[row.vehicle_type][row.brand] = [];
+
+    if (!modelsByBrandAndVehicleTypeMap.has(vehicleType)) {
+      modelsByBrandAndVehicleTypeMap.set(vehicleType, new Map<string, Map<string, string>>());
     }
-    accumulator[row.vehicle_type][row.brand].push(row.model);
-    return accumulator;
-  }, {});
+
+    const brandGroups = modelsByBrandAndVehicleTypeMap.get(vehicleType);
+    if (!brandGroups) {
+      return;
+    }
+
+    const brandKey = normalizeComparableText(row.brand);
+    const brandLabel = brandDisplayMap.get(brandKey) ?? cleanDisplayValue(row.brand);
+    if (!brandLabel) {
+      return;
+    }
+
+    if (!brandGroups.has(brandLabel)) {
+      brandGroups.set(brandLabel, new Map<string, string>());
+    }
+
+    const modelMap = brandGroups.get(brandLabel);
+    if (!modelMap) {
+      return;
+    }
+
+    mergeDisplayValue(modelMap, row.model);
+  });
+
+  const modelsByBrandAndVehicleType = Array.from(modelsByBrandAndVehicleTypeMap.keys())
+    .sort((left, right) => left.localeCompare(right, "ru", { sensitivity: "base" }))
+    .reduce<Record<string, Record<string, string[]>>>((accumulator, vehicleType) => {
+      const brandGroups = modelsByBrandAndVehicleTypeMap.get(vehicleType);
+      if (!brandGroups) {
+        accumulator[vehicleType] = {};
+        return accumulator;
+      }
+
+      const groupedModels = Array.from(brandGroups.keys())
+        .sort((left, right) => left.localeCompare(right, "ru", { sensitivity: "base" }))
+        .reduce<Record<string, string[]>>((brandAccumulator, brandLabel) => {
+          const modelMap = brandGroups.get(brandLabel);
+          brandAccumulator[brandLabel] = modelMap ? sortDisplayValues(modelMap.values()) : [];
+          return brandAccumulator;
+        }, {});
+
+      accumulator[vehicleType] = groupedModels;
+      return accumulator;
+    }, {});
 
   const citySet = new Set<string>();
   const storageAddresses = distinct("storage_address");
@@ -698,8 +905,8 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     offerCode: distinct("offer_code"),
     status: distinct("status"),
     city,
-    brand: distinct("brand"),
-    model: distinct("model"),
+    brand: sortDisplayValues(brandDisplayMap.values()),
+    model: sortDisplayValues(modelDisplayMap.values()),
     modification: distinct("modification"),
     vehicleType: distinct("vehicle_type"),
     ptsType: distinct("pts_type"),
