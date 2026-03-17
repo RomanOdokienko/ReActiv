@@ -238,6 +238,21 @@ export function App() {
       />
     );
 
+    if (location.pathname === "/landing") {
+      return (
+        <>
+          <div className="app">
+            <Routes>
+              <Route path="/landing" element={<LandingPage />} />
+              <Route path="*" element={<Navigate to="/landing" replace />} />
+            </Routes>
+            <PublicLegalFooter />
+          </div>
+          <FeedbackWidget />
+        </>
+      );
+    }
+
     if (platformMode === "open") {
       const shouldShowPublicHeader =
         location.pathname === "/" || location.pathname === "/showcase";
