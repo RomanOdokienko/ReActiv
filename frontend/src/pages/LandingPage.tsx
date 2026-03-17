@@ -109,6 +109,7 @@ const FAQ_ITEMS: FaqItem[] = [
 ];
 
 const HERO_IMAGE_URL = "https://www.figma.com/api/mcp/asset/12cb40f8-13ec-42fe-8230-d7ed062e7a4c";
+const BRANDS_ARROW_ICON_URL = "/brands/arrow-up-right.svg";
 const POPULAR_BRANDS: PopularBrand[] = [
   { name: "Mercedes", query: "Mercedes-Benz", logoSrc: "/brands/mersedes.png" },
   { name: "BMW", query: "BMW", logoSrc: "/brands/bmw.png" },
@@ -365,9 +366,12 @@ export function LandingPage() {
                   <div className="landing-brand-card__logo-wrap">
                     <BrandLogo brand={brand.name} src={brand.logoSrc} />
                   </div>
-                  <span className="landing-brand-card__arrow" aria-hidden="true">
-                    ↗
-                  </span>
+                  <img
+                    className="landing-brand-card__arrow"
+                    src={BRANDS_ARROW_ICON_URL}
+                    alt=""
+                    aria-hidden="true"
+                  />
                 </div>
                 <strong>{brand.name}</strong>
               </Link>

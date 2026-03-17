@@ -5,7 +5,9 @@
 }
 
 .landing-page__shell {
-  padding: 0 96px 72px;
+  width: min(1248px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 0 0 72px;
 }
 
 .landing-header {
@@ -301,10 +303,9 @@
 }
 
 .landing-brand-card__arrow {
-  color: #d5d7dd;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .landing-brand-logo {
@@ -504,10 +505,6 @@
 }
 
 @media (max-width: 1280px) {
-  .landing-page__shell {
-    padding-inline: 48px;
-  }
-
   .landing-brand-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -521,7 +518,8 @@
 
 @media (max-width: 900px) {
   .landing-page__shell {
-    padding: 0 20px 56px;
+    width: min(100% - 20px, 1248px);
+    padding: 0 0 56px;
   }
 
   .landing-header,
