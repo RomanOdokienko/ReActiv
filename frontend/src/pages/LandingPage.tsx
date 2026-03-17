@@ -101,7 +101,7 @@ const FAQ_ITEMS: FaqItem[] = [
   },
 ];
 
-const HERO_IMAGE_URL = "/auth-login-side.png";
+const HERO_IMAGE_URL = "/landing-hero.jpg";
 const BRANDS_ARROW_ICON_URL = "/brands/arrow-up-right.svg";
 const ABOUT_CHECKMARK_ICON_URL = "/brands/checkmark-icon.svg";
 const ABOUT_LEASING_TYPES = [
