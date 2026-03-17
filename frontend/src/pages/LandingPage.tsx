@@ -243,6 +243,7 @@ export function LandingPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -307,6 +308,18 @@ export function LandingPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isMobileMenuOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileMenuOpen]);
+
   return (
     <section className="landing-page">
       <div className="landing-page__shell">
@@ -316,10 +329,35 @@ export function LandingPage() {
             <span className="landing-header__subtitle">единый агрегатор лизинговой техники</span>
           </Link>
 
-          <nav className="landing-header__nav" aria-label="Навигация лендинга">
-            <Link to="/">Каталог техники</Link>
-            <a href="#about">О платформе</a>
-            <Link to="/login" state={{ activitySource: "landing_header" }}>
+          <button
+            className={`landing-header__burger${isMobileMenuOpen ? " is-open" : ""}`}
+            type="button"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="landing-nav"
+            aria-label={isMobileMenuOpen ? "Закрыть меню" : "Открыть меню"}
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+
+          <nav
+            id="landing-nav"
+            className={`landing-header__nav${isMobileMenuOpen ? " is-open" : ""}`}
+            aria-label="Навигация лендинга"
+          >
+            <Link to="/" onClick={() => setIsMobileMenuOpen(false)}>
+              Каталог техники
+            </Link>
+            <a href="#about" onClick={() => setIsMobileMenuOpen(false)}>
+              О платформе
+            </a>
+            <Link
+              to="/login"
+              state={{ activitySource: "landing_header" }}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
               Личный кабинет для ЮЛ
             </Link>
           </nav>

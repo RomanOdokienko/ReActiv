@@ -83,6 +83,10 @@
   gap: 20px;
 }
 
+.landing-header__burger {
+  display: none;
+}
+
 .landing-header__nav a {
   color: #3e536b;
   font-size: 14px;
@@ -600,29 +604,26 @@
 .landing-audience-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 24px;
-  border-radius: 16px;
+  gap: 16px;
+  padding: 24px 32px;
+  border-radius: 12px;
   background: #fff;
 }
 
 .landing-audience-card h3 {
   margin: 0;
   color: #1e1e1e;
-  font-family: "Inter", "IBM Plex Sans", sans-serif;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 400;
-  line-height: 1.2;
+  line-height: 1.333;
 }
 
 .landing-audience-card p {
+  max-width: 800px;
   margin: 0;
-  color: #757575;
-  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 18px;
-  letter-spacing: -0.01em;
+  color: rgba(30, 30, 30, 0.7);
+  font-size: 16px;
+  line-height: 1.4;
 }
 
 .landing-benefits-grid,
@@ -729,8 +730,9 @@
 .landing-process-card {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-height: 360px;
+  justify-content: flex-start;
+  height: 360px;
+  gap: 20px;
   padding: 24px;
   border-radius: 16px;
   background: #fff;
@@ -929,6 +931,91 @@
     width: 100%;
   }
 
+  .landing-header {
+    padding: 16px 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .landing-header__brand,
+  .landing-header__burger {
+    position: relative;
+    z-index: 30;
+  }
+
+  .landing-header__burger {
+    position: relative;
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(30, 30, 30, 0.14);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.8);
+  }
+
+  .landing-header__burger span {
+    position: absolute;
+    width: 20px;
+    height: 2px;
+    border-radius: 999px;
+    background: #1e1e1e;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .landing-header__burger span:nth-child(1) {
+    transform: translateY(-6px);
+  }
+
+  .landing-header__burger span:nth-child(3) {
+    transform: translateY(6px);
+  }
+
+  .landing-header__burger.is-open span:nth-child(1) {
+    transform: rotate(45deg);
+  }
+
+  .landing-header__burger.is-open span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .landing-header__burger.is-open span:nth-child(3) {
+    transform: rotate(-45deg);
+  }
+
+  .landing-header__nav {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 24px;
+    padding: 92px 20px 24px;
+    background: #f1f1f1;
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+
+  .landing-header__nav.is-open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .landing-header__nav a {
+    font-size: 24px;
+    line-height: 1.2;
+  }
+
+  .landing-hero {
+    gap: 32px;
+  }
+
   .landing-hero__intro h1 {
     font-size: 32px;
     line-height: 1.05;
@@ -946,8 +1033,12 @@
 
   .landing-audience__title h2 {
     max-width: none;
-    font-size: 36px;
-    line-height: 1.05;
+    font-size: 28px;
+    line-height: 1.2;
+  }
+
+  .landing-audience {
+    gap: 20px;
   }
 
   .landing-section--benefits .landing-section__heading h2 {
@@ -970,9 +1061,18 @@
   }
 
   .landing-process-card {
-    min-height: 320px;
-    justify-content: flex-start;
+    height: 360px;
     gap: 20px;
+  }
+
+  .landing-audience-card {
+    padding: 20px;
+    gap: 16px;
+  }
+
+  .landing-audience-card h3 {
+    font-size: 20px;
+    line-height: 1.25;
   }
 
   .landing-benefit-card h3 {
