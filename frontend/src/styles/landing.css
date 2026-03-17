@@ -2,6 +2,25 @@
   margin: -22px calc(50% - 50vw) -54px;
   background: #f1f1f1;
   color: #1e1e1e;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+}
+
+.landing-page :is(h1, h2, h3) {
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+}
+
+.landing-page :is(p, a, span, li, strong) {
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-weight: 400;
+}
+
+.landing-page :is(p, a, span, li, strong) {
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-weight: 400;
+}
+
+.landing-page :is(h1, h2, h3) {
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
 }
 
 .landing-page__shell {
@@ -14,11 +33,22 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
   padding: 24px 0;
+}
+
+.landing-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: calc(50% - 50vw);
+  bottom: 0;
+  left: calc(50% - 50vw);
+  z-index: -1;
   backdrop-filter: blur(15px);
   background: rgba(241, 241, 241, 0.78);
 }
@@ -40,9 +70,8 @@
 
 .landing-header__subtitle {
   color: #3e536b;
-  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: -0.01em;
 }
 
@@ -56,9 +85,8 @@
 
 .landing-header__nav a {
   color: #3e536b;
-  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: -0.01em;
   text-decoration: none;
 }
@@ -91,6 +119,12 @@
   gap: 32px;
   align-self: stretch;
   justify-content: center;
+}
+
+.landing-hero__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .landing-hero__intro h1,
@@ -140,9 +174,8 @@
   min-height: 48px;
   padding: 12px 24px;
   border-radius: 12px;
-  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: -0.01em;
   text-decoration: none;
 }
@@ -159,9 +192,8 @@
 
 .landing-inline-link {
   color: #0e5ae7;
-  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 400;
   text-decoration: none;
 }
 
@@ -302,8 +334,8 @@
 .landing-brand-card__logo-wrap {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
 }
 
 .landing-brand-card__arrow {
@@ -313,8 +345,8 @@
 }
 
 .landing-brand-logo {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
   filter: grayscale(1);
 }
@@ -377,7 +409,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 400;
 }
 
 .landing-status-pill--neutral {
@@ -673,6 +705,12 @@
   height: 24px;
 }
 
+.landing-benefit-card__icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
 .landing-process-grid {
   gap: 8px;
 }
@@ -744,6 +782,8 @@
 }
 
 .landing-faq-card {
+  display: flex;
+  flex-direction: column;
   padding: 24px 32px;
   border-radius: 12px;
   gap: 16px;
@@ -819,9 +859,8 @@
   border-radius: 12px;
   background: #fff;
   color: #1067f2;
-  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: -0.01em;
   text-decoration: none;
   white-space: nowrap;
@@ -915,7 +954,7 @@
 
   .landing-faq-card {
     padding: 20px;
-    gap: 12px;
+    gap: 16px;
   }
 
   .landing-faq-card h3 {

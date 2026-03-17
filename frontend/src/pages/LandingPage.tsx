@@ -35,7 +35,7 @@ interface AudienceCard {
 interface BenefitCard {
   title: string;
   text: string;
-  icon: "wallet-plus" | "bolt" | "credit-card-plus" | "chart-line";
+  iconSrc: string;
 }
 
 interface PopularBrand {
@@ -54,22 +54,22 @@ const BENEFIT_CARDS: BenefitCard[] = [
   {
     title: "Цена ниже вторичного рынка",
     text: "Автомобили после лизинга часто продаются дешевле аналогичных предложений на вторичном рынке.",
-    icon: "wallet-plus",
+    iconSrc: "/brands/benefit-1.svg",
   },
   {
     title: "Понятная история эксплуатации",
     text: "Большинство автомобилей обслуживалось у официальных дилеров.",
-    icon: "bolt",
+    iconSrc: "/brands/benefit-2.svg",
   },
   {
     title: "Регулярный поток новых автомобилей",
     text: "Лизинговые компании регулярно реализуют автомобили после завершения договоров.",
-    icon: "credit-card-plus",
+    iconSrc: "/brands/benefit-3.svg",
   },
   {
     title: "Доступ к изъятым автомобилям",
     text: "На платформе можно найти изъятые автомобили и конфискат.",
-    icon: "chart-line",
+    iconSrc: "/brands/benefit-4.svg",
   },
 ];
 
@@ -193,82 +193,6 @@ function getStatusTone(value: string): "neutral" | "positive" | "warning" {
 function BrandLogo({ brand, src }: { brand: string; src: string }) {
   return (
     <img className="landing-brand-logo" src={src} alt={`${brand} logo`} />
-  );
-}
-
-function BenefitIcon({ name }: { name: BenefitCard["icon"] }) {
-  if (name === "wallet-plus") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path
-          d="M3 8.5A2.5 2.5 0 0 1 5.5 6H18a2 2 0 0 1 2 2v1M3 8.5V17a2 2 0 0 0 2 2h13a3 3 0 0 0 3-3v-3a2 2 0 0 0-2-2h-6.5a2.5 2.5 0 1 0 0 5H21"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M8 4v3M6.5 5.5h3"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  if (name === "bolt") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path
-          d="M13 2 4.5 13h6L11 22l8.5-11h-6L13 2Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  if (name === "credit-card-plus") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-        <path
-          d="M4 7a2 2 0 0 1 2-2h8.5a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M4 10h12.5M7 15.5h3M19 9v6M16 12h6"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M4 19V6m0 13h16M8 14l3-3 3 2 4-5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M18.2 8H14"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }
 
@@ -538,7 +462,7 @@ export function LandingPage() {
                   <p>{item.text}</p>
                 </div>
                 <span className="landing-benefit-card__icon-wrap" aria-hidden>
-                  <BenefitIcon name={item.icon} />
+                  <img className="landing-benefit-card__icon" src={item.iconSrc} alt="" />
                 </span>
               </article>
             ))}
