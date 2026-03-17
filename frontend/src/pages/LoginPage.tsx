@@ -142,7 +142,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           className={`auth-top-nav${isRegistrationMode ? " auth-top-nav--registration" : ""}`}
           aria-label="Навигация личного кабинета"
         >
-          <Link to="/showcase" className="auth-top-nav__link" onClick={resetShowcaseState}>
+          <Link to="/" className="auth-top-nav__link" onClick={resetShowcaseState}>
             Каталог техники
           </Link>
           <span className="auth-top-nav__link is-active">Личный кабинет для ЮЛ</span>

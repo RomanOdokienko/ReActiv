@@ -86,8 +86,8 @@ export function App() {
     }
 
     const pathname = location.pathname;
-    const isLandingPath = pathname === "/";
-    const isShowcasePath = pathname === "/showcase";
+    const isLandingPath = pathname === "/landing";
+    const isShowcasePath = pathname === "/" || pathname === "/showcase";
     const isServicePath =
       pathname === "/login" ||
       pathname === HIDDEN_ADMIN_LOGIN_PATH ||
@@ -100,7 +100,9 @@ export function App() {
       ? "ReActiv"
       : isItemPage
         ? "Лот техники — ReActiv"
-        : isShowcasePath
+        : isLandingPath
+          ? PUBLIC_TITLE
+          : isShowcasePath
           ? "Каталог техники — ReActiv"
           : PUBLIC_TITLE;
     document.title = title;
@@ -108,12 +110,12 @@ export function App() {
     upsertMetaByName("robots", isServicePath ? "noindex, nofollow" : "index, follow");
     upsertMetaByName(
       "description",
-      isShowcasePath
-        ? "Каталог автомобилей после лизинга, изъятых лотов и актуальных предложений ReActiv."
-        : "ReActiv — единый агрегатор автомобилей после лизинга с каталогом актуальных лотов по всей России.",
+      isLandingPath
+        ? "ReActiv — единый агрегатор автомобилей после лизинга с каталогом актуальных лотов по всей России."
+        : "Каталог автомобилей после лизинга, изъятых лотов и актуальных предложений ReActiv.",
     );
 
-    upsertCanonicalLink(`https://reactiv.pro${isLandingPath ? "/" : pathname}`);
+    upsertCanonicalLink(`https://reactiv.pro${pathname === "/showcase" ? "/" : pathname}`);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -237,7 +239,8 @@ export function App() {
     );
 
     if (platformMode === "open") {
-      const shouldShowPublicHeader = location.pathname === "/showcase";
+      const shouldShowPublicHeader =
+        location.pathname === "/" || location.pathname === "/showcase";
 
       return (
         <>
@@ -254,12 +257,21 @@ export function App() {
                 </div>
                 <nav className="public-showcase-nav" aria-label="Публичная навигация">
                   <NavLink
-                    to="/showcase"
+                    to="/"
+                    className={({ isActive }) =>
+                      isActive ? "public-showcase-nav__link is-active" : "public-showcase-nav__link"
+                    }
+                    end
+                  >
+                    Каталог техники
+                  </NavLink>
+                  <NavLink
+                    to="/landing"
                     className={({ isActive }) =>
                       isActive ? "public-showcase-nav__link is-active" : "public-showcase-nav__link"
                     }
                   >
-                    Каталог техники
+                    О платформе
                   </NavLink>
                   <NavLink
                     to="/login"
@@ -275,8 +287,9 @@ export function App() {
             )}
 
             <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/showcase" element={<ShowcasePage publicMode />} />
+              <Route path="/" element={<ShowcasePage publicMode />} />
+              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/showcase" element={<Navigate to="/" replace />} />
               <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
               <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
               <Route path="/login" element={loginElement} />

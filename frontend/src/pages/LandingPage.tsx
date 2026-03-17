@@ -325,13 +325,13 @@ export function LandingPage() {
     <section className="landing-page">
       <div className="landing-page__shell">
         <header className="landing-header">
-          <Link className="landing-header__brand" to="/">
+          <Link className="landing-header__brand" to="/landing">
             <span className="landing-header__logo">РеАктив</span>
             <span className="landing-header__subtitle">единый агрегатор лизинговой техники</span>
           </Link>
 
           <nav className="landing-header__nav" aria-label="Навигация лендинга">
-            <Link to="/showcase">Каталог техники</Link>
+            <Link to="/">Каталог техники</Link>
             <a href="#about">О платформе</a>
             <Link to="/login" state={{ activitySource: "landing_header" }}>
               Личный кабинет для ЮЛ
@@ -351,7 +351,7 @@ export function LandingPage() {
             </div>
 
             <div className="landing-hero__actions">
-              <Link className="landing-primary-button" to="/showcase">
+              <Link className="landing-primary-button" to="/">
                 Смотреть каталог автомобилей
               </Link>
               <a className="landing-secondary-button" href="#faq">
@@ -397,7 +397,7 @@ export function LandingPage() {
         <section className="landing-section">
           <div className="landing-section__heading">
             <h2>Авто после лизинга в продаже</h2>
-            <Link className="landing-inline-link" to="/showcase">
+            <Link className="landing-inline-link" to="/">
               Смотреть всю витрину
             </Link>
           </div>
@@ -406,7 +406,7 @@ export function LandingPage() {
             <div className="landing-api-fallback" role="status">
               <strong>Каталог временно недоступен</strong>
               <p>{error}</p>
-              <Link className="landing-primary-button" to="/showcase">
+              <Link className="landing-primary-button" to="/">
                 Перейти в витрину
               </Link>
             </div>
@@ -455,7 +455,7 @@ export function LandingPage() {
                 }
                 label="обновления каталога"
               />
-              <Link className="landing-primary-button" to="/showcase">
+              <Link className="landing-primary-button" to="/">
                 Смотреть каталог
               </Link>
             </div>
@@ -535,7 +535,7 @@ export function LandingPage() {
                 автомобилей.
               </p>
             </div>
-            <Link className="landing-primary-button" to="/showcase">
+            <Link className="landing-primary-button" to="/">
               Перейти
             </Link>
           </div>
