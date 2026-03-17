@@ -5,7 +5,6 @@ import {
   getMediaPreviewImageUrl,
   logActivityEvent,
 } from "../api/client";
-import { PrivacyPolicyLink, TermsLink } from "../components/LegalLinks";
 import type { CatalogItem } from "../types/api";
 import "../styles/landing.css";
 
@@ -229,7 +228,6 @@ export function LandingPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -285,18 +283,6 @@ export function LandingPage() {
   }, []);
 
   useEffect(() => {
-    if (!isMobileMenuOpen) {
-      document.body.style.overflow = "";
-      return;
-    }
-
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isMobileMenuOpen]);
-
-  useEffect(() => {
     const root = document.querySelector(".landing-page");
     if (!root) {
       return;
@@ -323,46 +309,6 @@ export function LandingPage() {
   return (
     <section className="landing-page">
       <div className="landing-page__shell">
-        <header className="landing-header">
-          <Link className="landing-header__brand" to="/landing">
-            <span className="landing-header__logo">РеАктив</span>
-            <span className="landing-header__subtitle">единый агрегатор лизинговой техники</span>
-          </Link>
-
-          <button
-            className={`landing-header__burger${isMobileMenuOpen ? " is-open" : ""}`}
-            type="button"
-            aria-expanded={isMobileMenuOpen}
-            aria-controls="landing-nav"
-            aria-label={isMobileMenuOpen ? "Закрыть меню" : "Открыть меню"}
-            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-
-          <nav
-            id="landing-nav"
-            className={`landing-header__nav${isMobileMenuOpen ? " is-open" : ""}`}
-            aria-label="Навигация лендинга"
-          >
-            <Link to="/" onClick={() => setIsMobileMenuOpen(false)}>
-              Каталог техники
-            </Link>
-            <a href="#about" onClick={() => setIsMobileMenuOpen(false)}>
-              О платформе
-            </a>
-            <Link
-              to="/login"
-              state={{ activitySource: "landing_header" }}
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Личный кабинет для ЮЛ
-            </Link>
-          </nav>
-        </header>
-
         <div className="landing-hero">
           <div className="landing-hero__copy">
             <div className="landing-hero__intro">
@@ -552,16 +498,6 @@ export function LandingPage() {
           </div>
         </section>
 
-        <footer className="landing-footer">
-          <div className="landing-footer__line" aria-hidden />
-          <div className="landing-footer__content">
-            <p className="landing-footer__meta">РеАктив | 2026</p>
-            <div className="landing-footer__links">
-              <PrivacyPolicyLink />
-              <TermsLink />
-            </div>
-          </div>
-        </footer>
       </div>
     </section>
   );

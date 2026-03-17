@@ -90,6 +90,11 @@
   color: #0e5ae7;
 }
 
+.landing-header__nav a.is-active {
+  color: #0e5ae7;
+  font-weight: 600;
+}
+
 .landing-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr);
