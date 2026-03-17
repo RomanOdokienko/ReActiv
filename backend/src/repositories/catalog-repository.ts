@@ -2,9 +2,20 @@ import { db } from "../db/connection";
 import type { CatalogQuery } from "../catalog/catalog-query";
 import {
   getLatestSuccessfulImportBatch,
+  getLatestSuccessfulImportBatchId,
   getPreviousSuccessfulImportBatchId,
 } from "./import-batch-repository";
 import { listVehicleOfferSnapshotCodesByImportBatchId } from "./vehicle-offer-repository";
+
+const FILTERS_METADATA_CACHE_TTL_MS = 5 * 60 * 1000;
+
+let filtersMetadataCache:
+  | {
+      latestImportBatchId: string | null;
+      expiresAt: number;
+      value: Record<string, unknown>;
+    }
+  | null = null;
 
 interface VehicleOfferDbRow {
   id: number;
@@ -669,6 +680,16 @@ export function findCatalogItemById(id: number): CatalogItem | null {
 }
 
 export function getCatalogFiltersMetadata(): Record<string, unknown> {
+  const latestImportBatchId = getLatestSuccessfulImportBatchId();
+  const cached = filtersMetadataCache;
+  if (
+    cached &&
+    cached.latestImportBatchId === latestImportBatchId &&
+    cached.expiresAt > Date.now()
+  ) {
+    return cached.value;
+  }
+
   const distinct = (column: string): string[] =>
     (
       db
@@ -901,7 +922,7 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     a.localeCompare(b, "ru", { sensitivity: "base" }),
   );
 
-  return {
+  const metadata = {
     offerCode: distinct("offer_code"),
     status: distinct("status"),
     city,
@@ -926,4 +947,12 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     modelsByBrandAndVehicleType,
     ...rangeRow,
   };
+
+  filtersMetadataCache = {
+    latestImportBatchId,
+    expiresAt: Date.now() + FILTERS_METADATA_CACHE_TTL_MS,
+    value: metadata,
+  };
+
+  return metadata;
 }
