@@ -1,0 +1,534 @@
+.landing-page {
+  margin: -22px calc(50% - 50vw) -54px;
+  background: #f1f1f1;
+  color: #1e1e1e;
+}
+
+.landing-page__shell {
+  padding: 0 96px 72px;
+}
+
+.landing-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 0;
+  backdrop-filter: blur(15px);
+  background: rgba(241, 241, 241, 0.78);
+}
+
+.landing-header__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.landing-header__logo {
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.landing-header__subtitle {
+  color: #3e536b;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.landing-header__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+}
+
+.landing-header__nav a {
+  color: #3e536b;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.landing-header__nav a:hover {
+  color: #0e5ae7;
+}
+
+.landing-hero,
+.landing-explainer,
+.landing-audience {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1fr);
+  gap: 64px;
+}
+
+.landing-hero {
+  align-items: center;
+  padding: 48px 0;
+}
+
+.landing-hero__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.landing-hero__intro h1,
+.landing-section h2,
+.landing-footer-cta h2 {
+  margin: 0;
+  color: #1e1e1e;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.landing-hero__intro h1 {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.landing-hero__intro p,
+.landing-info-card p,
+.landing-step-card p,
+.landing-explainer p,
+.landing-audience__intro p,
+.landing-faq-card p,
+.landing-footer-cta p,
+.landing-product-card__meta,
+.landing-api-fallback p {
+  margin: 0;
+  color: #757575;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.landing-hero__actions,
+.landing-section__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.landing-primary-button,
+.landing-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.landing-primary-button {
+  background: linear-gradient(313deg, #1476ff 0%, #0123b9 100%);
+  color: #fff;
+}
+
+.landing-secondary-button {
+  background: #fff;
+  color: #1e1e1e;
+}
+
+.landing-inline-link {
+  color: #0e5ae7;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.landing-metrics,
+.landing-brand-grid,
+.landing-benefits-grid,
+.landing-process-grid,
+.landing-product-grid,
+.landing-faq-list {
+  display: grid;
+}
+
+.landing-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.landing-metric-card,
+.landing-info-card,
+.landing-step-card,
+.landing-brand-card,
+.landing-product-card,
+.landing-faq-card,
+.landing-api-fallback,
+.landing-footer-cta,
+.landing-explainer,
+.landing-audience__cards .landing-info-card {
+  border-radius: 16px;
+  background: #fff;
+}
+
+.landing-metric-card {
+  padding: 20px;
+}
+
+.landing-metric-card strong {
+  display: block;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.landing-metric-card span {
+  display: block;
+  margin-top: 8px;
+  color: #757575;
+  font-size: 14px;
+}
+
+.landing-hero__media img,
+.landing-hero__placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 440px;
+  border-radius: 24px;
+  object-fit: cover;
+}
+
+.landing-hero__placeholder {
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: linear-gradient(135deg, #dce8ff 0%, #ffffff 100%);
+  color: #0e5ae7;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.landing-section {
+  padding: 48px 0;
+}
+
+.landing-section__heading {
+  margin-bottom: 32px;
+}
+
+.landing-section__heading h2,
+.landing-explainer h2,
+.landing-audience__intro h2,
+.landing-footer-cta h2 {
+  font-size: 32px;
+  line-height: 1.2;
+}
+
+.landing-section__eyebrow {
+  display: inline-flex;
+  margin-bottom: 12px;
+  color: #0e5ae7;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.landing-brand-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.landing-brand-card {
+  position: relative;
+  min-height: 170px;
+  padding: 20px;
+}
+
+.landing-brand-card::after {
+  content: "↗";
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  color: #0e5ae7;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.landing-brand-card strong,
+.landing-product-card h3,
+.landing-info-card h3,
+.landing-faq-card h3 {
+  margin: 0;
+  color: #1e1e1e;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-weight: 600;
+}
+
+.landing-brand-card strong {
+  display: block;
+  margin-top: auto;
+  font-size: 20px;
+}
+
+.landing-brand-card span {
+  display: block;
+  margin-top: 8px;
+  color: #757575;
+  font-size: 14px;
+}
+
+.landing-product-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.landing-product-card {
+  overflow: hidden;
+  border-radius: 20px;
+}
+
+.landing-product-card__image-wrap {
+  display: block;
+  aspect-ratio: 1.16 / 1;
+  background: #edf2ff;
+}
+
+.landing-product-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landing-product-card__image--placeholder {
+  display: grid;
+  place-items: center;
+  color: #0e5ae7;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.landing-product-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.landing-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.landing-status-pill--neutral {
+  background: #ecf1f9;
+  color: #00a0ff;
+}
+
+.landing-status-pill--positive {
+  background: #d5f4d5;
+  color: #0fa40f;
+}
+
+.landing-status-pill--warning {
+  background: #fbe0d1;
+  color: #ef5502;
+}
+
+.landing-product-card h3,
+.landing-info-card h3,
+.landing-faq-card h3 {
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.landing-product-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.landing-product-card__footer strong {
+  color: #1e1e1e;
+  font-family: "Inter", "IBM Plex Sans", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.landing-api-fallback {
+  padding: 24px;
+}
+
+.landing-api-fallback strong {
+  display: block;
+  margin-bottom: 8px;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 20px;
+}
+
+.landing-check-list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 24px 0 0;
+  list-style: none;
+}
+
+.landing-check-list li {
+  position: relative;
+  padding-left: 28px;
+  color: #1e1e1e;
+  font-size: 16px;
+}
+
+.landing-check-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #0e5ae7;
+}
+
+.landing-explainer,
+.landing-footer-cta {
+  padding: 32px;
+}
+
+.landing-explainer__main,
+.landing-explainer__stats,
+.landing-audience__intro,
+.landing-audience__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.landing-benefits-grid,
+.landing-process-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.landing-info-card,
+.landing-step-card,
+.landing-faq-card {
+  padding: 24px;
+}
+
+.landing-step-card span {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: #0e5ae7;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.landing-audience__cards {
+  gap: 16px;
+}
+
+.landing-faq-list {
+  gap: 12px;
+}
+
+.landing-section--footer-cta {
+  padding-bottom: 0;
+}
+
+.landing-footer-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-radius: 24px;
+}
+
+@media (max-width: 1280px) {
+  .landing-page__shell {
+    padding-inline: 48px;
+  }
+
+  .landing-brand-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .landing-product-grid,
+  .landing-benefits-grid,
+  .landing-process-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .landing-page__shell {
+    padding: 0 20px 56px;
+  }
+
+  .landing-header,
+  .landing-hero,
+  .landing-explainer,
+  .landing-audience,
+  .landing-footer-cta,
+  .landing-section__heading,
+  .landing-product-card__footer {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .landing-metrics,
+  .landing-brand-grid,
+  .landing-product-grid,
+  .landing-benefits-grid,
+  .landing-process-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-hero__intro h1 {
+    font-size: 32px;
+  }
+
+  .landing-section__heading h2,
+  .landing-explainer h2,
+  .landing-audience__intro h2,
+  .landing-footer-cta h2 {
+    font-size: 28px;
+  }
+
+  .landing-hero__media img,
+  .landing-hero__placeholder {
+    min-height: 320px;
+  }
+}

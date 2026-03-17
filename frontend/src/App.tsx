@@ -11,6 +11,7 @@ import { LegalLinks } from "./components/LegalLinks";
 import { CatalogPage } from "./pages/CatalogPage";
 import { AdminActivityPage } from "./pages/AdminActivityPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ShowcaseItemPage } from "./pages/ShowcaseItemPage";
 import { ShowcasePage } from "./pages/ShowcasePage";
@@ -85,6 +86,8 @@ export function App() {
     }
 
     const pathname = location.pathname;
+    const isLandingPath = pathname === "/";
+    const isShowcasePath = pathname === "/showcase";
     const isServicePath =
       pathname === "/login" ||
       pathname === HIDDEN_ADMIN_LOGIN_PATH ||
@@ -97,14 +100,20 @@ export function App() {
       ? "ReActiv"
       : isItemPage
         ? "Лот техники — ReActiv"
-        : PUBLIC_TITLE;
+        : isShowcasePath
+          ? "Каталог техники — ReActiv"
+          : PUBLIC_TITLE;
     document.title = title;
 
     upsertMetaByName("robots", isServicePath ? "noindex, nofollow" : "index, follow");
+    upsertMetaByName(
+      "description",
+      isShowcasePath
+        ? "Каталог автомобилей после лизинга, изъятых лотов и актуальных предложений ReActiv."
+        : "ReActiv — единый агрегатор автомобилей после лизинга с каталогом актуальных лотов по всей России.",
+    );
 
-    const canonicalPath =
-      pathname === "/" || pathname === "/showcase" ? "/" : pathname;
-    upsertCanonicalLink(`https://reactiv.pro${canonicalPath}`);
+    upsertCanonicalLink(`https://reactiv.pro${isLandingPath ? "/" : pathname}`);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -228,8 +237,7 @@ export function App() {
     );
 
     if (platformMode === "open") {
-      const shouldShowPublicHeader =
-        location.pathname === "/" || location.pathname === "/showcase";
+      const shouldShowPublicHeader = location.pathname === "/showcase";
 
       return (
         <>
@@ -246,11 +254,10 @@ export function App() {
                 </div>
                 <nav className="public-showcase-nav" aria-label="Публичная навигация">
                   <NavLink
-                    to="/"
+                    to="/showcase"
                     className={({ isActive }) =>
                       isActive ? "public-showcase-nav__link is-active" : "public-showcase-nav__link"
                     }
-                    end
                   >
                     Каталог техники
                   </NavLink>
@@ -268,8 +275,8 @@ export function App() {
             )}
 
             <Routes>
-              <Route path="/" element={<ShowcasePage publicMode />} />
-              <Route path="/showcase" element={<Navigate to="/" replace />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/showcase" element={<ShowcasePage publicMode />} />
               <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
               <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
               <Route path="/login" element={loginElement} />
