@@ -79,6 +79,7 @@ const SHOWCASE_DEFAULT_SORT_DIR: SortDirection = "desc";
 const SHOWCASE_DEFAULT_DATE_SORT_DIR: SortDirection = "desc";
 const SHOWCASE_DEFAULT_PRICE_SORT_DIR: SortDirection = "asc";
 const SHOWCASE_DEFAULT_VIEW_MODE: ViewMode = "grid";
+const SHOWCASE_FETCH_DEBOUNCE_MS = 220;
 const SHOWCASE_ALLOWED_SORT_BY = new Set([
   "created_at",
   "price",
@@ -819,29 +820,43 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
   }, [searchParams, showcaseUiState]);
 
   useEffect(() => {
-    async function loadItems() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await getCatalogItems(query);
-        setItemsResponse(response);
-      } catch (caughtError) {
-        setError("Не удалось загрузить витрину");
-        void logActivityEvent({
-          eventType: "api_error",
-          page: "/showcase",
-          payload: {
-            endpoint: "/catalog/items",
-            message:
-              caughtError instanceof Error ? caughtError.message : "unknown_error",
-          },
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const response = await getCatalogItems(query, {
+            signal: abortController.signal,
+          });
+          setItemsResponse(response);
+        } catch (caughtError) {
+          if (caughtError instanceof Error && caughtError.name === "AbortError") {
+            return;
+          }
 
-    void loadItems();
+          setError("Не удалось загрузить витрину");
+          void logActivityEvent({
+            eventType: "api_error",
+            page: "/showcase",
+            payload: {
+              endpoint: "/catalog/items",
+              message:
+                caughtError instanceof Error ? caughtError.message : "unknown_error",
+            },
+          });
+        } finally {
+          if (!abortController.signal.aborted) {
+            setIsLoading(false);
+          }
+        }
+      })();
+    }, SHOWCASE_FETCH_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      abortController.abort();
+    };
   }, [query]);
 
   useEffect(() => {

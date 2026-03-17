@@ -640,8 +640,13 @@ export interface CatalogItemsQuery {
   [key: string]: string | string[] | number | undefined;
 }
 
+interface CatalogRequestOptions {
+  signal?: AbortSignal;
+}
+
 export async function getCatalogItems(
   query: CatalogItemsQuery,
+  options: CatalogRequestOptions = {},
 ): Promise<CatalogItemsResponse> {
   const params = new URLSearchParams();
 
@@ -662,6 +667,7 @@ export async function getCatalogItems(
     const response = await fetch(buildUrl(`/catalog/items?${params.toString()}`), {
       credentials: "include",
       cache: "no-store",
+      signal: options.signal,
     });
     if (!response.ok) {
       throw new Error("Не удалось загрузить позиции каталога");
@@ -669,6 +675,9 @@ export async function getCatalogItems(
 
     return (await response.json()) as CatalogItemsResponse;
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
+    }
     if (error instanceof TypeError) {
       throw backendUnavailableError();
     }
