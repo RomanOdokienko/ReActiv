@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   getCatalogFilters,
@@ -35,6 +35,11 @@ interface AudienceCard {
 interface BenefitCard {
   title: string;
   text: string;
+}
+
+interface PopularBrand {
+  name: string;
+  query: string;
 }
 
 const DEFAULT_METRICS: LandingMetrics = {
@@ -100,6 +105,17 @@ const FAQ_ITEMS: FaqItem[] = [
     answer:
       "Да. Лендинг ведет в действующую витрину, где уже доступны фильтры, карточки лотов, фотографии и актуальные статусы автомобилей.",
   },
+];
+
+const HERO_IMAGE_URL = "https://www.figma.com/api/mcp/asset/12cb40f8-13ec-42fe-8230-d7ed062e7a4c";
+const POPULAR_BRANDS: PopularBrand[] = [
+  { name: "Mercedes", query: "Mercedes-Benz" },
+  { name: "BMW", query: "BMW" },
+  { name: "SITRAK", query: "SITRAK" },
+  { name: "Shacman", query: "Shacman" },
+  { name: "Lexus", query: "Lexus" },
+  { name: "Li", query: "Li" },
+  { name: "Haval", query: "Haval" },
 ];
 
 function formatPrice(value: number | null): string {
@@ -172,6 +188,72 @@ function MetricCard({
       <strong>{value}</strong>
       <span>{label}</span>
     </article>
+  );
+}
+
+function BrandLogo({ brand }: { brand: string }) {
+  if (brand === "Mercedes") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true" className="landing-brand-logo">
+        <circle cx="24" cy="24" r="22" fill="#fff" stroke="#111" strokeWidth="1.8" />
+        <path d="M24 10 L28.5 26.5 L24 22.8 L19.5 26.5 Z" fill="#111" />
+        <path d="M24 22.8 L11.5 31.8" stroke="#111" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M24 22.8 L36.5 31.8" stroke="#111" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (brand === "BMW") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true" className="landing-brand-logo">
+        <circle cx="24" cy="24" r="22" fill="#111" />
+        <circle cx="24" cy="24" r="18" fill="#fff" />
+        <path d="M24 24 V11 A13 13 0 0 1 37 24 Z" fill="#76a7ff" />
+        <path d="M24 24 H11 A13 13 0 0 1 24 11 Z" fill="#fff" />
+        <path d="M24 24 V37 A13 13 0 0 1 11 24 Z" fill="#76a7ff" />
+        <path d="M24 24 H37 A13 13 0 0 1 24 37 Z" fill="#fff" />
+        <circle cx="24" cy="24" r="12.5" fill="none" stroke="#111" strokeWidth="1.4" />
+        <text x="24" y="8.8" textAnchor="middle" fontSize="5.2" fontWeight="700" fill="#fff">
+          BMW
+        </text>
+      </svg>
+    );
+  }
+
+  if (brand === "Lexus") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true" className="landing-brand-logo">
+        <ellipse cx="24" cy="24" rx="21" ry="14.5" fill="none" stroke="#111" strokeWidth="1.8" />
+        <path d="M27 15.5 L18.8 15.5 L18.8 31.5 L30.8 31.5" fill="none" stroke="#111" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (brand === "Haval") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true" className="landing-brand-logo">
+        <rect x="4.5" y="14" width="39" height="20" rx="6" fill="#111" />
+        <text x="24" y="27.5" textAnchor="middle" fontSize="9" fontWeight="700" fill="#fff" letterSpacing="0.08em">
+          HAVAL
+        </text>
+      </svg>
+    );
+  }
+
+  if (brand === "Li") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true" className="landing-brand-logo">
+        <rect x="6" y="6" width="36" height="36" rx="12" fill="#111" />
+        <path d="M18 14 V34 H30" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M31 14 V34" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <div className={`landing-brand-wordmark landing-brand-wordmark--${brand.toLowerCase()}`}>
+      {brand}
+    </div>
   );
 }
 
@@ -286,41 +368,6 @@ export function LandingPage() {
     };
   }, []);
 
-  const heroImageUrl = useMemo(() => {
-    if (catalogState.featuredItems.length === 0) {
-      return null;
-    }
-
-    return getItemPreviewUrl(catalogState.featuredItems[0]);
-  }, [catalogState.featuredItems]);
-
-  const showcaseStats = useMemo(
-    () => [
-      {
-        value:
-          catalogState.metrics.total > 0
-            ? `${catalogState.metrics.total.toLocaleString("ru-RU")}+`
-            : "Актуально",
-        label: "предложений в каталоге",
-      },
-      {
-        value:
-          catalogState.metrics.brandsCount > 0
-            ? `${catalogState.metrics.brandsCount}+`
-            : "Подборка",
-        label: "марок в подборке",
-      },
-      {
-        value:
-          catalogState.metrics.newThisWeekCount > 0
-            ? `${catalogState.metrics.newThisWeekCount}`
-            : "Новые",
-        label: "новинок на этой неделе",
-      },
-    ],
-    [catalogState.metrics],
-  );
-
   return (
     <section className="landing-page">
       <div className="landing-page__shell">
@@ -354,26 +401,11 @@ export function LandingPage() {
               <Link className="landing-primary-button" to="/">
                 Смотреть каталог автомобилей
               </Link>
-              <a className="landing-secondary-button" href="#faq">
-                Частые вопросы
-              </a>
-            </div>
-
-            <div className="landing-metrics">
-              {showcaseStats.map((item) => (
-                <MetricCard key={item.label} value={item.value} label={item.label} />
-              ))}
             </div>
           </div>
 
           <div className="landing-hero__media">
-            {heroImageUrl ? (
-              <img src={heroImageUrl} alt="Автомобиль из каталога ReActiv" />
-            ) : (
-              <div className="landing-hero__placeholder">
-                <span>Каталог актуальных автомобилей после лизинга</span>
-              </div>
-            )}
+            <img src={HERO_IMAGE_URL} alt="Автомобиль после лизинга" />
           </div>
         </div>
 
@@ -382,14 +414,22 @@ export function LandingPage() {
             <h2>Популярные марки автомобилей после лизинга</h2>
           </div>
           <div className="landing-brand-grid">
-            {(catalogState.brands.length > 0
-              ? catalogState.brands
-              : ["BMW", "Mercedes-Benz", "Toyota", "Kia", "Hyundai", "LADA", "Volkswagen"]
-            ).map((brand) => (
-              <article key={brand} className="landing-brand-card">
-                <strong>{brand}</strong>
-                <span>Смотреть предложения</span>
-              </article>
+            {POPULAR_BRANDS.map((brand) => (
+              <Link
+                key={brand.name}
+                className="landing-brand-card"
+                to={`/?brand=${encodeURIComponent(brand.query)}`}
+              >
+                <div className="landing-brand-card__top">
+                  <div className="landing-brand-card__logo-wrap">
+                    <BrandLogo brand={brand.name} />
+                  </div>
+                  <span className="landing-brand-card__arrow" aria-hidden="true">
+                    ↗
+                  </span>
+                </div>
+                <strong>{brand.name}</strong>
+              </Link>
             ))}
           </div>
         </section>
