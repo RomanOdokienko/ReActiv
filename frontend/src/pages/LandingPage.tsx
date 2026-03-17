@@ -579,17 +579,16 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="landing-section landing-section--footer-cta">
-          <div className="landing-footer-cta">
-            <div className="landing-footer-cta__content">
-              <h2>Смотреть автомобили после лизинга</h2>
-              <p>Перейдите в каталог и найдите автомобиль</p>
+        <footer className="landing-footer">
+          <div className="landing-footer__line" aria-hidden />
+          <div className="landing-footer__content">
+            <p className="landing-footer__meta">РеАктив | 2026</p>
+            <div className="landing-footer__links">
+              <a href="#">Политика обработки персональных данных</a>
+              <a href="#">Пользовательское соглашение</a>
             </div>
-            <Link className="landing-footer-cta__button" to="/">
-              Перейти
-            </Link>
           </div>
-        </section>
+        </footer>
       </div>
     </section>
   );
