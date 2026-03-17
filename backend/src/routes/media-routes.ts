@@ -81,6 +81,9 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const result = await resolveGalleryUrls(sourceUrl);
-    return reply.code(200).send(result);
+    return reply
+      .code(200)
+      .header("Cache-Control", "public, max-age=300, stale-while-revalidate=3600")
+      .send(result);
   });
 }

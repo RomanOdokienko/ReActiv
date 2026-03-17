@@ -31,6 +31,22 @@ const galleryCache = new Map<string, { galleryUrls: string[]; expiresAt: number 
 const RESO_IMAGE_BASE_URL = "https://api-sale.resoleasing.com";
 const RESO_SALE_API_BASE_URL = "https://admin.resoleasing.com/api/sales-catalog";
 
+function getCachedGalleryUrls(cacheKey: string): string[] | null {
+  const cached = galleryCache.get(cacheKey);
+  if (!cached || cached.expiresAt <= Date.now()) {
+    return null;
+  }
+
+  return cached.galleryUrls;
+}
+
+function setCachedGalleryUrls(cacheKey: string, galleryUrls: string[]): void {
+  galleryCache.set(cacheKey, {
+    galleryUrls,
+    expiresAt: Date.now() + PREVIEW_CACHE_TTL_MS,
+  });
+}
+
 function isImageLikeUrl(url: string): boolean {
   return /\.(png|jpe?g|webp|gif|bmp|svg)(\?.*)?$/i.test(url);
 }
@@ -137,9 +153,10 @@ function normalizeResoImageUrl(raw: string | null): string | null {
 }
 
 async function resolveResoGalleryByVin(vin: string): Promise<string[]> {
-  const cached = galleryCache.get(`reso-vin:${vin}`);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.galleryUrls;
+  const cacheKey = `reso-vin:${vin}`;
+  const cached = getCachedGalleryUrls(cacheKey);
+  if (cached) {
+    return cached;
   }
 
   const apiUrl = new URL(RESO_SALE_API_BASE_URL);
@@ -159,10 +176,7 @@ async function resolveResoGalleryByVin(vin: string): Promise<string[]> {
     .filter((value): value is string => Boolean(value));
   const urls = [...new Set([...originalUrls, ...bigUrls])];
 
-  galleryCache.set(`reso-vin:${vin}`, {
-    galleryUrls: urls,
-    expiresAt: Date.now() + PREVIEW_CACHE_TTL_MS,
-  });
+  setCachedGalleryUrls(cacheKey, urls);
 
   return urls;
 }
@@ -301,18 +315,28 @@ export async function resolveGalleryUrls(sourceUrl: string): Promise<GalleryResu
     return { galleryUrls: [] };
   }
 
+  const cached = getCachedGalleryUrls(trimmed);
+  if (cached) {
+    return { galleryUrls: cached };
+  }
+
   try {
     const resoVin = parseResoVinSourceUrl(trimmed);
     if (resoVin) {
-      return { galleryUrls: await resolveResoGalleryByVin(resoVin) };
+      const galleryUrls = await resolveResoGalleryByVin(resoVin);
+      setCachedGalleryUrls(trimmed, galleryUrls);
+      return { galleryUrls };
     }
 
     if (isDirectImageUrl(trimmed)) {
-      return { galleryUrls: [trimmed] };
+      const galleryUrls = [trimmed];
+      setCachedGalleryUrls(trimmed, galleryUrls);
+      return { galleryUrls };
     }
 
     if (isYandexPublicLink(trimmed)) {
       const galleryUrls = await resolveYandexGallery(trimmed);
+      setCachedGalleryUrls(trimmed, galleryUrls);
       return { galleryUrls };
     }
   } catch {

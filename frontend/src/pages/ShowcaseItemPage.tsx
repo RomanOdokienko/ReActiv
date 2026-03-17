@@ -54,6 +54,14 @@ function extractMediaUrls(rawValue: string): string[] {
   return [...new Set(cleaned)];
 }
 
+function areSameUrlLists(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((value, index) => value === right[index]);
+}
+
 function getDisplayImageUrl(url: string): string {
   return getMediaPreviewImageUrl(url);
 }
@@ -194,8 +202,11 @@ export function ShowcaseItemPage() {
         return;
       }
 
+      setMediaUrls((currentUrls) =>
+        areSameUrlLists(currentUrls, sourceUrls) ? currentUrls : sourceUrls,
+      );
+
       if (sourceUrls.length > 1) {
-        setMediaUrls(sourceUrls);
         return;
       }
 
@@ -206,11 +217,15 @@ export function ShowcaseItemPage() {
         }
 
         if (galleryUrls.length > 0) {
-          setMediaUrls(galleryUrls);
+          setMediaUrls((currentUrls) =>
+            areSameUrlLists(currentUrls, galleryUrls) ? currentUrls : galleryUrls,
+          );
           return;
         }
 
-        setMediaUrls(sourceUrls);
+        setMediaUrls((currentUrls) =>
+          areSameUrlLists(currentUrls, sourceUrls) ? currentUrls : sourceUrls,
+        );
       } catch (caughtError) {
         void logActivityEvent({
           eventType: "api_error",
@@ -223,7 +238,9 @@ export function ShowcaseItemPage() {
         });
 
         if (!isCancelled) {
-          setMediaUrls(sourceUrls);
+          setMediaUrls((currentUrls) =>
+            areSameUrlLists(currentUrls, sourceUrls) ? currentUrls : sourceUrls,
+          );
         }
       }
     }

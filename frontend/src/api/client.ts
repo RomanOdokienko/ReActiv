@@ -24,6 +24,8 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:3001/api";
 const ACTIVITY_SESSION_KEY = "activity_session_id_v1";
 const ACTIVITY_ATTRIBUTION_KEY = "activity_attribution_v1";
+const MEDIA_GALLERY_CACHE_TTL_MS = 5 * 60 * 1000;
+const mediaGalleryCache = new Map<string, { galleryUrls: string[]; expiresAt: number }>();
 
 function buildUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
@@ -614,9 +616,19 @@ export function getMediaPreviewImageUrl(sourceUrl: string): string {
 }
 
 export async function getMediaGalleryUrls(sourceUrl: string): Promise<string[]> {
+  const trimmedSourceUrl = sourceUrl.trim();
+  if (!trimmedSourceUrl) {
+    return [];
+  }
+
+  const cached = mediaGalleryCache.get(trimmedSourceUrl);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.galleryUrls;
+  }
+
   try {
     const response = await fetch(
-      buildUrl(`/media/gallery?url=${encodeURIComponent(sourceUrl)}`),
+      buildUrl(`/media/gallery?url=${encodeURIComponent(trimmedSourceUrl)}`),
       {
         credentials: "include",
       },
@@ -627,7 +639,12 @@ export async function getMediaGalleryUrls(sourceUrl: string): Promise<string[]> 
     }
 
     const payload = (await response.json()) as { galleryUrls?: string[] };
-    return payload.galleryUrls ?? [];
+    const galleryUrls = payload.galleryUrls ?? [];
+    mediaGalleryCache.set(trimmedSourceUrl, {
+      galleryUrls,
+      expiresAt: Date.now() + MEDIA_GALLERY_CACHE_TTL_MS,
+    });
+    return galleryUrls;
   } catch (error) {
     if (error instanceof TypeError) {
       throw backendUnavailableError();
