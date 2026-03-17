@@ -82,16 +82,16 @@ const PROCESS_STEPS = [
 
 const AUDIENCE_CARDS: AudienceCard[] = [
   {
-    title: "Дилерам и автоплощадкам",
-    text: "Когда нужен постоянный поток лотов и быстрый доступ к свежему стоку после лизинга.",
+    title: "Автомобильные брокеры и агенты",
+    text: "Поиск автомобилей после лизинга и изъятых авто для клиентов.",
   },
   {
-    title: "Юридическим лицам и закупщикам",
-    text: "Когда важны прозрачные параметры автомобилей и понятный каталог без лишнего шума.",
+    title: "Автодилеры",
+    text: "Дополнительный источник автомобилей для автосалонов.",
   },
   {
-    title: "Лизинговым компаниям",
-    text: "Когда нужна единая витрина для размещения и ускоренной реализации возвратного стока.",
+    title: "Таксопарки",
+    text: "Закупка автомобилей с пробегом для автопарков.",
   },
 ];
 
@@ -559,20 +559,15 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="landing-section">
+        <section className="landing-section landing-section--audience">
           <div className="landing-audience">
-            <div className="landing-audience__intro">
-              <span className="landing-section__eyebrow">Кому подходит платформа</span>
-              <h2>Лендинг объясняет ценность продукта, а витрина сразу ведет к выбору автомобиля</h2>
-              <p>
-                Такой сценарий работает и для SEO-трафика, и для рекламных переходов, и для прямых
-                заходов партнеров в каталог.
-              </p>
+            <div className="landing-audience__title">
+              <h2>Кому подходит платформа</h2>
             </div>
 
             <div className="landing-audience__cards">
               {AUDIENCE_CARDS.map((item) => (
-                <article key={item.title} className="landing-info-card">
+                <article key={item.title} className="landing-audience-card">
                   <h3>{item.title}</h3>
                   <p>{item.text}</p>
                 </article>
