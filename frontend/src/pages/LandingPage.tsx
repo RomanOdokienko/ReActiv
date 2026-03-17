@@ -74,10 +74,10 @@ const BENEFIT_CARDS: BenefitCard[] = [
 ];
 
 const PROCESS_STEPS = [
-  "Лизинговые компании загружают актуальный сток в платформу.",
-  "Каталог автоматически обновляется и показывает доступные автомобили.",
-  "Покупатель фильтрует лоты по параметрам и открывает подходящие карточки.",
-  "Дальше сделка и коммуникация идут по выбранному автомобилю без лишнего ручного поиска.",
+  "Лизинговые компании размещают автомобили после лизинга",
+  "Reactiv собирает предложения в единый каталог",
+  "Брокеры, агенты и дилеры находят автомобили",
+  "После запроса открываются контакты владельца лота",
 ];
 
 const AUDIENCE_CARDS: AudienceCard[] = [
@@ -551,8 +551,8 @@ export function LandingPage() {
           </div>
           <div className="landing-process-grid">
             {PROCESS_STEPS.map((item, index) => (
-              <article key={item} className="landing-step-card">
-                <span>0{index + 1}</span>
+              <article key={item} className="landing-process-card">
+                <span className="landing-process-card__index">{index + 1}</span>
                 <p>{item}</p>
               </article>
             ))}

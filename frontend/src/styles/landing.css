@@ -621,6 +621,43 @@
   height: 24px;
 }
 
+.landing-process-grid {
+  gap: 8px;
+}
+
+.landing-process-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 360px;
+  padding: 24px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.landing-process-card__index {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 42px;
+  background: #0e5ae7;
+  color: #fff;
+  font-family: "Inter", "IBM Plex Sans", sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.landing-process-card p {
+  margin: 0;
+  color: #1e1e1e;
+  font-family: "Inter", "IBM Plex Sans", sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
 .landing-info-card,
 .landing-step-card,
 .landing-faq-card {
@@ -715,12 +752,21 @@
     gap: 20px;
   }
 
+  .landing-process-card {
+    min-height: 260px;
+    gap: 20px;
+  }
+
   .landing-benefit-card h3 {
     font-size: 20px;
   }
 
   .landing-benefit-card p {
     font-size: 14px;
+  }
+
+  .landing-process-card p {
+    font-size: 18px;
   }
 
   .landing-explainer {
