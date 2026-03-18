@@ -1666,6 +1666,9 @@ export function ShowcasePage({
     if (normalized === "alpha") {
       return "Альфа-Лизинг";
     }
+    if (normalized === "sovcombank") {
+      return "Совкомбанк Лизинг";
+    }
     return value;
   }
 

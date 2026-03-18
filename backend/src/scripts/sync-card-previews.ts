@@ -14,7 +14,7 @@ import {
   type VehicleOfferMediaCandidate,
 } from "../repositories/vehicle-offer-repository";
 
-const KNOWN_TENANTS = ["gpb", "reso", "alpha"] as const;
+const KNOWN_TENANTS = ["gpb", "reso", "alpha", "sovcombank"] as const;
 const DEFAULT_LIMIT = 500;
 const DEFAULT_CONCURRENCY = 4;
 const THUMBNAIL_WIDTH = 640;

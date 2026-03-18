@@ -1,7 +1,7 @@
 import type { CanonicalField } from "../domain/types";
 import { normalizeOfferCode, normalizeOfferCodePreserve } from "./normalize-offer-code";
 
-export type ImportTenantId = "gpb" | "reso" | "alpha";
+export type ImportTenantId = "gpb" | "reso" | "alpha" | "sovcombank";
 
 type HeaderAliases = Record<CanonicalField, string[]>;
 
@@ -71,6 +71,35 @@ const ALFA_HEADER_ADDITIONS: Partial<HeaderAliases> = {
   ],
 };
 
+const SOVCOMBANK_HEADER_ADDITIONS: Partial<HeaderAliases> = {
+  offer_code: ["VIN", "VIN-код", "VIN / Зав.№"],
+  status: ["Признак"],
+  brand: ["Марка"],
+  model: ["Модель"],
+  modification: ["Предмет лизинга", "Тех. Характеристики", "Колесная формула"],
+  vehicle_type: ["Вид предмета лизинга"],
+  year: ["Год выпуска"],
+  mileage_km: ["Пробег/наработка км.ч/м.ч.", "Пробег", "Наработка"],
+  key_count: ["Признак"],
+  pts_type: ["Признак"],
+  has_encumbrance: ["Ограничения ГИБДД", "Признак разукомплекта"],
+  is_deregistered: ["Признак разукомплекта", "Учет спецтехники"],
+  responsible_person: ["Менеджер"],
+  storage_address: [
+    "Адрес хранения (в БД)",
+    "Адрес хранения",
+    "Город хранения",
+    "Область хранения",
+  ],
+  days_on_sale: ["Признак"],
+  price: ["Текущая цена"],
+  yandex_disk_url: ["Размещение объявления, ссылка"],
+  booking_status: ["Признак"],
+  external_id: ["№ п/п", "№п/п"],
+  crm_ref: ["БД"],
+  website_url: ["Размещение объявления, ссылка"],
+};
+
 function mergeAliases(
   base: HeaderAliases,
   overrides: Partial<HeaderAliases>,
@@ -125,13 +154,24 @@ export function createImportTenantProfiles(
       headerAliases: extendAliases(baseAliases, ALFA_HEADER_ADDITIONS),
       offerCodeNormalizer: normalizeOfferCode,
     },
+    sovcombank: {
+      id: "sovcombank",
+      label: "Совкомбанк Лизинг",
+      headerAliases: extendAliases(baseAliases, SOVCOMBANK_HEADER_ADDITIONS),
+      offerCodeNormalizer: normalizeOfferCode,
+    },
   };
 }
 
 export function parseImportTenantId(
   rawValue: unknown,
 ): ImportTenantId | null {
-  if (rawValue === "gpb" || rawValue === "reso" || rawValue === "alpha") {
+  if (
+    rawValue === "gpb" ||
+    rawValue === "reso" ||
+    rawValue === "alpha" ||
+    rawValue === "sovcombank"
+  ) {
     return rawValue;
   }
   return null;

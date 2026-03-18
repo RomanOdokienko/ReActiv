@@ -28,6 +28,7 @@ const IMPORT_TENANTS: Array<{ id: ImportTenantId; label: string }> = [
   { id: "gpb", label: "ГПБ Лизинг" },
   { id: "reso", label: "РЕСО Лизинг" },
   { id: "alpha", label: "Альфа Лизинг" },
+  { id: "sovcombank", label: "Совкомбанк Лизинг" },
 ];
 
 function getTenantLabel(tenantId: ImportTenantId): string {
