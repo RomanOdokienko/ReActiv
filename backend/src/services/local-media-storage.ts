@@ -11,6 +11,15 @@ function resolveMediaStorageRoot(): string {
       : path.resolve(process.cwd(), configured);
   }
 
+  // Keep media on the same persistent mount as the DB when DATABASE_PATH is configured.
+  const configuredDbPath = process.env.DATABASE_PATH?.trim();
+  if (configuredDbPath) {
+    const absoluteDbPath = path.isAbsolute(configuredDbPath)
+      ? configuredDbPath
+      : path.resolve(process.cwd(), configuredDbPath);
+    return path.join(path.dirname(absoluteDbPath), "media");
+  }
+
   return path.resolve(process.cwd(), "data/media");
 }
 
