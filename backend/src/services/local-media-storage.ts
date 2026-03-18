@@ -94,7 +94,13 @@ export function storedMediaFileExists(relativePath: string | null): boolean {
   }
 
   try {
-    return fs.existsSync(resolveStoredMediaAbsolutePath(relativePath));
+    const absolutePath = resolveStoredMediaAbsolutePath(relativePath);
+    if (!fs.existsSync(absolutePath)) {
+      return false;
+    }
+
+    const stats = fs.statSync(absolutePath);
+    return stats.isFile() && stats.size > 0;
   } catch {
     return false;
   }

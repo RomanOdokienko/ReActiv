@@ -26,6 +26,10 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
       }
 
       const stats = fs.statSync(absolutePath);
+      if (!stats.isFile() || stats.size <= 0) {
+        return reply.code(404).send({ message: "stored preview is empty" });
+      }
+
       reply
         .code(200)
         .header("Content-Type", "image/jpeg")
@@ -68,6 +72,10 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
         }
 
         const stats = fs.statSync(absolutePath);
+        if (!stats.isFile() || stats.size <= 0) {
+          return reply.code(404).send({ message: "stored preview is empty" });
+        }
+
         reply
           .code(200)
           .header("Content-Type", "image/jpeg")
