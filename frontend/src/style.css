@@ -1,7 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap");
 
 :root {
-  --bg: #eef2f7;
+  --bg: #f1f1f1;
   --bg-overlay: rgba(15, 76, 129, 0.12);
   --surface: #ffffff;
   --surface-soft: #f7faff;
@@ -31,7 +31,7 @@ body {
 }
 
 body.auth-page {
-  background: #e7e7e8;
+  background: #f1f1f1;
 }
 
 body.showcase-mobile-lock {
