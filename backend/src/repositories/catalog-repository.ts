@@ -917,6 +917,7 @@ export function searchCatalogItems(filters: CatalogQuery): {
     ${whereClause}
     ORDER BY
       CASE
+        WHEN TRIM(COALESCE(card_preview_path, '')) != '' THEN 2
         WHEN TRIM(COALESCE(yandex_disk_url, '')) = '' THEN 0
         WHEN lower(yandex_disk_url) LIKE '%disk.yandex.%' THEN 1
         WHEN lower(yandex_disk_url) LIKE '%yadi.sk%' THEN 1

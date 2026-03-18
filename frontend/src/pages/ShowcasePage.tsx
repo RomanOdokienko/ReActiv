@@ -711,7 +711,6 @@ export function ShowcasePage({
       pageSize,
       sortBy,
       sortDir,
-      onlyWithPreview: "true",
     };
 
     if (bookingPreset) {
@@ -757,6 +756,7 @@ export function ShowcasePage({
       queryObject.newThisWeek = "true";
     }
     if (shouldUseMainShowcaseRandomMix) {
+      queryObject.onlyWithPreview = "true";
       queryObject.randomMix = "true";
       queryObject.randomSeed = randomMixSeedRef.current;
     }
