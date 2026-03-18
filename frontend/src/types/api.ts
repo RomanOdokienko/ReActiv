@@ -161,6 +161,7 @@ export interface CatalogSummaryResponse {
 
 export interface CatalogFiltersResponse {
   offerCode: string[];
+  tenantId: string[];
   status: string[];
   city: string[];
   brand: string[];

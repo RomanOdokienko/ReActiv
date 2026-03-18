@@ -14,6 +14,7 @@ import type {
 
 interface ShowcasePageProps {
   publicMode?: boolean;
+  canFilterByTenant?: boolean;
 }
 
 const RESO_TEST_VINS = new Set([
@@ -34,6 +35,7 @@ type SortDirection = "asc" | "desc";
 
 interface ShowcaseUiState {
   bookingPreset: "" | BookingPreset;
+  tenantId: string;
   city: string;
   selectedVehicleTypes: string[];
   brand: string;
@@ -55,6 +57,7 @@ interface ShowcaseUiState {
 
 interface FilterTrackingSnapshot {
   bookingPreset: string | null;
+  tenantId: string | null;
   city: string | null;
   vehicleTypes: string[];
   brand: string | null;
@@ -90,6 +93,7 @@ const SHOWCASE_ALLOWED_SORT_BY = new Set([
 ]);
 const SHOWCASE_URL_FILTER_KEYS = new Set([
   "bookingStatus",
+  "tenantId",
   "city",
   "vehicleType",
   "brand",
@@ -110,6 +114,7 @@ const SHOWCASE_URL_FILTER_KEYS = new Set([
 function createDefaultShowcaseUiState(): ShowcaseUiState {
   return {
     bookingPreset: "",
+    tenantId: "",
     city: "",
     selectedVehicleTypes: [],
     brand: "",
@@ -212,6 +217,7 @@ function parseShowcaseUiStateFromSearchParams(params: URLSearchParams): Showcase
 
   return {
     bookingPreset,
+    tenantId: (params.get("tenantId") ?? "").trim(),
     city: (params.get("city") ?? "").trim(),
     selectedVehicleTypes: parseVehicleTypeParams(params),
     brand: (params.get("brand") ?? "").trim(),
@@ -249,6 +255,7 @@ function sanitizeRestoredShowcaseUiState(restored: Partial<ShowcaseUiState>): Sh
       typeof restored.bookingPreset === "string" && isBookingPreset(restored.bookingPreset)
         ? restored.bookingPreset
         : "",
+    tenantId: typeof restored.tenantId === "string" ? restored.tenantId : "",
     city: typeof restored.city === "string" ? restored.city : "",
     selectedVehicleTypes: Array.isArray(restored.selectedVehicleTypes)
       ? restored.selectedVehicleTypes.filter((value) => typeof value === "string" && value.trim())
@@ -279,6 +286,9 @@ function buildShowcaseFilterSearchParams(state: ShowcaseUiState): URLSearchParam
 
   if (state.bookingPreset) {
     params.set("bookingStatus", state.bookingPreset);
+  }
+  if (state.tenantId) {
+    params.set("tenantId", state.tenantId);
   }
   if (state.city) {
     params.set("city", state.city);
@@ -430,6 +440,7 @@ function toNullableNumber(value: string): number | null {
 
 function createFilterTrackingSnapshot(input: {
   bookingPreset: string;
+  tenantId: string;
   city: string;
   selectedVehicleTypes: string[];
   brand: string;
@@ -446,6 +457,7 @@ function createFilterTrackingSnapshot(input: {
 }): FilterTrackingSnapshot {
   return {
     bookingPreset: input.bookingPreset || null,
+    tenantId: input.tenantId || null,
     city: input.city || null,
     vehicleTypes: [...input.selectedVehicleTypes],
     brand: input.brand || null,
@@ -462,7 +474,10 @@ function createFilterTrackingSnapshot(input: {
   };
 }
 
-export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
+export function ShowcasePage({
+  publicMode = false,
+  canFilterByTenant = false,
+}: ShowcasePageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const pageSize = SHOWCASE_PAGE_SIZE;
   const restoredState = useMemo(readShowcaseUiState, []);
@@ -496,6 +511,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     null,
   );
   const [bookingPreset, setBookingPreset] = useState<"" | BookingPreset>(initialState.bookingPreset);
+  const [tenantId, setTenantId] = useState(initialState.tenantId);
   const [city, setCity] = useState(initialState.city);
   const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>(
     initialState.selectedVehicleTypes,
@@ -638,6 +654,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
 
     return !(
       bookingPreset ||
+      tenantId ||
       city ||
       brand ||
       model ||
@@ -665,6 +682,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     selectedVehicleTypes.length,
     sortBy,
     sortDir,
+    tenantId,
     yearMax,
     yearMin,
   ]);
@@ -680,6 +698,9 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
 
     if (bookingPreset) {
       queryObject.bookingStatus = bookingPreset;
+    }
+    if (canFilterByTenant && tenantId) {
+      queryObject.tenantId = tenantId;
     }
     if (city) {
       queryObject.city = city;
@@ -723,6 +744,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
   }, [
     bookingPreset,
     brand,
+    canFilterByTenant,
     city,
     priceMax,
     priceMin,
@@ -735,6 +757,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     sortBy,
     sortDir,
     shouldUseMainShowcaseRandomMix,
+    tenantId,
     yearMax,
     yearMin,
   ]);
@@ -742,6 +765,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
   const showcaseUiState = useMemo<ShowcaseUiState>(
     () => ({
       bookingPreset,
+      tenantId,
       city,
       selectedVehicleTypes,
       brand,
@@ -762,6 +786,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     }),
     [
       bookingPreset,
+      tenantId,
       city,
       selectedVehicleTypes,
       brand,
@@ -826,6 +851,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
 
     if (
       showcaseUiState.bookingPreset === parsedState.bookingPreset &&
+      showcaseUiState.tenantId === parsedState.tenantId &&
       showcaseUiState.city === parsedState.city &&
       JSON.stringify(showcaseUiState.selectedVehicleTypes) ===
         JSON.stringify(parsedState.selectedVehicleTypes) &&
@@ -849,6 +875,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     }
 
     setBookingPreset(parsedState.bookingPreset);
+    setTenantId(parsedState.tenantId);
     setCity(parsedState.city);
     setSelectedVehicleTypes(parsedState.selectedVehicleTypes);
     setBrand(parsedState.brand);
@@ -918,10 +945,14 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
   const hasImportedData = total > 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const vehicleTypeOptions = filters?.vehicleType ?? [];
+  const tenantOptions = filters?.tenantId ?? [];
   const effectiveViewMode: ViewMode = isMobileViewport ? "list" : viewMode;
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (bookingPreset) {
+      count += 1;
+    }
+    if (canFilterByTenant && tenantId) {
       count += 1;
     }
     if (city) {
@@ -961,6 +992,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
   }, [
     bookingPreset,
     brand,
+    canFilterByTenant,
     city,
     mileageMax,
     mileageMin,
@@ -969,6 +1001,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     priceMax,
     priceMin,
     selectedVehicleTypes,
+    tenantId,
     yearMax,
     yearMin,
   ]);
@@ -976,6 +1009,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
   useEffect(() => {
     const nextSnapshot = createFilterTrackingSnapshot({
       bookingPreset,
+      tenantId,
       city,
       selectedVehicleTypes,
       brand,
@@ -1053,6 +1087,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     selectedVehicleTypes,
     sortBy,
     sortDir,
+    tenantId,
     yearMax,
     yearMin,
   ]);
@@ -1354,6 +1389,26 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     setPage(1);
   }, [city, filters]);
 
+  useEffect(() => {
+    if (!tenantId) {
+      return;
+    }
+
+    const matchedTenantId = (filters?.tenantId ?? []).find(
+      (value) => normalizeFilterValueForCompare(value) === normalizeFilterValueForCompare(tenantId),
+    );
+
+    if (matchedTenantId) {
+      if (matchedTenantId !== tenantId) {
+        setTenantId(matchedTenantId);
+      }
+      return;
+    }
+
+    setTenantId("");
+    setPage(1);
+  }, [filters, tenantId]);
+
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: 16 }, (_, index) => String(currentYear - index));
@@ -1498,6 +1553,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
     });
 
     setBookingPreset("");
+    setTenantId("");
     setCity("");
     setSelectedVehicleTypes([]);
     setBrand("");
@@ -1535,6 +1591,20 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
 
   function getVehicleTypeLabel(value: string): string {
     return value.toUpperCase();
+  }
+
+  function getTenantLabel(value: string): string {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "gpb") {
+      return "ГПБ Лизинг";
+    }
+    if (normalized === "reso") {
+      return "РЕСО-Лизинг";
+    }
+    if (normalized === "alpha") {
+      return "Альфа-Лизинг";
+    }
+    return value;
   }
 
   return (
@@ -1627,6 +1697,24 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
             </div>
 
             <div className="showcase-filter-grid showcase-filter-grid--triple">
+              {canFilterByTenant && (
+                <select
+                  className={`${tenantId ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
+                  value={tenantId}
+                  onChange={(event) => {
+                    setPage(1);
+                    setTenantId(event.target.value);
+                  }}
+                >
+                  <option value="">Лизингодатель</option>
+                  {tenantOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {getTenantLabel(value)}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               <select
                 className={`${city ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
                 value={city}

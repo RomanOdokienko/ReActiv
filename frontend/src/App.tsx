@@ -425,7 +425,7 @@ export function App() {
                 Каталог
               </NavLink>
             )}
-            <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
+            <NavLink to="/showcase" className={({ isActive }) => (isActive ? "active" : "")}>
               Витрина
             </NavLink>
             {isAdmin && (
@@ -457,6 +457,10 @@ export function App() {
             element={canAccessUpload ? <Navigate to="/upload" replace /> : <ShowcasePage />}
           />
           <Route
+            path="/showcase"
+            element={<ShowcasePage canFilterByTenant={isAdmin} />}
+          />
+          <Route
             path="/upload"
             element={
               canAccessUpload ? (
@@ -470,7 +474,6 @@ export function App() {
             path="/catalog"
             element={isAdmin ? <CatalogPage /> : <Navigate to="/" replace />}
           />
-          <Route path="/showcase" element={<Navigate to="/" replace />} />
           <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
           <Route
             path="/admin/users"

@@ -293,6 +293,7 @@ function getMainShowcaseMixOrder(now = Date.now()): number[] {
 function hasAnyCatalogFilters(filters: CatalogQuery): boolean {
   return Boolean(
     filters.offerCode?.length ||
+      filters.tenantId?.length ||
       filters.status?.length ||
       filters.city?.length ||
       filters.brand?.length ||
@@ -784,6 +785,7 @@ function buildWhere(filters: CatalogQuery): { whereClause: string; params: unkno
   const params: unknown[] = [];
 
   addInFilter(clauses, params, "offer_code", filters.offerCode);
+  addInFilter(clauses, params, "tenant_id", filters.tenantId);
   addInFilter(clauses, params, "status", filters.status);
   addNormalizedTextInFilter(clauses, params, "brand", filters.brand);
   addNormalizedTextInFilter(clauses, params, "model", filters.model);
@@ -1229,6 +1231,7 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
 
   const metadata = {
     offerCode: distinct("offer_code"),
+    tenantId: distinct("tenant_id"),
     status: distinct("status"),
     city,
     brand: sortDisplayValues(brandDisplayMap.values()),
