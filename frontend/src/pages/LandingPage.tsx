@@ -151,20 +151,6 @@ function getItemPreviewUrl(item: CatalogListItem): string | null {
   return getMediaPreviewImageUrl(item.previewUrl);
 }
 
-function getStatusTone(value: string): "neutral" | "positive" | "warning" {
-  const normalized = value.trim().toLowerCase();
-
-  if (normalized.includes("свобод")) {
-    return "positive";
-  }
-
-  if (normalized.includes("соглас")) {
-    return "warning";
-  }
-
-  return "neutral";
-}
-
 function BrandLogo({ brand, src }: { brand: string; src: string }) {
   return (
     <img className="landing-brand-logo" src={src} alt={`${brand} logo`} />
@@ -187,11 +173,7 @@ function ProductCard({ item }: { item: CatalogListItem }) {
       </Link>
 
       <div className="landing-product-card__body">
-        <span
-          className={`landing-status-pill landing-status-pill--${getStatusTone(item.bookingStatus)}`}
-        >
-          {item.bookingStatus || "Статус уточняется"}
-        </span>
+        {item.bookingStatus ? <span className="landing-status-pill">{item.bookingStatus}</span> : null}
         <h3>{item.title || `${item.brand} ${item.model}`}</h3>
         <p className="landing-product-card__meta">
           {formatYear(item.year)} · {formatMileage(item.mileageKm)}
@@ -201,9 +183,6 @@ function ProductCard({ item }: { item: CatalogListItem }) {
         </p>
         <div className="landing-product-card__footer">
           <strong>{formatPrice(item.price)}</strong>
-          <Link className="landing-inline-link" to={`/showcase/${item.id}`}>
-            Открыть карточку
-          </Link>
         </div>
       </div>
     </article>
@@ -483,6 +462,18 @@ export function LandingPage() {
                 <p>{item.answer}</p>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section className="landing-section landing-section--banner">
+          <div className="landing-catalog-banner">
+            <div>
+              <h2>Смотреть автомобили после лизинга</h2>
+              <p>Перейдите в каталог и найдите автомобиль</p>
+            </div>
+            <Link className="landing-catalog-banner__button" to="/">
+              Перейти
+            </Link>
           </div>
         </section>
 

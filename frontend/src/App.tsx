@@ -68,7 +68,12 @@ function isPublicCatalogPath(pathname: string): boolean {
 }
 
 function isPublicLayoutPath(pathname: string): boolean {
-  return isPublicCatalogPath(pathname) || pathname === "/landing";
+  return (
+    isPublicCatalogPath(pathname) ||
+    pathname === "/landing" ||
+    pathname === "/login" ||
+    pathname === HIDDEN_ADMIN_LOGIN_PATH
+  );
 }
 
 function PublicSiteHeader({
@@ -89,7 +94,9 @@ function PublicSiteHeader({
   return (
     <header className="landing-header">
       <Link className="landing-header__brand" to="/" onClick={onCloseMenu}>
-        <span className="landing-header__logo">РеАктив</span>
+        <span className="landing-header__logo">
+          Ре<span className="landing-header__logo-accent">А</span>ктив
+        </span>
         <span className="landing-header__subtitle">единый агрегатор лизинговой техники</span>
       </Link>
 
@@ -143,7 +150,12 @@ function PublicSiteFooter() {
     <footer className="landing-footer">
       <div className="landing-footer__line" aria-hidden />
       <div className="landing-footer__content">
-        <p className="landing-footer__meta">РеАктив | 2026</p>
+        <p className="landing-footer__meta">
+          <span className="landing-footer__brand">
+            Ре<span className="landing-footer__brand-accent">А</span>ктив
+          </span>{" "}
+          | 2026
+        </p>
         <div className="landing-footer__links">
           <PrivacyPolicyLink />
           <TermsLink />
@@ -379,12 +391,18 @@ export function App() {
     return (
       <>
         <div className="app">
+          <PublicSiteHeader
+            pathname={location.pathname}
+            isMenuOpen={isPublicMenuOpen}
+            onToggleMenu={() => setIsPublicMenuOpen((prev) => !prev)}
+            onCloseMenu={() => setIsPublicMenuOpen(false)}
+          />
           <Routes>
             <Route path="/login" element={loginElement} />
             <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
-          <PublicLegalFooter />
+          <PublicSiteFooter />
         </div>
         <FeedbackWidget />
       </>

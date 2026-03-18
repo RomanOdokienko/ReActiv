@@ -9,9 +9,6 @@ interface LoginPageProps {
   onLoginSuccess: (user: AuthUser) => void;
 }
 
-const SHOWCASE_UI_STATE_KEY = "showcase_ui_state_v1";
-const SHOWCASE_RETURN_FLAG_KEY = "showcase_return_pending_v1";
-const SHOWCASE_SCROLL_Y_KEY = "showcase_scroll_y_v1";
 const HIDDEN_ADMIN_LOGIN_PATH = "/staff-login-reactiv";
 const REGISTRATION_FORM_SCRIPT_SRC = "https://forms.yandex.ru/_static/embed.js";
 const REGISTRATION_FORM_IFRAME_SRC =
@@ -32,13 +29,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     const params = new URLSearchParams(location.search);
     return params.get("mode") === "registration";
   }, [location.pathname, location.search]);
-
-  useEffect(() => {
-    document.body.classList.add("auth-page");
-    return () => {
-      document.body.classList.remove("auth-page");
-    };
-  }, []);
 
   useEffect(() => {
     const stateSource =
@@ -71,20 +61,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     script.async = true;
     document.body.appendChild(script);
   }, [isRegistrationMode]);
-
-  function resetShowcaseState(): void {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      window.sessionStorage.removeItem(SHOWCASE_UI_STATE_KEY);
-      window.sessionStorage.removeItem(SHOWCASE_RETURN_FLAG_KEY);
-      window.sessionStorage.removeItem(SHOWCASE_SCROLL_Y_KEY);
-    } catch {
-      // ignore storage errors
-    }
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -132,22 +108,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   return (
     <section className="auth-layout auth-layout--landing">
       <div className={`auth-shell${isRegistrationMode ? " auth-shell--registration" : ""}`}>
-        <Link to="/" className="auth-top-logo" onClick={resetShowcaseState}>
-          Ре<span>Актив</span>
-        </Link>
-        {isRegistrationMode && (
-          <p className="auth-top-logo__subtitle">единый агрегатор лизинговой техники</p>
-        )}
-        <nav
-          className={`auth-top-nav${isRegistrationMode ? " auth-top-nav--registration" : ""}`}
-          aria-label="Навигация личного кабинета"
-        >
-          <Link to="/" className="auth-top-nav__link" onClick={resetShowcaseState}>
-            Каталог техники
-          </Link>
-          <span className="auth-top-nav__link is-active">Личный кабинет для ЮЛ</span>
-        </nav>
-
         {!isRegistrationMode ? (
           <div className="auth-landing-grid">
             <div className="panel auth-panel auth-panel--landing">
