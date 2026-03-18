@@ -965,6 +965,35 @@ export function ShowcasePage({
     writeShowcaseUiState(showcaseUiState);
   }, [showcaseUiState]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleResetFilters = () => {
+      setBookingPreset("");
+      setTenantId("");
+      setVin("");
+      setCity("");
+      setSelectedVehicleTypes([]);
+      setBrand("");
+      setModel("");
+      setPriceMin("");
+      setPriceMax("");
+      setYearMin("");
+      setYearMax("");
+      setMileageMin("");
+      setMileageMax("");
+      setNewThisWeekOnly(false);
+      setPage(1);
+    };
+
+    window.addEventListener("reactiv:showcase-reset-filters", handleResetFilters);
+    return () => {
+      window.removeEventListener("reactiv:showcase-reset-filters", handleResetFilters);
+    };
+  }, []);
+
   const items: CatalogListItem[] = itemsResponse?.items ?? [];
   const total = itemsResponse?.pagination.total ?? 0;
   const newThisWeekCount = itemsResponse?.newThisWeekCount ?? 0;

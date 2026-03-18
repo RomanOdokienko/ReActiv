@@ -81,11 +81,13 @@ function PublicSiteHeader({
   isMenuOpen,
   onToggleMenu,
   onCloseMenu,
+  onBrandClick,
 }: {
   pathname: string;
   isMenuOpen: boolean;
   onToggleMenu: () => void;
   onCloseMenu: () => void;
+  onBrandClick: () => void;
 }) {
   const catalogActive = isPublicCatalogPath(pathname);
   const landingActive = pathname === "/landing";
@@ -93,7 +95,14 @@ function PublicSiteHeader({
 
   return (
     <header className="landing-header">
-      <Link className="landing-header__brand" to="/" onClick={onCloseMenu}>
+      <Link
+        className="landing-header__brand"
+        to="/"
+        onClick={() => {
+          onCloseMenu();
+          onBrandClick();
+        }}
+      >
         <span className="landing-header__logo">
           Ре<span className="landing-header__logo-accent">А</span>ктив
         </span>
@@ -339,6 +348,22 @@ export function App() {
     }
   }
 
+  function handlePublicBrandClick(): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      window.sessionStorage.removeItem("showcase_ui_state_v1");
+      window.sessionStorage.removeItem("showcase_return_pending_v1");
+      window.sessionStorage.removeItem("showcase_scroll_y_v1");
+    } catch {
+      // ignore storage errors
+    }
+
+    window.dispatchEvent(new Event("reactiv:showcase-reset-filters"));
+  }
+
   if (authState === "checking" || platformMode === "checking") {
     return (
       <div className="app-loading-screen" aria-live="polite" aria-label="Loading session">
@@ -369,6 +394,7 @@ export function App() {
                 isMenuOpen={isPublicMenuOpen}
                 onToggleMenu={() => setIsPublicMenuOpen((prev) => !prev)}
                 onCloseMenu={() => setIsPublicMenuOpen(false)}
+                onBrandClick={handlePublicBrandClick}
               />
             )}
 
@@ -396,6 +422,7 @@ export function App() {
             isMenuOpen={isPublicMenuOpen}
             onToggleMenu={() => setIsPublicMenuOpen((prev) => !prev)}
             onCloseMenu={() => setIsPublicMenuOpen(false)}
+            onBrandClick={handlePublicBrandClick}
           />
           <Routes>
             <Route path="/login" element={loginElement} />
