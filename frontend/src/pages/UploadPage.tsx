@@ -133,6 +133,14 @@ function getFieldLabel(field: string | null): string {
 }
 
 function getWarningText(field: string | null, message: string): string {
+  if (message.startsWith("Unknown vehicle_type mapped to")) {
+    const rawValue = message.split(":").slice(1).join(":").trim();
+    if (rawValue) {
+      return `Неизвестный тип техники «${rawValue}» автоматически сопоставлен с «СПЕЦТЕХНИКА»`;
+    }
+    return "Неизвестный тип техники автоматически сопоставлен с «СПЕЦТЕХНИКА»";
+  }
+
   if (message === "Required field is empty") {
     return "Обязательное поле пустое";
   }

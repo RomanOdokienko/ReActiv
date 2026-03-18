@@ -1,39 +1,69 @@
 import { normalizeString } from "./normalize-string";
 
+const VEHICLE_TYPE_FALLBACK = "СПЕЦТЕХНИКА";
+const CANONICAL_TYPES = new Set([
+  "АВТОБУС",
+  "ГРУЗОВОЙ",
+  "ЛЕГКОВОЙ",
+  "ЛКТ",
+  "МОТОТЕХНИКА",
+  "ПРИЦЕП",
+  VEHICLE_TYPE_FALLBACK,
+]);
+
+export interface VehicleTypeNormalizationMeta {
+  normalized: string | null;
+  rawNormalized: string | null;
+  usedFallback: boolean;
+}
+
 function includesAny(value: string, needles: string[]): boolean {
   return needles.some((needle) => value.includes(needle));
 }
 
-export function normalizeVehicleType(rawValue: unknown): string | null {
-  const normalized = normalizeString(rawValue);
-  if (!normalized) {
-    return null;
+function resolveVehicleTypeMeta(rawValue: unknown): VehicleTypeNormalizationMeta {
+  const rawNormalized = normalizeString(rawValue);
+  if (!rawNormalized) {
+    return {
+      normalized: null,
+      rawNormalized: null,
+      usedFallback: false,
+    };
   }
 
-  const lower = normalized.toLowerCase();
+  const normalizedUpper = rawNormalized.toUpperCase();
+  if (CANONICAL_TYPES.has(normalizedUpper)) {
+    return {
+      normalized: normalizedUpper,
+      rawNormalized,
+      usedFallback: false,
+    };
+  }
+
+  const lower = rawNormalized.toLowerCase();
 
   if (includesAny(lower, ["автобус"])) {
-    return "АВТОБУС";
+    return { normalized: "АВТОБУС", rawNormalized, usedFallback: false };
   }
 
   if (includesAny(lower, ["грузов"])) {
-    return "ГРУЗОВОЙ";
+    return { normalized: "ГРУЗОВОЙ", rawNormalized, usedFallback: false };
   }
 
   if (includesAny(lower, ["легков"])) {
-    return "ЛЕГКОВОЙ";
+    return { normalized: "ЛЕГКОВОЙ", rawNormalized, usedFallback: false };
   }
 
   if (includesAny(lower, ["лкт", "легкий коммерчес"])) {
-    return "ЛКТ";
+    return { normalized: "ЛКТ", rawNormalized, usedFallback: false };
   }
 
   if (includesAny(lower, ["мото"])) {
-    return "МОТОТЕХНИКА";
+    return { normalized: "МОТОТЕХНИКА", rawNormalized, usedFallback: false };
   }
 
   if (includesAny(lower, ["прицеп"])) {
-    return "ПРИЦЕП";
+    return { normalized: "ПРИЦЕП", rawNormalized, usedFallback: false };
   }
 
   if (
@@ -47,8 +77,20 @@ export function normalizeVehicleType(rawValue: unknown): string | null {
       "суд",
     ])
   ) {
-    return "СПЕЦТЕХНИКА";
+    return { normalized: VEHICLE_TYPE_FALLBACK, rawNormalized, usedFallback: false };
   }
 
-  return normalized.toUpperCase();
+  return {
+    normalized: VEHICLE_TYPE_FALLBACK,
+    rawNormalized,
+    usedFallback: true,
+  };
+}
+
+export function normalizeVehicleTypeWithMeta(rawValue: unknown): VehicleTypeNormalizationMeta {
+  return resolveVehicleTypeMeta(rawValue);
+}
+
+export function normalizeVehicleType(rawValue: unknown): string | null {
+  return resolveVehicleTypeMeta(rawValue).normalized;
 }

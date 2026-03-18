@@ -5,7 +5,7 @@ import { normalizeBrand } from "./normalize-brand";
 import { normalizeOfferCode } from "./normalize-offer-code";
 import { normalizeString } from "./normalize-string";
 import { normalizeUrl } from "./normalize-url";
-import { normalizeVehicleType } from "./normalize-vehicle-type";
+import { normalizeVehicleTypeWithMeta } from "./normalize-vehicle-type";
 import { parseBoolean } from "./parse-boolean";
 import { parseInteger } from "./parse-integer";
 import { parseKeyCount } from "./parse-key-count";
@@ -18,6 +18,8 @@ export interface NormalizedVehicleOfferRow {
   model: string | null;
   modification: string | null;
   vehicle_type: string | null;
+  vehicle_type_raw: string | null;
+  vehicle_type_unknown_mapped: boolean;
   year: number | null;
   mileage_km: number | null;
   key_count: number | null;
@@ -71,6 +73,9 @@ export function normalizeVehicleOfferRow(
   const rawIsDeregistered = getValue(row, fieldToColumnIndex, "is_deregistered");
   const rawDaysOnSale = getValue(row, fieldToColumnIndex, "days_on_sale");
   const rawPrice = getValue(row, fieldToColumnIndex, "price");
+  const vehicleTypeMeta = normalizeVehicleTypeWithMeta(
+    getValue(row, fieldToColumnIndex, "vehicle_type"),
+  );
 
   const parsedKeyCount = parseKeyCount(rawKeyCount);
   const parsedHasEncumbrance = parseBoolean(getValue(row, fieldToColumnIndex, "has_encumbrance"));
@@ -82,7 +87,9 @@ export function normalizeVehicleOfferRow(
     brand,
     model,
     modification,
-    vehicle_type: normalizeVehicleType(getValue(row, fieldToColumnIndex, "vehicle_type")),
+    vehicle_type: vehicleTypeMeta.normalized,
+    vehicle_type_raw: vehicleTypeMeta.rawNormalized,
+    vehicle_type_unknown_mapped: vehicleTypeMeta.usedFallback,
     year: parseInteger(rawYear),
     mileage_km: parseInteger(rawMileage),
     key_count: parsedKeyCount,

@@ -74,6 +74,8 @@ function mapStoredToNormalizedRow(row: StoredVehicleOfferRow): NormalizedVehicle
     model: toComparableString(row.model),
     modification: toComparableString(row.modification),
     vehicle_type: toComparableString(row.vehicle_type),
+    vehicle_type_raw: toComparableString(row.vehicle_type),
+    vehicle_type_unknown_mapped: false,
     year: row.year,
     mileage_km: row.mileage_km,
     key_count: row.key_count,
@@ -233,6 +235,25 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
 
         skippedRows += 1;
         return;
+      }
+
+      if (normalizedRow.vehicle_type_unknown_mapped && normalizedRow.vehicle_type_raw) {
+        const message = `Unknown vehicle_type mapped to СПЕЦТЕХНИКА: ${normalizedRow.vehicle_type_raw}`;
+        insertImportError({
+          import_batch_id: importBatchId,
+          tenant_id: tenantProfile.id,
+          row_number: rowNumber,
+          field: "vehicle_type",
+          message,
+        });
+
+        if (errors.length < MAX_RESPONSE_ERRORS) {
+          errors.push({
+            rowNumber,
+            field: "vehicle_type",
+            message,
+          });
+        }
       }
 
       if (nonBlockingErrors.length > 0) {
