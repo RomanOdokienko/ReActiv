@@ -1,6 +1,9 @@
 import { db } from "../db/connection";
 import type { CatalogQuery } from "../catalog/catalog-query";
-import { buildStoredPreviewSourceUrl } from "../services/local-media-storage";
+import {
+  buildStoredPreviewSourceUrl,
+  storedMediaFileExists,
+} from "../services/local-media-storage";
 import {
   getLatestSuccessfulImportBatch,
   getLatestSuccessfulImportBatchId,
@@ -148,6 +151,7 @@ function mapDbRow(row: VehicleOfferDbRow): CatalogItem {
 
 function toCatalogListItem(item: CatalogItem): CatalogListItem {
   const mediaUrls = extractMediaUrls(item.yandexDiskUrl);
+  const hasStoredPreview = storedMediaFileExists(item.cardPreviewPath);
 
   return {
     id: item.id,
@@ -162,9 +166,9 @@ function toCatalogListItem(item: CatalogItem): CatalogListItem {
     bookingStatus: item.bookingStatus,
     storageAddress: item.storageAddress,
     responsiblePerson: item.responsiblePerson,
-    previewUrl: item.cardPreviewPath
+    previewUrl: hasStoredPreview
       ? buildStoredPreviewSourceUrl(item.cardPreviewPath)
-      : (mediaUrls[0] ?? null),
+      : mediaUrls[0] ?? null,
   };
 }
 
