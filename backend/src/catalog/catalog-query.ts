@@ -105,6 +105,7 @@ const catalogQuerySchema = z.object({
   yandexDiskUrl: arrayField,
   search: z.preprocess((value) => toStringArray(value)?.[0], z.string().optional()),
   newThisWeek: booleanField,
+  onlyWithPreview: booleanField,
   randomMix: booleanField,
   randomSeed: z.preprocess(toOptionalString, z.string().max(128).optional()),
   sortBy: z

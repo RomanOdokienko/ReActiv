@@ -675,6 +675,7 @@ export function ShowcasePage({ publicMode = false }: ShowcasePageProps) {
       pageSize,
       sortBy,
       sortDir,
+      onlyWithPreview: "true",
     };
 
     if (bookingPreset) {

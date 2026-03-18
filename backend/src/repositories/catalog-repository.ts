@@ -114,19 +114,6 @@ function mapDbBoolean(value: number | null): boolean | null {
   return null;
 }
 
-function extractMediaUrls(rawValue: string): string[] {
-  if (!rawValue.trim()) {
-    return [];
-  }
-
-  const matches = rawValue.match(/https?:\/\/\S+/gi) ?? [];
-  const cleaned = matches
-    .map((item) => item.replace(/[),.;]+$/g, "").trim())
-    .filter(Boolean);
-
-  return [...new Set(cleaned)];
-}
-
 function mapDbRow(row: VehicleOfferDbRow): CatalogItem {
   return {
     id: row.id,
@@ -159,7 +146,6 @@ function mapDbRow(row: VehicleOfferDbRow): CatalogItem {
 }
 
 function toCatalogListItem(item: CatalogItem): CatalogListItem {
-  const mediaUrls = extractMediaUrls(item.yandexDiskUrl);
   const hasStoredPreview = storedMediaFileExists(item.cardPreviewPath);
 
   return {
@@ -177,7 +163,7 @@ function toCatalogListItem(item: CatalogItem): CatalogListItem {
     responsiblePerson: item.responsiblePerson,
     previewUrl: hasStoredPreview
       ? buildStoredPreviewSourceUrl(item.cardPreviewPath)
-      : mediaUrls[0] ?? null,
+      : null,
   };
 }
 
@@ -240,7 +226,6 @@ function buildMainShowcaseMixOrder(now: number): number[] {
       SELECT id, vehicle_type, modification, price
       FROM vehicle_offers
       WHERE TRIM(COALESCE(card_preview_path, '')) != ''
-         OR TRIM(COALESCE(yandex_disk_url, '')) != ''
       `,
     )
     .all() as Array<{
@@ -824,6 +809,9 @@ function buildWhere(filters: CatalogQuery): { whereClause: string; params: unkno
   addInFilter(clauses, params, "crm_ref", filters.crmRef);
   addInFilter(clauses, params, "website_url", filters.websiteUrl);
   addInFilter(clauses, params, "yandex_disk_url", filters.yandexDiskUrl);
+  if (filters.onlyWithPreview) {
+    clauses.push("TRIM(COALESCE(card_preview_path, '')) != ''");
+  }
 
   addNullableRangeFilter(clauses, params, "price", ">=", filters.priceMin);
   addNullableRangeFilter(clauses, params, "price", "<=", filters.priceMax);
