@@ -36,6 +36,7 @@ type SortDirection = "asc" | "desc";
 interface ShowcaseUiState {
   bookingPreset: "" | BookingPreset;
   tenantId: string;
+  vin: string;
   city: string;
   selectedVehicleTypes: string[];
   brand: string;
@@ -58,6 +59,7 @@ interface ShowcaseUiState {
 interface FilterTrackingSnapshot {
   bookingPreset: string | null;
   tenantId: string | null;
+  vin: string | null;
   city: string | null;
   vehicleTypes: string[];
   brand: string | null;
@@ -94,6 +96,7 @@ const SHOWCASE_ALLOWED_SORT_BY = new Set([
 const SHOWCASE_URL_FILTER_KEYS = new Set([
   "bookingStatus",
   "tenantId",
+  "offerCode",
   "city",
   "vehicleType",
   "brand",
@@ -115,6 +118,7 @@ function createDefaultShowcaseUiState(): ShowcaseUiState {
   return {
     bookingPreset: "",
     tenantId: "",
+    vin: "",
     city: "",
     selectedVehicleTypes: [],
     brand: "",
@@ -218,6 +222,7 @@ function parseShowcaseUiStateFromSearchParams(params: URLSearchParams): Showcase
   return {
     bookingPreset,
     tenantId: (params.get("tenantId") ?? "").trim(),
+    vin: normalizeVinInput((params.getAll("offerCode")[0] ?? "").trim()),
     city: (params.get("city") ?? "").trim(),
     selectedVehicleTypes: parseVehicleTypeParams(params),
     brand: (params.get("brand") ?? "").trim(),
@@ -256,6 +261,7 @@ function sanitizeRestoredShowcaseUiState(restored: Partial<ShowcaseUiState>): Sh
         ? restored.bookingPreset
         : "",
     tenantId: typeof restored.tenantId === "string" ? restored.tenantId : "",
+    vin: typeof restored.vin === "string" ? normalizeVinInput(restored.vin) : "",
     city: typeof restored.city === "string" ? restored.city : "",
     selectedVehicleTypes: Array.isArray(restored.selectedVehicleTypes)
       ? restored.selectedVehicleTypes.filter((value) => typeof value === "string" && value.trim())
@@ -289,6 +295,9 @@ function buildShowcaseFilterSearchParams(state: ShowcaseUiState): URLSearchParam
   }
   if (state.tenantId) {
     params.set("tenantId", state.tenantId);
+  }
+  if (state.vin) {
+    params.set("offerCode", state.vin);
   }
   if (state.city) {
     params.set("city", state.city);
@@ -411,6 +420,10 @@ function normalizeIntegerInput(raw: string): string {
   return digitsOnly.replace(/^0+(?=\d)/, "");
 }
 
+function normalizeVinInput(raw: string): string {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 17);
+}
+
 function formatIntegerWithSpaces(value: string): string {
   if (!value) {
     return "";
@@ -441,6 +454,7 @@ function toNullableNumber(value: string): number | null {
 function createFilterTrackingSnapshot(input: {
   bookingPreset: string;
   tenantId: string;
+  vin: string;
   city: string;
   selectedVehicleTypes: string[];
   brand: string;
@@ -458,6 +472,7 @@ function createFilterTrackingSnapshot(input: {
   return {
     bookingPreset: input.bookingPreset || null,
     tenantId: input.tenantId || null,
+    vin: input.vin || null,
     city: input.city || null,
     vehicleTypes: [...input.selectedVehicleTypes],
     brand: input.brand || null,
@@ -512,6 +527,7 @@ export function ShowcasePage({
   );
   const [bookingPreset, setBookingPreset] = useState<"" | BookingPreset>(initialState.bookingPreset);
   const [tenantId, setTenantId] = useState(initialState.tenantId);
+  const [vin, setVin] = useState(initialState.vin);
   const [city, setCity] = useState(initialState.city);
   const [selectedVehicleTypes, setSelectedVehicleTypes] = useState<string[]>(
     initialState.selectedVehicleTypes,
@@ -655,6 +671,7 @@ export function ShowcasePage({
     return !(
       bookingPreset ||
       tenantId ||
+      (canFilterByTenant && vin) ||
       city ||
       brand ||
       model ||
@@ -683,6 +700,7 @@ export function ShowcasePage({
     sortBy,
     sortDir,
     tenantId,
+    vin,
     yearMax,
     yearMin,
   ]);
@@ -701,6 +719,9 @@ export function ShowcasePage({
     }
     if (canFilterByTenant && tenantId) {
       queryObject.tenantId = tenantId;
+    }
+    if (canFilterByTenant && vin) {
+      queryObject.offerCode = [vin];
     }
     if (city) {
       queryObject.city = city;
@@ -758,6 +779,7 @@ export function ShowcasePage({
     sortDir,
     shouldUseMainShowcaseRandomMix,
     tenantId,
+    vin,
     yearMax,
     yearMin,
   ]);
@@ -766,6 +788,7 @@ export function ShowcasePage({
     () => ({
       bookingPreset,
       tenantId,
+      vin,
       city,
       selectedVehicleTypes,
       brand,
@@ -787,6 +810,7 @@ export function ShowcasePage({
     [
       bookingPreset,
       tenantId,
+      vin,
       city,
       selectedVehicleTypes,
       brand,
@@ -852,6 +876,7 @@ export function ShowcasePage({
     if (
       showcaseUiState.bookingPreset === parsedState.bookingPreset &&
       showcaseUiState.tenantId === parsedState.tenantId &&
+      showcaseUiState.vin === parsedState.vin &&
       showcaseUiState.city === parsedState.city &&
       JSON.stringify(showcaseUiState.selectedVehicleTypes) ===
         JSON.stringify(parsedState.selectedVehicleTypes) &&
@@ -876,6 +901,7 @@ export function ShowcasePage({
 
     setBookingPreset(parsedState.bookingPreset);
     setTenantId(parsedState.tenantId);
+    setVin(parsedState.vin);
     setCity(parsedState.city);
     setSelectedVehicleTypes(parsedState.selectedVehicleTypes);
     setBrand(parsedState.brand);
@@ -955,6 +981,9 @@ export function ShowcasePage({
     if (canFilterByTenant && tenantId) {
       count += 1;
     }
+    if (canFilterByTenant && vin) {
+      count += 1;
+    }
     if (city) {
       count += 1;
     }
@@ -1002,6 +1031,7 @@ export function ShowcasePage({
     priceMin,
     selectedVehicleTypes,
     tenantId,
+    vin,
     yearMax,
     yearMin,
   ]);
@@ -1010,6 +1040,7 @@ export function ShowcasePage({
     const nextSnapshot = createFilterTrackingSnapshot({
       bookingPreset,
       tenantId,
+      vin,
       city,
       selectedVehicleTypes,
       brand,
@@ -1088,6 +1119,7 @@ export function ShowcasePage({
     sortBy,
     sortDir,
     tenantId,
+    vin,
     yearMax,
     yearMin,
   ]);
@@ -1554,6 +1586,7 @@ export function ShowcasePage({
 
     setBookingPreset("");
     setTenantId("");
+    setVin("");
     setCity("");
     setSelectedVehicleTypes([]);
     setBrand("");
@@ -1713,6 +1746,19 @@ export function ShowcasePage({
                     </option>
                   ))}
                 </select>
+              )}
+
+              {canFilterByTenant && (
+                <input
+                  type="text"
+                  className={vin ? "showcase-filter is-active" : "showcase-filter"}
+                  placeholder="VIN"
+                  value={vin}
+                  onChange={(event) => {
+                    setPage(1);
+                    setVin(normalizeVinInput(event.target.value));
+                  }}
+                />
               )}
 
               <select
