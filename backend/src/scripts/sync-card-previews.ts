@@ -78,24 +78,6 @@ function parseOptions(argv: string[]): SyncOptions {
   return options;
 }
 
-function extractPreviewSourceUrl(rawValue: string | null): string | null {
-  const trimmed = rawValue?.trim() ?? "";
-  if (!trimmed) {
-    return null;
-  }
-
-  const matches = trimmed.match(/https?:\/\/\S+/gi) ?? [];
-  const cleaned = matches
-    .map((item) => item.replace(/[),.;]+$/g, "").trim())
-    .filter(Boolean);
-
-  if (cleaned.length > 0) {
-    return cleaned[0];
-  }
-
-  return trimmed;
-}
-
 function buildCandidates(options: SyncOptions): PreviewSyncCandidate[] {
   const candidates: PreviewSyncCandidate[] = [];
 
@@ -106,7 +88,7 @@ function buildCandidates(options: SyncOptions): PreviewSyncCandidate[] {
         return;
       }
 
-      const previewSourceUrl = extractPreviewSourceUrl(row.yandexDiskUrl);
+      const previewSourceUrl = row.yandexDiskUrl?.trim() ?? null;
       if (!previewSourceUrl) {
         return;
       }

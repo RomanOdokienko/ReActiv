@@ -26,8 +26,12 @@ interface ResoSaleCatalogResponse {
 }
 
 const PREVIEW_CACHE_TTL_MS = 10 * 60 * 1000;
+const URL_REACHABILITY_CACHE_TTL_MS = 15 * 60 * 1000;
+const URL_REACHABILITY_TIMEOUT_MS = 4_000;
+const URL_REACHABILITY_CONCURRENCY = 8;
 const previewCache = new Map<string, { previewUrl: string | null; expiresAt: number }>();
 const galleryCache = new Map<string, { galleryUrls: string[]; expiresAt: number }>();
+const urlReachabilityCache = new Map<string, { isReachable: boolean; expiresAt: number }>();
 const RESO_IMAGE_BASE_URL = "https://api-sale.resoleasing.com";
 const RESO_SALE_API_BASE_URL = "https://admin.resoleasing.com/api/sales-catalog";
 
@@ -101,6 +105,92 @@ function isYandexPublicLink(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+function extractHttpUrls(rawValue: string): string[] {
+  const matches = rawValue.match(/https?:\/\/\S+/gi) ?? [];
+  const cleaned = matches
+    .map((item) => item.replace(/[),.;]+$/g, "").trim())
+    .filter(Boolean);
+
+  return [...new Set(cleaned)];
+}
+
+function extractDirectImageUrls(rawSource: string): string[] {
+  const extractedUrls = extractHttpUrls(rawSource);
+  if (extractedUrls.length > 0) {
+    return extractedUrls.filter((url) => isDirectImageUrl(url));
+  }
+
+  return isDirectImageUrl(rawSource) ? [rawSource] : [];
+}
+
+async function fetchWithTimeout(url: string, method: "HEAD" | "GET"): Promise<Response> {
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), URL_REACHABILITY_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      method,
+      signal: abortController.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function isImageUrlReachable(url: string): Promise<boolean> {
+  const cached = urlReachabilityCache.get(url);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.isReachable;
+  }
+
+  let isReachable = false;
+
+  try {
+    const headResponse = await fetchWithTimeout(url, "HEAD");
+    if (headResponse.ok) {
+      isReachable = true;
+    } else if (headResponse.status === 403 || headResponse.status === 405) {
+      const getResponse = await fetchWithTimeout(url, "GET");
+      isReachable = getResponse.ok;
+    }
+  } catch {
+    isReachable = false;
+  }
+
+  urlReachabilityCache.set(url, {
+    isReachable,
+    expiresAt: Date.now() + URL_REACHABILITY_CACHE_TTL_MS,
+  });
+
+  return isReachable;
+}
+
+async function filterReachableImageUrls(urls: string[]): Promise<string[]> {
+  if (urls.length === 0) {
+    return [];
+  }
+
+  const reachable = new Array<boolean>(urls.length).fill(false);
+  let currentIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (currentIndex < urls.length) {
+      const index = currentIndex;
+      currentIndex += 1;
+      reachable[index] = await isImageUrlReachable(urls[index]);
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(URL_REACHABILITY_CONCURRENCY, urls.length) },
+      () => worker(),
+    ),
+  );
+
+  return urls.filter((_, index) => reachable[index]);
 }
 
 function parseResoVinSourceUrl(url: string): string | null {
@@ -292,10 +382,14 @@ export async function resolvePreviewUrl(sourceUrl: string): Promise<PreviewResul
     if (resoVin) {
       const galleryUrls = await resolveResoGalleryByVin(resoVin);
       previewUrl = galleryUrls[0] ?? null;
-    } else if (isDirectImageUrl(trimmed)) {
-      previewUrl = trimmed;
-    } else if (isYandexPublicLink(trimmed)) {
-      previewUrl = await resolveYandexPreview(trimmed);
+    } else {
+      const directImageUrls = extractDirectImageUrls(trimmed);
+      if (directImageUrls.length > 0) {
+        const reachableImageUrls = await filterReachableImageUrls(directImageUrls);
+        previewUrl = reachableImageUrls[0] ?? null;
+      } else if (isYandexPublicLink(trimmed)) {
+        previewUrl = await resolveYandexPreview(trimmed);
+      }
     }
   } catch {
     previewUrl = null;
@@ -328,8 +422,9 @@ export async function resolveGalleryUrls(sourceUrl: string): Promise<GalleryResu
       return { galleryUrls };
     }
 
-    if (isDirectImageUrl(trimmed)) {
-      const galleryUrls = [trimmed];
+    const directImageUrls = extractDirectImageUrls(trimmed);
+    if (directImageUrls.length > 0) {
+      const galleryUrls = await filterReachableImageUrls(directImageUrls);
       setCachedGalleryUrls(trimmed, galleryUrls);
       return { galleryUrls };
     }

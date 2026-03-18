@@ -176,7 +176,7 @@ export function ShowcaseItemPage() {
     void loadItem();
   }, [itemId]);
 
-  const sourceUrls = useMemo(() => {
+  const mediaSourceKeys = useMemo(() => {
     if (!item) {
       return [];
     }
@@ -185,9 +185,9 @@ export function ShowcaseItemPage() {
       return [`reso-vin:${item.offerCode}`];
     }
 
-    const urls = extractMediaUrls(item.yandexDiskUrl);
-    if (urls.length > 0) {
-      return urls;
+    const rawSource = item.yandexDiskUrl.trim();
+    if (rawSource) {
+      return [rawSource];
     }
 
     return [];
@@ -197,21 +197,15 @@ export function ShowcaseItemPage() {
     let isCancelled = false;
 
     async function resolveGallery() {
-      if (!sourceUrls.length) {
+      if (!mediaSourceKeys.length) {
         setMediaUrls([]);
         return;
       }
 
-      setMediaUrls((currentUrls) =>
-        areSameUrlLists(currentUrls, sourceUrls) ? currentUrls : sourceUrls,
-      );
-
-      if (sourceUrls.length > 1) {
-        return;
-      }
+      const primarySource = mediaSourceKeys[0];
 
       try {
-        const galleryUrls = await getMediaGalleryUrls(sourceUrls[0]);
+        const galleryUrls = await getMediaGalleryUrls(primarySource);
         if (isCancelled) {
           return;
         }
@@ -223,8 +217,18 @@ export function ShowcaseItemPage() {
           return;
         }
 
+        const fallbackUrls = extractMediaUrls(primarySource);
+        const shouldUseFallback =
+          fallbackUrls.length === 1 && fallbackUrls[0] === primarySource;
+
         setMediaUrls((currentUrls) =>
-          areSameUrlLists(currentUrls, sourceUrls) ? currentUrls : sourceUrls,
+          shouldUseFallback && !areSameUrlLists(currentUrls, fallbackUrls)
+            ? fallbackUrls
+            : shouldUseFallback
+              ? currentUrls
+              : currentUrls.length > 0
+                ? []
+                : currentUrls,
         );
       } catch (caughtError) {
         void logActivityEvent({
@@ -238,8 +242,18 @@ export function ShowcaseItemPage() {
         });
 
         if (!isCancelled) {
+          const fallbackUrls = extractMediaUrls(primarySource);
+          const shouldUseFallback =
+            fallbackUrls.length === 1 && fallbackUrls[0] === primarySource;
+
           setMediaUrls((currentUrls) =>
-            areSameUrlLists(currentUrls, sourceUrls) ? currentUrls : sourceUrls,
+            shouldUseFallback && !areSameUrlLists(currentUrls, fallbackUrls)
+              ? fallbackUrls
+              : shouldUseFallback
+                ? currentUrls
+                : currentUrls.length > 0
+                  ? []
+                  : currentUrls,
           );
         }
       }
@@ -250,7 +264,7 @@ export function ShowcaseItemPage() {
     return () => {
       isCancelled = true;
     };
-  }, [sourceUrls]);
+  }, [mediaSourceKeys]);
 
   const selectedImageIndex = selectedImage ? mediaUrls.indexOf(selectedImage) : -1;
   const maxThumbnailCount = 8;
