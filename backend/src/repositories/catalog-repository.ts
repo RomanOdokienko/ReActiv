@@ -28,6 +28,12 @@ interface MainShowcaseMixCache {
   orderedOfferIds: number[];
 }
 
+interface NewThisWeekSqlContext {
+  latestImportBatchId: string;
+  latestTenantId: string;
+  previousImportBatchId: string | null;
+}
+
 let mainShowcaseMixCache: MainShowcaseMixCache | null = null;
 
 interface VehicleOfferDbRow {
@@ -732,50 +738,79 @@ function filterRowsByNewThisWeek(rows: VehicleOfferDbRow[]): VehicleOfferDbRow[]
   return currentRows.filter((row) => !previousOfferCodes.has(row.offer_code));
 }
 
-function countNewThisWeekRowsBySql(whereClause: string, params: unknown[]): number {
+function getNewThisWeekSqlContext(): NewThisWeekSqlContext | null {
   const latestImportBatch = getLatestSuccessfulImportBatch();
   if (!latestImportBatch) {
-    return 0;
+    return null;
   }
 
+  return {
+    latestImportBatchId: latestImportBatch.id,
+    latestTenantId: latestImportBatch.tenant_id,
+    previousImportBatchId: getPreviousSuccessfulImportBatchId(
+      latestImportBatch.id,
+      latestImportBatch.tenant_id,
+    ),
+  };
+}
+
+function appendNewThisWeekSqlCondition(
+  whereClause: string,
+  params: unknown[],
+  context: NewThisWeekSqlContext,
+): { whereClause: string; params: unknown[] } {
+  const paramsWithCondition = [...params, context.latestImportBatchId];
   const baseWhereClause = whereClause
     ? `${whereClause} AND import_batch_id = ?`
     : "WHERE import_batch_id = ?";
-  const previousImportBatchId = getPreviousSuccessfulImportBatchId(
-    latestImportBatch.id,
-    latestImportBatch.tenant_id,
-  );
 
-  if (!previousImportBatchId) {
-    const row = db
-      .prepare(`SELECT COUNT(*) AS total FROM vehicle_offers ${baseWhereClause}`)
-      .get(...params, latestImportBatch.id) as { total: number };
-
-    return row.total;
+  if (!context.previousImportBatchId) {
+    return {
+      whereClause: baseWhereClause,
+      params: paramsWithCondition,
+    };
   }
+
+  return {
+    whereClause: `
+      ${baseWhereClause}
+      AND TRIM(COALESCE(offer_code, '')) != ''
+      AND offer_code NOT IN (
+        SELECT DISTINCT offer_code
+        FROM vehicle_offer_snapshots
+        WHERE import_batch_id = ?
+          AND tenant_id = ?
+          AND TRIM(COALESCE(offer_code, '')) != ''
+      )
+    `,
+    params: [
+      ...paramsWithCondition,
+      context.previousImportBatchId,
+      context.latestTenantId,
+    ],
+  };
+}
+
+function countNewThisWeekRowsBySql(whereClause: string, params: unknown[]): number {
+  const context = getNewThisWeekSqlContext();
+  if (!context) {
+    return 0;
+  }
+
+  const {
+    whereClause: withNewThisWeekWhereClause,
+    params: withNewThisWeekParams,
+  } = appendNewThisWeekSqlCondition(whereClause, params, context);
 
   const row = db
     .prepare(
       `
         SELECT COUNT(*) AS total
         FROM vehicle_offers
-        ${baseWhereClause}
-          AND TRIM(COALESCE(offer_code, '')) != ''
-          AND offer_code NOT IN (
-            SELECT DISTINCT offer_code
-            FROM vehicle_offer_snapshots
-            WHERE import_batch_id = ?
-              AND tenant_id = ?
-              AND TRIM(COALESCE(offer_code, '')) != ''
-          )
+        ${withNewThisWeekWhereClause}
       `,
     )
-    .get(
-      ...params,
-      latestImportBatch.id,
-      previousImportBatchId,
-      latestImportBatch.tenant_id,
-    ) as { total: number };
+    .get(...withNewThisWeekParams) as { total: number };
 
   return row.total;
 }
@@ -910,11 +945,20 @@ export function searchCatalogItems(filters: CatalogQuery): {
   const shouldFilterByNewThisWeek = filters.newThisWeek === true;
   const limit = filters.pageSize;
   const offset = (filters.page - 1) * filters.pageSize;
+  const newThisWeekContext = shouldFilterByNewThisWeek
+    ? getNewThisWeekSqlContext()
+    : null;
+  const {
+    whereClause: selectWhereClause,
+    params: selectParams,
+  } = newThisWeekContext
+    ? appendNewThisWeekSqlCondition(whereClause, params, newThisWeekContext)
+    : { whereClause, params };
 
   const baseSelectQuery = `
     SELECT *
     FROM vehicle_offers
-    ${whereClause}
+    ${selectWhereClause}
     ORDER BY
       CASE
         WHEN TRIM(COALESCE(card_preview_path, '')) != '' THEN 2
@@ -935,12 +979,14 @@ export function searchCatalogItems(filters: CatalogQuery): {
   `;
 
   if (shouldFilterByRegion || shouldFilterByNewThisWeek) {
-    const rows = db.prepare(baseSelectQuery).all(...params) as VehicleOfferDbRow[];
+    const rows = db.prepare(baseSelectQuery).all(...selectParams) as VehicleOfferDbRow[];
     let filteredRows = rows;
     if (shouldFilterByRegion) {
       filteredRows = filterRowsByRegions(filteredRows, requestedRegions);
     }
-    const newThisWeekRows = filterRowsByNewThisWeek(filteredRows);
+    const newThisWeekRows = shouldFilterByNewThisWeek
+      ? filteredRows
+      : filterRowsByNewThisWeek(filteredRows);
     if (shouldFilterByNewThisWeek) {
       filteredRows = newThisWeekRows;
     }
