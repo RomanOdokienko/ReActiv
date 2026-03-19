@@ -960,21 +960,7 @@ export function searchCatalogItems(filters: CatalogQuery): {
     FROM vehicle_offers
     ${selectWhereClause}
     ORDER BY
-      CASE
-        WHEN TRIM(COALESCE(card_preview_path, '')) != '' THEN 2
-        WHEN TRIM(COALESCE(yandex_disk_url, '')) = '' THEN 0
-        WHEN lower(yandex_disk_url) LIKE '%disk.yandex.%' THEN 1
-        WHEN lower(yandex_disk_url) LIKE '%yadi.sk%' THEN 1
-        WHEN lower(yandex_disk_url) LIKE '%downloader.disk.yandex.%' THEN 1
-        WHEN lower(yandex_disk_url) LIKE '%.jpg%' THEN 1
-        WHEN lower(yandex_disk_url) LIKE '%.jpeg%' THEN 1
-        WHEN lower(yandex_disk_url) LIKE '%.png%' THEN 1
-        WHEN lower(yandex_disk_url) LIKE '%.webp%' THEN 1
-        WHEN lower(yandex_disk_url) LIKE '%.gif%' THEN 1
-        WHEN lower(yandex_disk_url) LIKE '%.bmp%' THEN 1
-        WHEN lower(yandex_disk_url) LIKE '%.svg%' THEN 1
-        ELSE 0
-      END DESC,
+      has_photo DESC,
       ${filters.sortBy} ${filters.sortDir.toUpperCase()}
   `;
 

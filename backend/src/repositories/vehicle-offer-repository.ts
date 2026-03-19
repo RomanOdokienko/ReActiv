@@ -60,6 +60,38 @@ function toDbNullableNumber(value: number | null): number | null {
   return null;
 }
 
+function hasImageLikeUrl(rawValue: string): boolean {
+  const value = rawValue.toLowerCase();
+  return (
+    value.includes("disk.yandex.") ||
+    value.includes("yadi.sk") ||
+    value.includes("downloader.disk.yandex.") ||
+    value.includes(".jpg") ||
+    value.includes(".jpeg") ||
+    value.includes(".png") ||
+    value.includes(".webp") ||
+    value.includes(".gif") ||
+    value.includes(".bmp") ||
+    value.includes(".svg")
+  );
+}
+
+function computeHasPhotoFlag(
+  yandexDiskUrl: string | null,
+  cardPreviewPath: string | null,
+): number {
+  if ((cardPreviewPath ?? "").trim()) {
+    return 1;
+  }
+
+  const mediaUrl = (yandexDiskUrl ?? "").trim();
+  if (!mediaUrl) {
+    return 0;
+  }
+
+  return hasImageLikeUrl(mediaUrl) ? 1 : 0;
+}
+
 function insertVehicleOfferIntoTable(
   tableName: "vehicle_offers" | "vehicle_offer_snapshots",
   importBatchId: string,
@@ -93,7 +125,8 @@ function insertVehicleOfferIntoTable(
         crm_ref,
         website_url,
         title,
-        card_preview_path
+        card_preview_path,
+        has_photo
       ) VALUES (
         @import_batch_id,
         @tenant_id,
@@ -119,7 +152,8 @@ function insertVehicleOfferIntoTable(
         @crm_ref,
         @website_url,
         @title,
-        @card_preview_path
+        @card_preview_path,
+        @has_photo
       )
     `,
   ).run({
@@ -148,6 +182,7 @@ function insertVehicleOfferIntoTable(
     website_url: toDbText(row.website_url),
     title: toDbText(row.title),
     card_preview_path: "",
+    has_photo: computeHasPhotoFlag(row.yandex_disk_url, ""),
   });
 }
 
@@ -338,6 +373,8 @@ export function backfillVehicleOfferSnapshotsIfEmpty(): void {
       crm_ref,
       website_url,
       title,
+      card_preview_path,
+      has_photo,
       created_at
     )
     SELECT
@@ -365,6 +402,8 @@ export function backfillVehicleOfferSnapshotsIfEmpty(): void {
       crm_ref,
       website_url,
       title,
+      card_preview_path,
+      has_photo,
       created_at
     FROM vehicle_offers
   `);
@@ -471,7 +510,22 @@ export function updateVehicleOfferCardPreviewPathsByOfferCode(
   const updateStatement = db.prepare(
     `
       UPDATE vehicle_offers
-      SET card_preview_path = ?
+      SET card_preview_path = ?,
+          has_photo = CASE
+            WHEN TRIM(COALESCE(?, '')) != '' THEN 1
+            WHEN TRIM(COALESCE(yandex_disk_url, '')) = '' THEN 0
+            WHEN lower(yandex_disk_url) LIKE '%disk.yandex.%' THEN 1
+            WHEN lower(yandex_disk_url) LIKE '%yadi.sk%' THEN 1
+            WHEN lower(yandex_disk_url) LIKE '%downloader.disk.yandex.%' THEN 1
+            WHEN lower(yandex_disk_url) LIKE '%.jpg%' THEN 1
+            WHEN lower(yandex_disk_url) LIKE '%.jpeg%' THEN 1
+            WHEN lower(yandex_disk_url) LIKE '%.png%' THEN 1
+            WHEN lower(yandex_disk_url) LIKE '%.webp%' THEN 1
+            WHEN lower(yandex_disk_url) LIKE '%.gif%' THEN 1
+            WHEN lower(yandex_disk_url) LIKE '%.bmp%' THEN 1
+            WHEN lower(yandex_disk_url) LIKE '%.svg%' THEN 1
+            ELSE 0
+          END
       WHERE tenant_id = ?
         AND offer_code = ?
     `,
@@ -481,6 +535,7 @@ export function updateVehicleOfferCardPreviewPathsByOfferCode(
     let updatedRows = 0;
     for (const update of updates) {
       updatedRows += updateStatement.run(
+        update.cardPreviewPath,
         update.cardPreviewPath,
         tenantId,
         update.offerCode,
@@ -501,7 +556,22 @@ export function updateVehicleOfferMediaUrlsByOfferCode(
   const updateStatement = db.prepare(
     `
       UPDATE vehicle_offers
-      SET yandex_disk_url = ?
+      SET yandex_disk_url = ?,
+          has_photo = CASE
+            WHEN TRIM(COALESCE(card_preview_path, '')) != '' THEN 1
+            WHEN TRIM(COALESCE(?, '')) = '' THEN 0
+            WHEN lower(?) LIKE '%disk.yandex.%' THEN 1
+            WHEN lower(?) LIKE '%yadi.sk%' THEN 1
+            WHEN lower(?) LIKE '%downloader.disk.yandex.%' THEN 1
+            WHEN lower(?) LIKE '%.jpg%' THEN 1
+            WHEN lower(?) LIKE '%.jpeg%' THEN 1
+            WHEN lower(?) LIKE '%.png%' THEN 1
+            WHEN lower(?) LIKE '%.webp%' THEN 1
+            WHEN lower(?) LIKE '%.gif%' THEN 1
+            WHEN lower(?) LIKE '%.bmp%' THEN 1
+            WHEN lower(?) LIKE '%.svg%' THEN 1
+            ELSE 0
+          END
       WHERE tenant_id = ?
         AND offer_code = ?
     `,
@@ -510,8 +580,20 @@ export function updateVehicleOfferMediaUrlsByOfferCode(
   return db.transaction(() => {
     let updatedRows = 0;
     for (const update of updates) {
+      const mediaUrl = update.yandexDiskUrl;
       updatedRows += updateStatement.run(
-        update.yandexDiskUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
+        mediaUrl,
         tenantId,
         update.offerCode,
       ).changes;

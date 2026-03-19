@@ -28,6 +28,7 @@ const VEHICLE_OFFER_COLUMNS = [
   "website_url",
   "title",
   "card_preview_path",
+  "has_photo",
   "created_at",
 ] as const;
 
@@ -60,6 +61,7 @@ function createVehicleOffersTableSql(tableName: string): string {
       website_url TEXT NOT NULL,
       title TEXT NOT NULL,
       card_preview_path TEXT NOT NULL DEFAULT '',
+      has_photo INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (import_batch_id) REFERENCES import_batches(id)
     );
@@ -86,6 +88,8 @@ function createVehicleOfferIndexes(): void {
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_crm_ref ON vehicle_offers(crm_ref);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_website_url ON vehicle_offers(website_url);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_yandex_disk_url ON vehicle_offers(yandex_disk_url);
+    CREATE INDEX IF NOT EXISTS idx_vehicle_offers_has_photo ON vehicle_offers(has_photo);
+    CREATE INDEX IF NOT EXISTS idx_vehicle_offers_tenant_has_photo ON vehicle_offers(tenant_id, has_photo);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_price ON vehicle_offers(price);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_year ON vehicle_offers(year);
     CREATE INDEX IF NOT EXISTS idx_vehicle_offers_mileage_km ON vehicle_offers(mileage_km);
@@ -131,6 +135,52 @@ function ensureCardPreviewPathColumn(
       `ALTER TABLE ${tableName} ADD COLUMN card_preview_path TEXT NOT NULL DEFAULT '';`,
     );
   }
+}
+
+function ensureHasPhotoColumn(
+  tableName: "vehicle_offers" | "vehicle_offer_snapshots",
+): void {
+  const columns = db
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
+
+  const hasHasPhotoColumn = columns.some((column) => column.name === "has_photo");
+  if (!hasHasPhotoColumn) {
+    db.exec(
+      `ALTER TABLE ${tableName} ADD COLUMN has_photo INTEGER NOT NULL DEFAULT 0;`,
+    );
+  }
+}
+
+function getHasPhotoSqlExpression(): string {
+  return `
+    CASE
+      WHEN TRIM(COALESCE(card_preview_path, '')) != '' THEN 1
+      WHEN TRIM(COALESCE(yandex_disk_url, '')) = '' THEN 0
+      WHEN lower(yandex_disk_url) LIKE '%disk.yandex.%' THEN 1
+      WHEN lower(yandex_disk_url) LIKE '%yadi.sk%' THEN 1
+      WHEN lower(yandex_disk_url) LIKE '%downloader.disk.yandex.%' THEN 1
+      WHEN lower(yandex_disk_url) LIKE '%.jpg%' THEN 1
+      WHEN lower(yandex_disk_url) LIKE '%.jpeg%' THEN 1
+      WHEN lower(yandex_disk_url) LIKE '%.png%' THEN 1
+      WHEN lower(yandex_disk_url) LIKE '%.webp%' THEN 1
+      WHEN lower(yandex_disk_url) LIKE '%.gif%' THEN 1
+      WHEN lower(yandex_disk_url) LIKE '%.bmp%' THEN 1
+      WHEN lower(yandex_disk_url) LIKE '%.svg%' THEN 1
+      ELSE 0
+    END
+  `;
+}
+
+function syncHasPhotoColumn(
+  tableName: "vehicle_offers" | "vehicle_offer_snapshots",
+): void {
+  const hasPhotoSql = getHasPhotoSqlExpression();
+  db.exec(`
+    UPDATE ${tableName}
+    SET has_photo = ${hasPhotoSql}
+    WHERE has_photo != ${hasPhotoSql}
+  `);
 }
 
 function normalizeVehicleTypeLabels(tableName: "vehicle_offers" | "vehicle_offer_snapshots"): void {
@@ -328,6 +378,8 @@ export function initializeSchema(): void {
 
   db.exec(createVehicleOffersTableSql("vehicle_offers"));
   db.exec(createVehicleOffersTableSql("vehicle_offer_snapshots"));
+  ensureHasPhotoColumn("vehicle_offers");
+  ensureHasPhotoColumn("vehicle_offer_snapshots");
   ensureVehicleOffersNullableColumns();
   ensureTenantColumn("import_batches");
   ensureTenantColumn("import_errors");
@@ -343,6 +395,8 @@ export function initializeSchema(): void {
   normalizeVehicleTypeLabels("vehicle_offer_snapshots");
   normalizeBrandLabels("vehicle_offers");
   normalizeBrandLabels("vehicle_offer_snapshots");
+  syncHasPhotoColumn("vehicle_offers");
+  syncHasPhotoColumn("vehicle_offer_snapshots");
   createVehicleOfferIndexes();
   createVehicleOfferSnapshotIndexes();
 
