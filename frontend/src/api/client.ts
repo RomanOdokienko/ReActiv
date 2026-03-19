@@ -692,7 +692,6 @@ export async function getCatalogItems(
   try {
     const response = await fetch(buildUrl(`/catalog/items?${params.toString()}`), {
       credentials: "include",
-      cache: "no-store",
       signal: options.signal,
     });
     if (!response.ok) {
@@ -715,7 +714,6 @@ export async function getCatalogSummary(): Promise<CatalogSummaryResponse> {
   try {
     const response = await fetch(buildUrl("/catalog/summary"), {
       credentials: "include",
-      cache: "no-store",
     });
     if (!response.ok) {
       throw new Error("Не удалось загрузить сводку витрины");
@@ -734,7 +732,6 @@ export async function getCatalogFilters(): Promise<CatalogFiltersResponse> {
   try {
     const response = await fetch(buildUrl("/catalog/filters"), {
       credentials: "include",
-      cache: "no-store",
     });
     if (!response.ok) {
       throw new Error("Не удалось загрузить фильтры");

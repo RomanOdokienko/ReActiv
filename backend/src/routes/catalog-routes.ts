@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { ZodError } from "zod";
 import { parseCatalogQuery } from "../catalog/catalog-query";
@@ -50,11 +51,43 @@ function sanitizeCatalogFiltersForRole(
   };
 }
 
+function buildWeakEtag(...parts: Array<string | number | null | undefined>): string {
+  const normalized = parts
+    .map((part) => (part === null || part === undefined ? "" : String(part)))
+    .join("|");
+  const digest = createHash("sha1").update(normalized).digest("base64url");
+  return `W/"${digest}"`;
+}
+
+function applyPrivateCacheHeaders(
+  reply: { header: (name: string, value: string) => unknown },
+  maxAgeSec: number,
+  staleWhileRevalidateSec: number,
+): void {
+  reply.header(
+    "Cache-Control",
+    `private, max-age=${maxAgeSec}, stale-while-revalidate=${staleWhileRevalidateSec}`,
+  );
+}
+
 export async function registerCatalogRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/catalog/summary", async (_request, reply) => {
     try {
       const latestImportBatch = getLatestSuccessfulImportBatch();
+      const etag = buildWeakEtag(
+        "catalog-summary",
+        latestImportBatch?.id ?? "none",
+        latestImportBatch?.added_rows ?? 0,
+      );
 
+      if (_request.headers["if-none-match"] === etag) {
+        applyPrivateCacheHeaders(reply, 60, 120);
+        reply.header("ETag", etag);
+        return reply.code(304).send();
+      }
+
+      applyPrivateCacheHeaders(reply, 60, 120);
+      reply.header("ETag", etag);
       return reply.code(200).send({
         newThisWeekCount: latestImportBatch?.added_rows ?? 0,
       });
@@ -66,11 +99,29 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
   app.get("/api/catalog/items", async (request, reply) => {
     try {
       const query = parseCatalogQuery(request.query);
+      const latestImportBatch = getLatestSuccessfulImportBatch();
+      const roleBucket = request.authUser?.role ?? "public";
+      const requestPath = request.raw.url?.split("#")[0] ?? "/api/catalog/items";
+      const etag = buildWeakEtag(
+        "catalog-items",
+        latestImportBatch?.id ?? "none",
+        roleBucket,
+        requestPath,
+      );
+
+      if (request.headers["if-none-match"] === etag) {
+        applyPrivateCacheHeaders(reply, 30, 60);
+        reply.header("ETag", etag);
+        return reply.code(304).send();
+      }
+
       const result = searchCatalogItems(query);
       const items = result.items.map((item) =>
         sanitizeCatalogItemForRole(item, request.authUser?.role),
       );
 
+      applyPrivateCacheHeaders(reply, 30, 60);
+      reply.header("ETag", etag);
       return reply.code(200).send({
         items,
         newThisWeekCount: result.newThisWeekCount,
@@ -94,7 +145,23 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
 
   app.get("/api/catalog/filters", async (request, reply) => {
     try {
+      const latestImportBatch = getLatestSuccessfulImportBatch();
+      const roleBucket = request.authUser?.role ?? "public";
+      const etag = buildWeakEtag(
+        "catalog-filters",
+        latestImportBatch?.id ?? "none",
+        roleBucket,
+      );
+
+      if (request.headers["if-none-match"] === etag) {
+        applyPrivateCacheHeaders(reply, 300, 600);
+        reply.header("ETag", etag);
+        return reply.code(304).send();
+      }
+
       const metadata = getCatalogFiltersMetadata();
+      applyPrivateCacheHeaders(reply, 300, 600);
+      reply.header("ETag", etag);
       return reply
         .code(200)
         .send(sanitizeCatalogFiltersForRole(metadata, request.authUser?.role));
