@@ -612,12 +612,22 @@ export async function clearImports(
   }
 }
 
-export function getMediaPreviewImageUrl(sourceUrl: string): string {
+interface MediaPreviewImageOptions {
+  width?: number;
+}
+
+export function getMediaPreviewImageUrl(
+  sourceUrl: string,
+  options: MediaPreviewImageOptions = {},
+): string {
   if (sourceUrl.startsWith(STORED_PREVIEW_PREFIX)) {
+    const params = new URLSearchParams();
+    params.set("path", sourceUrl.slice(STORED_PREVIEW_PREFIX.length));
+    if (options.width && Number.isFinite(options.width) && options.width > 0) {
+      params.set("w", String(Math.floor(options.width)));
+    }
     return buildUrl(
-      `/media/card-preview?path=${encodeURIComponent(
-        sourceUrl.slice(STORED_PREVIEW_PREFIX.length),
-      )}`,
+      `/media/card-preview?${params.toString()}`,
     );
   }
 

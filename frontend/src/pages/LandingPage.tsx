@@ -148,7 +148,7 @@ function getItemPreviewUrl(item: CatalogListItem): string | null {
     return null;
   }
 
-  return getMediaPreviewImageUrl(item.previewUrl);
+  return getMediaPreviewImageUrl(item.previewUrl, { width: 360 });
 }
 
 function BrandLogo({ brand, src }: { brand: string; src: string }) {

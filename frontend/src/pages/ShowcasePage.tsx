@@ -2096,7 +2096,7 @@ export function ShowcasePage({
                       {primaryMediaUrl ? (
                         <>
                           <img
-                            src={getMediaPreviewImageUrl(primaryMediaUrl)}
+                            src={getMediaPreviewImageUrl(primaryMediaUrl, { width: 360 })}
                             alt={item.title || `${item.brand} ${item.model}`}
                             loading={index < 4 ? "eager" : "lazy"}
                             decoding="async"
