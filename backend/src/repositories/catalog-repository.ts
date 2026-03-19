@@ -2,7 +2,6 @@ import { db } from "../db/connection";
 import type { CatalogQuery } from "../catalog/catalog-query";
 import {
   buildStoredPreviewSourceUrl,
-  storedMediaFileExists,
 } from "../services/local-media-storage";
 import {
   getLatestSuccessfulImportBatch,
@@ -152,7 +151,7 @@ function mapDbRow(row: VehicleOfferDbRow): CatalogItem {
 }
 
 function toCatalogListItem(item: CatalogItem): CatalogListItem {
-  const hasStoredPreview = storedMediaFileExists(item.cardPreviewPath);
+  const hasStoredPreview = item.cardPreviewPath.trim().length > 0;
 
   return {
     id: item.id,
