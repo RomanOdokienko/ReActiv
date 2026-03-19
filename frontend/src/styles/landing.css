@@ -250,11 +250,6 @@
   align-self: stretch;
 }
 
-.landing-hero__media picture {
-  display: block;
-  width: 100%;
-}
-
 .landing-hero__media img,
 .landing-hero__placeholder {
   display: block;
