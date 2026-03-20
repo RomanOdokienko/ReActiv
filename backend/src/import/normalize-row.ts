@@ -54,6 +54,7 @@ function getValue(
 
 interface NormalizeVehicleOfferRowOptions {
   offerCodeNormalizer?: (rawValue: unknown) => string | null;
+  tenantId?: string;
 }
 
 export function normalizeVehicleOfferRow(
@@ -63,6 +64,7 @@ export function normalizeVehicleOfferRow(
 ): NormalizedVehicleOfferRow {
   const offerCodeNormalizer = options.offerCodeNormalizer ?? normalizeOfferCode;
   const offerCode = offerCodeNormalizer(getValue(row, fieldToColumnIndex, "offer_code"));
+  const status = normalizeString(getValue(row, fieldToColumnIndex, "status")) || null;
   const brand = normalizeBrand(getValue(row, fieldToColumnIndex, "brand"));
   const model = normalizeString(getValue(row, fieldToColumnIndex, "model")) || null;
   const modification =
@@ -75,6 +77,10 @@ export function normalizeVehicleOfferRow(
   const rawPrice = getValue(row, fieldToColumnIndex, "price");
   const vehicleTypeMeta = normalizeVehicleTypeWithMeta(
     getValue(row, fieldToColumnIndex, "vehicle_type"),
+    {
+      tenantId: options.tenantId,
+      statusRaw: status,
+    },
   );
 
   const parsedKeyCount = parseKeyCount(rawKeyCount);
@@ -83,7 +89,7 @@ export function normalizeVehicleOfferRow(
 
   return {
     offer_code: offerCode,
-    status: normalizeString(getValue(row, fieldToColumnIndex, "status")) || null,
+    status,
     brand,
     model,
     modification,

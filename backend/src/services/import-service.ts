@@ -174,6 +174,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
       const rowNumber = index + 2;
       const normalizedRow = normalizeVehicleOfferRow(row, columnMap.fieldToColumnIndex, {
         offerCodeNormalizer: tenantProfile.offerCodeNormalizer,
+        tenantId: tenantProfile.id,
       });
       const validationErrors = validateNormalizedRow(normalizedRow);
       const blockingErrors = validationErrors.filter((validationError) =>
@@ -238,7 +239,8 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
       }
 
       if (normalizedRow.vehicle_type_unknown_mapped && normalizedRow.vehicle_type_raw) {
-        const message = `Unknown vehicle_type mapped to СПЕЦТЕХНИКА: ${normalizedRow.vehicle_type_raw}`;
+        const mappedVehicleType = normalizedRow.vehicle_type ?? "null";
+        const message = `Unknown vehicle_type mapped to ${mappedVehicleType}: ${normalizedRow.vehicle_type_raw}`;
         insertImportError({
           import_batch_id: importBatchId,
           tenant_id: tenantProfile.id,
