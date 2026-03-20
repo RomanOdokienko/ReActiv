@@ -921,12 +921,35 @@ function buildWhere(filters: CatalogQuery): { whereClause: string; params: unkno
   };
 }
 
+function buildWhereForNewThisWeekCount(
+  filters: CatalogQuery,
+  fallbackWhereClause: string,
+  fallbackParams: unknown[],
+): { whereClause: string; params: unknown[] } {
+  if (!filters.onlyWithPreview) {
+    return {
+      whereClause: fallbackWhereClause,
+      params: fallbackParams,
+    };
+  }
+
+  return buildWhere({
+    ...filters,
+    onlyWithPreview: undefined,
+  });
+}
+
 export function searchCatalogItems(filters: CatalogQuery): {
   items: CatalogListItem[];
   total: number;
   newThisWeekCount: number;
 } {
   const { whereClause, params } = buildWhere(filters);
+  const {
+    whereClause: newThisWeekCountWhereClause,
+    params: newThisWeekCountParams,
+  } = buildWhereForNewThisWeekCount(filters, whereClause, params);
+
   if (shouldUseMainShowcaseRandomMix(filters)) {
     const orderedOfferIds = getMainShowcaseMixOrder();
     const randomSeed = filters.randomSeed?.trim() || String(Date.now());
@@ -947,7 +970,10 @@ export function searchCatalogItems(filters: CatalogQuery): {
     return {
       items: rows.map(mapDbRow).map(toCatalogListItem),
       total: totalRow.total,
-      newThisWeekCount: countNewThisWeekRowsBySql(whereClause, params),
+      newThisWeekCount: countNewThisWeekRowsBySql(
+        newThisWeekCountWhereClause,
+        newThisWeekCountParams,
+      ),
     };
   }
 
@@ -1007,7 +1033,10 @@ export function searchCatalogItems(filters: CatalogQuery): {
   return {
     items: rows.map(mapDbRow).map(toCatalogListItem),
     total: totalRow.total,
-    newThisWeekCount: countNewThisWeekRowsBySql(whereClause, params),
+    newThisWeekCount: countNewThisWeekRowsBySql(
+      newThisWeekCountWhereClause,
+      newThisWeekCountParams,
+    ),
   };
 }
 
