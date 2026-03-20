@@ -1916,6 +1916,48 @@ tbody tr:nth-child(even) {
   border-bottom-right-radius: 16px;
 }
 
+.vehicle-card__favorite-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(221, 232, 246, 0.9);
+  border-radius: 999px;
+  background: rgba(9, 25, 43, 0.65);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+  z-index: 3;
+}
+
+.vehicle-card__favorite-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.vehicle-card__favorite-button svg path {
+  fill: currentColor;
+}
+
+.vehicle-card__favorite-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(9, 25, 43, 0.8);
+}
+
+.vehicle-card__favorite-button--active {
+  background: rgba(14, 83, 156, 0.94);
+  border-color: rgba(197, 220, 246, 0.95);
+}
+
+.vehicle-card__favorite-button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
 .vehicle-card__fallback {
   display: none;
   width: 100%;
@@ -2204,6 +2246,60 @@ tbody tr:nth-child(even) {
   letter-spacing: -0.015em;
   white-space: nowrap;
   color: #142c49;
+}
+
+.detail-favorite-button {
+  min-height: 34px;
+  border: 1px solid #c9d8ea;
+  border-radius: 999px;
+  background: #f3f7fc;
+  color: #36567a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.detail-favorite-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.detail-favorite-button svg path {
+  fill: currentColor;
+}
+
+.detail-favorite-button:hover:not(:disabled) {
+  background: #e9f2fc;
+  border-color: #b7cbe3;
+}
+
+.detail-favorite-button--active {
+  color: #0f4f95;
+  background: #deecfb;
+  border-color: #a9c5e8;
+}
+
+.detail-favorite-button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.favorites-page {
+  display: grid;
+  gap: 12px;
+}
+
+.favorites-page__meta {
+  color: #5f738b;
+  font-size: 15px;
+  line-height: 1.4;
 }
 
 .detail-cta-card {

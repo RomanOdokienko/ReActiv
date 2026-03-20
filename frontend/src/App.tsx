@@ -11,6 +11,7 @@ import { LegalLinks, PrivacyPolicyLink, TermsLink } from "./components/LegalLink
 import { CatalogPage } from "./pages/CatalogPage";
 import { AdminActivityPage } from "./pages/AdminActivityPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { FavoritesPage } from "./pages/FavoritesPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ShowcaseItemPage } from "./pages/ShowcaseItemPage";
@@ -189,7 +190,8 @@ export function App() {
   const canAccessUpload =
     authUser?.role === "admin" || authUser?.role === "stock_owner";
   const canAccessCatalog = isAdmin;
-  const showMainNav = isAdmin || canAccessUpload || canViewActivity;
+  const canAccessFavorites = Boolean(authUser);
+  const showMainNav = isAdmin || canAccessUpload || canViewActivity || canAccessFavorites;
   const defaultAuthorizedPath = canAccessUpload ? "/upload" : "/";
 
   useEffect(() => {
@@ -455,6 +457,9 @@ export function App() {
             <NavLink to="/showcase" className={({ isActive }) => (isActive ? "active" : "")}>
               Витрина
             </NavLink>
+            <NavLink to="/favorites" className={({ isActive }) => (isActive ? "active" : "")}>
+              Избранное
+            </NavLink>
             {isAdmin && (
               <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>
                 Пользователи
@@ -487,6 +492,7 @@ export function App() {
             path="/showcase"
             element={<ShowcasePage canFilterByTenant={isAdmin} />}
           />
+          <Route path="/favorites" element={<FavoritesPage />} />
           <Route
             path="/upload"
             element={
@@ -501,7 +507,7 @@ export function App() {
             path="/catalog"
             element={isAdmin ? <CatalogPage /> : <Navigate to="/" replace />}
           />
-          <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
+          <Route path="/showcase/:itemId" element={<ShowcaseItemPage allowFavorites />} />
           <Route
             path="/admin/users"
             element={isAdmin ? <AdminUsersPage /> : <Navigate to="/" replace />}

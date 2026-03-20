@@ -1,10 +1,13 @@
 ﻿import { Link, useSearchParams } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import {
+  addFavoriteItem,
   getCatalogFilters,
   getCatalogItems,
+  getFavoriteItemIds,
   logActivityEvent,
   getMediaPreviewImageUrl,
+  removeFavoriteItem,
 } from "../api/client";
 import type {
   CatalogFiltersResponse,
@@ -551,6 +554,10 @@ export function ShowcasePage({
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [favoriteItemIds, setFavoriteItemIds] = useState<Set<number>>(new Set());
+  const [favoritePendingItemIds, setFavoritePendingItemIds] = useState<Set<number>>(
+    new Set(),
+  );
 
   useEffect(() => {
     return () => {
@@ -641,6 +648,43 @@ export function ShowcasePage({
 
     void loadFilters();
   }, []);
+
+  useEffect(() => {
+    if (publicMode) {
+      setFavoriteItemIds(new Set());
+      setFavoritePendingItemIds(new Set());
+      return;
+    }
+
+    let isCancelled = false;
+    async function loadFavoriteIds() {
+      try {
+        const response = await getFavoriteItemIds();
+        if (isCancelled) {
+          return;
+        }
+        setFavoriteItemIds(new Set(response.itemIds));
+      } catch (caughtError) {
+        if (isCancelled) {
+          return;
+        }
+        void logActivityEvent({
+          eventType: "api_error",
+          page: "/showcase",
+          payload: {
+            endpoint: "/favorites/ids",
+            message:
+              caughtError instanceof Error ? caughtError.message : "unknown_error",
+          },
+        });
+      }
+    }
+
+    void loadFavoriteIds();
+    return () => {
+      isCancelled = true;
+    };
+  }, [publicMode]);
 
 
   useEffect(() => {
@@ -1651,6 +1695,59 @@ export function ShowcasePage({
     setSelectedVehicleTypes([]);
   }
 
+  async function toggleFavorite(
+    event: MouseEvent<HTMLButtonElement>,
+    itemId: number,
+  ): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (publicMode || favoritePendingItemIds.has(itemId)) {
+      return;
+    }
+
+    const isFavorite = favoriteItemIds.has(itemId);
+    setFavoritePendingItemIds((current) => {
+      const next = new Set(current);
+      next.add(itemId);
+      return next;
+    });
+    setFavoriteItemIds((current) => {
+      const next = new Set(current);
+      if (isFavorite) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+
+    try {
+      if (isFavorite) {
+        await removeFavoriteItem(itemId);
+      } else {
+        await addFavoriteItem(itemId);
+      }
+    } catch {
+      setFavoriteItemIds((current) => {
+        const next = new Set(current);
+        if (isFavorite) {
+          next.add(itemId);
+        } else {
+          next.delete(itemId);
+        }
+        return next;
+      });
+      setError("Не удалось обновить избранное");
+    } finally {
+      setFavoritePendingItemIds((current) => {
+        const next = new Set(current);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  }
+
   function getVehicleTypeLabel(value: string): string {
     return value.toUpperCase();
   }
@@ -2066,6 +2163,8 @@ export function ShowcasePage({
                     ? `reso-vin:${item.offerCode}`
                     : undefined) ??
                   item.previewUrl;
+                const isFavorite = favoriteItemIds.has(item.id);
+                const isFavoritePending = favoritePendingItemIds.has(item.id);
 
                 return (
                   <Link
@@ -2121,6 +2220,34 @@ export function ShowcasePage({
                             Фото пока нет. Но они скоро появятся
                           </span>
                         </span>
+                      )}
+                      {!publicMode && (
+                        <button
+                          type="button"
+                          className={
+                            isFavorite
+                              ? "vehicle-card__favorite-button vehicle-card__favorite-button--active"
+                              : "vehicle-card__favorite-button"
+                          }
+                          onClick={(event) => {
+                            void toggleFavorite(event, item.id);
+                          }}
+                          disabled={isFavoritePending}
+                          aria-label={
+                            isFavorite
+                              ? "Убрать из избранного"
+                              : "Добавить в избранное"
+                          }
+                          title={
+                            isFavorite
+                              ? "Убрать из избранного"
+                              : "Добавить в избранное"
+                          }
+                        >
+                          <svg viewBox="0 0 24 24" role="presentation" focusable="false">
+                            <path d="M12 2.8l2.86 5.79 6.39.93-4.63 4.52 1.09 6.37L12 17.48 6.29 20.4l1.09-6.37L2.75 9.52l6.39-.93L12 2.8z" />
+                          </svg>
+                        </button>
                       )}
                     </div>
                     <div className="vehicle-card__content">

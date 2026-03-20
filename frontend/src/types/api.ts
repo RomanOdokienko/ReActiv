@@ -155,6 +155,25 @@ export interface CatalogItemsResponse {
   };
 }
 
+export interface FavoriteItemIdsResponse {
+  itemIds: number[];
+}
+
+export interface FavoriteItemsResponse {
+  items: CatalogListItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+  };
+}
+
+export interface FavoriteMutationResponse {
+  itemId: number;
+  isFavorite: boolean;
+  removed?: boolean;
+}
+
 export interface CatalogSummaryResponse {
   newThisWeekCount: number;
 }

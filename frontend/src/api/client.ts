@@ -4,6 +4,9 @@ import type {
   ActivityEventsResponse,
   AuthResponse,
   CatalogItem,
+  FavoriteItemIdsResponse,
+  FavoriteItemsResponse,
+  FavoriteMutationResponse,
   ClearImportsResponse,
   GuestActivityEventsResponse,
   GuestActivitySummaryResponse,
@@ -770,6 +773,109 @@ export async function getCatalogItemById(id: number): Promise<CatalogItem> {
     }
 
     return (await response.json()) as CatalogItem;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getFavoriteItemIds(): Promise<FavoriteItemIdsResponse> {
+  try {
+    const response = await fetch(buildUrl("/favorites/ids"), {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (response.status === 401) {
+      throw new Error("UNAUTHORIZED");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить избранное");
+    }
+
+    return (await response.json()) as FavoriteItemIdsResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getFavoriteItems(
+  page = 1,
+  pageSize = 20,
+): Promise<FavoriteItemsResponse> {
+  try {
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(pageSize),
+    });
+    const response = await fetch(buildUrl(`/favorites?${params.toString()}`), {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (response.status === 401) {
+      throw new Error("UNAUTHORIZED");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить избранное");
+    }
+
+    return (await response.json()) as FavoriteItemsResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function addFavoriteItem(itemId: number): Promise<FavoriteMutationResponse> {
+  try {
+    const response = await fetch(buildUrl(`/favorites/${itemId}`), {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (response.status === 401) {
+      throw new Error("UNAUTHORIZED");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось обновить избранное");
+    }
+
+    return (await response.json()) as FavoriteMutationResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function removeFavoriteItem(itemId: number): Promise<FavoriteMutationResponse> {
+  try {
+    const response = await fetch(buildUrl(`/favorites/${itemId}`), {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (response.status === 401) {
+      throw new Error("UNAUTHORIZED");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось обновить избранное");
+    }
+
+    return (await response.json()) as FavoriteMutationResponse;
   } catch (error) {
     if (error instanceof TypeError) {
       throw backendUnavailableError();

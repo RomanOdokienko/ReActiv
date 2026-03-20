@@ -3,15 +3,19 @@
   useMemo,
   useState,
   type ImgHTMLAttributes,
+  type MouseEvent,
   type SyntheticEvent,
 } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  addFavoriteItem,
   buildTelegramShareUrl,
   getCatalogItemById,
+  getFavoriteItemIds,
   getMediaGalleryUrls,
   getMediaPreviewImageUrl,
   logActivityEvent,
+  removeFavoriteItem,
 } from "../api/client";
 import type { CatalogItem } from "../types/api";
 
@@ -123,7 +127,11 @@ interface DetailSpec {
   value: string;
 }
 
-export function ShowcaseItemPage() {
+interface ShowcaseItemPageProps {
+  allowFavorites?: boolean;
+}
+
+export function ShowcaseItemPage({ allowFavorites = false }: ShowcaseItemPageProps) {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -134,6 +142,8 @@ export function ShowcaseItemPage() {
   const [isThumbnailListExpanded, setIsThumbnailListExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [favoriteItemIds, setFavoriteItemIds] = useState<Set<number>>(new Set());
+  const [isFavoritePending, setIsFavoritePending] = useState(false);
 
   useEffect(() => {
     async function loadItem() {
@@ -175,6 +185,42 @@ export function ShowcaseItemPage() {
 
     void loadItem();
   }, [itemId]);
+
+  useEffect(() => {
+    if (!allowFavorites) {
+      setFavoriteItemIds(new Set());
+      return;
+    }
+
+    let isCancelled = false;
+    async function loadFavoriteIds() {
+      try {
+        const response = await getFavoriteItemIds();
+        if (isCancelled) {
+          return;
+        }
+        setFavoriteItemIds(new Set(response.itemIds));
+      } catch (caughtError) {
+        if (isCancelled) {
+          return;
+        }
+        void logActivityEvent({
+          eventType: "api_error",
+          page: location.pathname,
+          payload: {
+            endpoint: "/favorites/ids",
+            message:
+              caughtError instanceof Error ? caughtError.message : "unknown_error",
+          },
+        });
+      }
+    }
+
+    void loadFavoriteIds();
+    return () => {
+      isCancelled = true;
+    };
+  }, [allowFavorites, location.pathname]);
 
   const mediaSourceKeys = useMemo(() => {
     if (!item) {
@@ -290,6 +336,51 @@ export function ShowcaseItemPage() {
   const cameFromShowcase = Boolean(
     (location.state as { fromShowcase?: boolean } | null)?.fromShowcase,
   );
+  const isFavorite = Boolean(item && favoriteItemIds.has(item.id));
+
+  async function handleFavoriteToggle(
+    event: MouseEvent<HTMLButtonElement>,
+  ): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!allowFavorites || !item || isFavoritePending) {
+      return;
+    }
+
+    const currentFavorite = favoriteItemIds.has(item.id);
+    setIsFavoritePending(true);
+    setFavoriteItemIds((current) => {
+      const next = new Set(current);
+      if (currentFavorite) {
+        next.delete(item.id);
+      } else {
+        next.add(item.id);
+      }
+      return next;
+    });
+
+    try {
+      if (currentFavorite) {
+        await removeFavoriteItem(item.id);
+      } else {
+        await addFavoriteItem(item.id);
+      }
+    } catch {
+      setFavoriteItemIds((current) => {
+        const next = new Set(current);
+        if (currentFavorite) {
+          next.add(item.id);
+        } else {
+          next.delete(item.id);
+        }
+        return next;
+      });
+      setError("Не удалось обновить избранное");
+    } finally {
+      setIsFavoritePending(false);
+    }
+  }
 
   useEffect(() => {
     if (!mediaUrls.length) {
@@ -305,6 +396,10 @@ export function ShowcaseItemPage() {
 
   useEffect(() => {
     setIsThumbnailListExpanded(false);
+  }, [itemId]);
+
+  useEffect(() => {
+    setIsFavoritePending(false);
   }, [itemId]);
 
   function openLightbox(
@@ -473,6 +568,27 @@ export function ShowcaseItemPage() {
               </div>
               <div className="detail-trust-price-wrap">
                 <p className="detail-trust-price">{formatPrice(item.price)}</p>
+                {allowFavorites && (
+                  <button
+                    type="button"
+                    className={
+                      isFavorite
+                        ? "detail-favorite-button detail-favorite-button--active"
+                        : "detail-favorite-button"
+                    }
+                    onClick={(event) => {
+                      void handleFavoriteToggle(event);
+                    }}
+                    disabled={isFavoritePending}
+                    aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+                    title={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+                  >
+                    <svg viewBox="0 0 24 24" role="presentation" focusable="false">
+                      <path d="M12 2.8l2.86 5.79 6.39.93-4.63 4.52 1.09 6.37L12 17.48 6.29 20.4l1.09-6.37L2.75 9.52l6.39-.93L12 2.8z" />
+                    </svg>
+                    <span>{isFavorite ? "В избранном" : "В избранное"}</span>
+                  </button>
+                )}
               </div>
             </article>
 

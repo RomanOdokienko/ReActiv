@@ -13,6 +13,7 @@ import { registerImportRoutes } from "./routes/import-routes";
 import { registerMediaRoutes } from "./routes/media-routes";
 import { registerPlatformRoutes } from "./routes/platform-routes";
 import { registerShareRoutes } from "./routes/share-routes";
+import { registerFavoriteRoutes } from "./routes/favorite-routes";
 import { getPlatformMode } from "./repositories/platform-settings-repository";
 import { authenticateRequest } from "./services/auth-service";
 import { ensureBootstrapAdmin } from "./startup/bootstrap-admin";
@@ -103,6 +104,7 @@ async function startServer(): Promise<void> {
 
   await registerImportRoutes(app);
   await registerCatalogRoutes(app);
+  await registerFavoriteRoutes(app);
   await registerMediaRoutes(app);
   await registerShareRoutes(app);
   await registerAdminUserRoutes(app);
