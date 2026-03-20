@@ -964,8 +964,8 @@ export function searchCatalogItems(filters: CatalogQuery): {
     );
 
     const totalRow = db
-      .prepare(`SELECT COUNT(*) as total FROM vehicle_offers ${whereClause}`)
-      .get(...params) as { total: number };
+      .prepare(`SELECT COUNT(*) as total FROM vehicle_offers ${newThisWeekCountWhereClause}`)
+      .get(...newThisWeekCountParams) as { total: number };
 
     return {
       items: rows.map(mapDbRow).map(toCatalogListItem),
