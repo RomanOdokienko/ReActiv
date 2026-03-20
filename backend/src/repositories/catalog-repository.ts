@@ -23,6 +23,17 @@ let filtersMetadataCache:
     }
   | null = null;
 
+const NORMALIZED_TEXT_VALUES_CACHE_TTL_MS = 5 * 60 * 1000;
+
+let normalizedTextValuesCache:
+  | {
+      latestImportBatchId: string | null;
+      expiresAt: number;
+      brandByNormalized: Map<string, string[]>;
+      modelByNormalized: Map<string, string[]>;
+    }
+  | null = null;
+
 interface MainShowcaseMixCache {
   expiresAt: number;
   orderedOfferIds: number[];
@@ -519,6 +530,112 @@ function addNormalizedTextInFilter(
   params.push(...normalizedValues);
 }
 
+function buildNormalizedValuesMapForColumn(column: "brand" | "model"): Map<string, string[]> {
+  const rows = db
+    .prepare(
+      `
+        SELECT DISTINCT ${column} AS value
+        FROM vehicle_offers
+        WHERE ${column} != ''
+      `,
+    )
+    .all() as Array<{ value: string }>;
+
+  const valuesByNormalized = new Map<string, Set<string>>();
+
+  rows.forEach((row) => {
+    const rawValue = row.value;
+    const normalized = normalizeComparableText(rawValue);
+    if (!normalized) {
+      return;
+    }
+
+    if (!valuesByNormalized.has(normalized)) {
+      valuesByNormalized.set(normalized, new Set<string>());
+    }
+
+    valuesByNormalized.get(normalized)?.add(rawValue);
+  });
+
+  return new Map(
+    Array.from(valuesByNormalized.entries()).map(([key, valueSet]) => [key, Array.from(valueSet)]),
+  );
+}
+
+function getNormalizedTextValuesCache(): {
+  brandByNormalized: Map<string, string[]>;
+  modelByNormalized: Map<string, string[]>;
+} {
+  const latestImportBatchId = getLatestSuccessfulImportBatchId();
+  const now = Date.now();
+  if (
+    normalizedTextValuesCache &&
+    normalizedTextValuesCache.latestImportBatchId === latestImportBatchId &&
+    normalizedTextValuesCache.expiresAt > now
+  ) {
+    return {
+      brandByNormalized: normalizedTextValuesCache.brandByNormalized,
+      modelByNormalized: normalizedTextValuesCache.modelByNormalized,
+    };
+  }
+
+  const brandByNormalized = buildNormalizedValuesMapForColumn("brand");
+  const modelByNormalized = buildNormalizedValuesMapForColumn("model");
+  normalizedTextValuesCache = {
+    latestImportBatchId,
+    expiresAt: now + NORMALIZED_TEXT_VALUES_CACHE_TTL_MS,
+    brandByNormalized,
+    modelByNormalized,
+  };
+
+  return {
+    brandByNormalized,
+    modelByNormalized,
+  };
+}
+
+function addUnicodeSafeTextInFilter(
+  clauses: string[],
+  params: unknown[],
+  column: "brand" | "model",
+  values?: string[],
+): void {
+  if (!values || values.length === 0) {
+    return;
+  }
+
+  const normalizedValues = Array.from(
+    new Set(values.map((value) => normalizeComparableText(value)).filter(Boolean)),
+  );
+  if (normalizedValues.length === 0) {
+    return;
+  }
+
+  const cache = getNormalizedTextValuesCache();
+  const sourceMap =
+    column === "brand" ? cache.brandByNormalized : cache.modelByNormalized;
+  const matchedRawValues = new Set<string>();
+
+  normalizedValues.forEach((normalized) => {
+    const rawValues = sourceMap.get(normalized);
+    if (!rawValues) {
+      return;
+    }
+
+    rawValues.forEach((rawValue) => matchedRawValues.add(rawValue));
+  });
+
+  if (matchedRawValues.size === 0) {
+    clauses.push("1 = 0");
+    return;
+  }
+
+  const valuesList = Array.from(matchedRawValues);
+  const placeholders = valuesList.map(() => "?").join(", ");
+  clauses.push(`${column} IN (${placeholders})`);
+  params.push(...valuesList);
+}
+
 function addLikeAnyFilter(
   clauses: string[],
   params: unknown[],
@@ -831,8 +948,8 @@ function buildWhere(filters: CatalogQuery): { whereClause: string; params: unkno
   addInFilter(clauses, params, "offer_code", filters.offerCode);
   addInFilter(clauses, params, "tenant_id", filters.tenantId);
   addInFilter(clauses, params, "status", filters.status);
-  addNormalizedTextInFilter(clauses, params, "brand", filters.brand);
-  addNormalizedTextInFilter(clauses, params, "model", filters.model);
+  addUnicodeSafeTextInFilter(clauses, params, "brand", filters.brand);
+  addUnicodeSafeTextInFilter(clauses, params, "model", filters.model);
   addInFilter(clauses, params, "modification", filters.modification);
   addInFilter(clauses, params, "vehicle_type", filters.vehicleType);
   addInFilter(clauses, params, "pts_type", filters.ptsType);
