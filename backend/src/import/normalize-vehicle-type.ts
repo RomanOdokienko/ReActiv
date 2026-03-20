@@ -115,6 +115,10 @@ function resolveSovcomVehicleTypeMeta(
   }
 
   if (compactUpper === "СТ" || compactUpper === "ST") {
+    if (bySign && bySign !== VEHICLE_TYPE_FALLBACK) {
+      return { normalized: bySign, rawNormalized, usedFallback: false };
+    }
+
     return { normalized: VEHICLE_TYPE_FALLBACK, rawNormalized, usedFallback: false };
   }
 
