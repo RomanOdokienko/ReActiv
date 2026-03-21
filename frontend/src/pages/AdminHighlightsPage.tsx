@@ -282,7 +282,28 @@ function InvestorGrowthChart({
     return { ...item, x, y };
   });
 
+  const [activePointIndex, setActivePointIndex] = useState(
+    Math.max(0, chartPoints.length - 1),
+  );
+
+  useEffect(() => {
+    setActivePointIndex(Math.max(0, chartPoints.length - 1));
+  }, [chartPoints.length]);
+
+  const activePoint =
+    chartPoints[activePointIndex] ?? chartPoints[chartPoints.length - 1] ?? null;
   const linePath = buildSvgPath(chartPoints);
+  const tooltipWidth = 176;
+  const tooltipHeight = 58;
+  const tooltipX = activePoint
+    ? Math.min(
+        Math.max(activePoint.x - tooltipWidth / 2, left),
+        width - right - tooltipWidth,
+      )
+    : left;
+  const tooltipY = activePoint
+    ? Math.max(6, activePoint.y - (tooltipHeight + 14))
+    : top;
 
   return (
     <article className="highlights-chart-card">
@@ -292,7 +313,12 @@ function InvestorGrowthChart({
       </header>
 
       <div className="highlights-chart-card__svg-wrap">
-        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label={title}
+          onMouseLeave={() => setActivePointIndex(Math.max(0, chartPoints.length - 1))}
+        >
           {yTickRatios.map((ratio) => {
             const y = top + plotHeight - ratio * plotHeight;
             const value = Math.round(maxValue * ratio);
@@ -321,18 +347,32 @@ function InvestorGrowthChart({
             <path d={linePath} className="highlights-chart-card__line" />
           ) : null}
 
+          {activePoint ? (
+            <line
+              x1={activePoint.x}
+              y1={top}
+              x2={activePoint.x}
+              y2={top + plotHeight}
+              className="highlights-chart-card__guide-line"
+            />
+          ) : null}
+
           {chartPoints.map((point, index) => {
             const isLast = index === chartPoints.length - 1;
+            const isActive = index === activePointIndex;
             return (
             <g
               key={`point-${point.stepLabel}`}
-              className={`highlights-chart-card__point-group${isLast ? " is-last" : ""}`}
+              className={`highlights-chart-card__point-group${
+                isLast ? " is-last" : ""
+              }${isActive ? " is-active" : ""}`}
+              onMouseEnter={() => setActivePointIndex(index)}
             >
               <title>{point.detail}</title>
               <circle
                 cx={point.x}
                 cy={point.y}
-                r={isLast ? 8 : 6}
+                r={isLast ? 8.2 : 6.3}
                 className="highlights-chart-card__point"
               />
               <text
@@ -362,19 +402,60 @@ function InvestorGrowthChart({
             </g>
           );
           })}
+
+          {activePoint ? (
+            <g className="highlights-chart-card__tooltip">
+              <rect
+                x={tooltipX}
+                y={tooltipY}
+                width={tooltipWidth}
+                height={tooltipHeight}
+                rx={10}
+                ry={10}
+                className="highlights-chart-card__tooltip-bg"
+              />
+              <text
+                x={tooltipX + 10}
+                y={tooltipY + 18}
+                className="highlights-chart-card__tooltip-title"
+              >
+                {activePoint.stepLabel}
+              </text>
+              <text
+                x={tooltipX + 10}
+                y={tooltipY + 38}
+                className="highlights-chart-card__tooltip-value"
+              >
+                {activePoint.value.toLocaleString("ru-RU")} позиций
+              </text>
+              <text
+                x={tooltipX + 10}
+                y={tooltipY + 53}
+                className="highlights-chart-card__tooltip-detail"
+              >
+                {activePoint.detail}
+              </text>
+            </g>
+          ) : null}
         </svg>
       </div>
 
       <div className="highlights-chart-card__legend" aria-label="Этапы роста">
         {points.map((point, index) => (
-          <span
+          <button
+            type="button"
             key={`legend-${point.stepLabel}`}
-            className="highlights-chart-card__legend-item"
+            className={`highlights-chart-card__legend-item${
+              index === activePointIndex ? " is-active" : ""
+            }`}
             title={point.detail}
+            onMouseEnter={() => setActivePointIndex(index)}
+            onFocus={() => setActivePointIndex(index)}
+            onClick={() => setActivePointIndex(index)}
           >
             <b>{index + 1}</b>
             <em>{point.stepLabel}</em>
-          </span>
+          </button>
         ))}
       </div>
     </article>
