@@ -282,6 +282,169 @@ function InvestorGrowthChart({
     const y = top + plotHeight - (Math.min(item.value, yAxisMax) / yAxisMax) * plotHeight;
     return { ...item, x, y };
   });
+  const valueLabelLayouts = useMemo(() => {
+    type ValueLabelAnchor = "start" | "middle" | "end";
+    interface ValueLabelLayout {
+      x: number;
+      y: number;
+      anchor: ValueLabelAnchor;
+      width: number;
+      height: number;
+    }
+
+    const labelHeight = 12;
+    const axisSafeLeft = left + 12;
+    const safeRight = width - right - 10;
+    const minGridGap = 12;
+    const minPointGap = 14;
+    const topBound = top + labelHeight + 2;
+    const bottomBound = top + plotHeight - 10;
+    const gridYs = yTickValues.map(
+      (value) => top + plotHeight - (value / yAxisMax) * plotHeight,
+    );
+
+    const getLabelEdges = (
+      centerX: number,
+      anchor: ValueLabelAnchor,
+      textWidth: number,
+    ): { leftEdge: number; rightEdge: number } => {
+      if (anchor === "start") {
+        return { leftEdge: centerX, rightEdge: centerX + textWidth };
+      }
+      if (anchor === "end") {
+        return { leftEdge: centerX - textWidth, rightEdge: centerX };
+      }
+      return {
+        leftEdge: centerX - textWidth / 2,
+        rightEdge: centerX + textWidth / 2,
+      };
+    };
+
+    const clampXToPlot = (
+      valueX: number,
+      anchor: ValueLabelAnchor,
+      textWidth: number,
+    ): number => {
+      let x = valueX;
+      if (anchor === "start") {
+        x = Math.max(axisSafeLeft, Math.min(x, safeRight - textWidth));
+        return x;
+      }
+
+      if (anchor === "end") {
+        x = Math.min(safeRight, Math.max(x, axisSafeLeft + textWidth));
+        return x;
+      }
+
+      const minCenter = axisSafeLeft + textWidth / 2;
+      const maxCenter = safeRight - textWidth / 2;
+      x = Math.max(minCenter, Math.min(x, maxCenter));
+      return x;
+    };
+
+    const nudgeAwayFromGrid = (sourceY: number): number => {
+      let y = sourceY;
+      gridYs.forEach((gridY) => {
+        const distance = Math.abs(y - gridY);
+        if (distance < minGridGap) {
+          const moveUp = y <= gridY;
+          y = gridY + (moveUp ? -1 : 1) * (minGridGap + 2);
+        }
+      });
+      return y;
+    };
+
+    const clampYToSafeZone = (
+      sourceY: number,
+      pointY: number,
+      pointRadius: number,
+      preferAbovePoint: boolean,
+    ): number => {
+      const maxAbovePointY = pointY - (pointRadius + minPointGap);
+      let y = Math.min(sourceY, maxAbovePointY);
+      y = Math.min(bottomBound, Math.max(topBound, y));
+
+      if (preferAbovePoint && maxAbovePointY < topBound) {
+        y = Math.min(
+          bottomBound,
+          Math.max(topBound, pointY + pointRadius + labelHeight + 4),
+        );
+      }
+
+      return y;
+    };
+
+    const layouts: ValueLabelLayout[] = chartPoints.map((point, index) => {
+      const isFirst = index === 0;
+      const isLast = index === chartPoints.length - 1;
+      const pointRadius = isLast ? 8.2 : 6.3;
+      const labelText = formatCompactK(point.value);
+      const textWidth = Math.max(34, labelText.length * 7);
+      let anchor: ValueLabelAnchor = "middle";
+      let x = point.x;
+
+      if (isFirst) {
+        anchor = "start";
+        x += 14;
+      } else if (isLast) {
+        anchor = "end";
+        x -= 6;
+      }
+
+      x = clampXToPlot(x, anchor, textWidth);
+
+      let y = point.y - (pointRadius + 16);
+      y = nudgeAwayFromGrid(y);
+      y = clampYToSafeZone(y, point.y, pointRadius, true);
+      y = nudgeAwayFromGrid(y);
+      y = clampYToSafeZone(y, point.y, pointRadius, true);
+
+      return {
+        x,
+        y,
+        anchor,
+        width: textWidth,
+        height: labelHeight,
+      };
+    });
+
+    for (let index = 1; index < layouts.length; index += 1) {
+      const current = layouts[index];
+      const previous = layouts[index - 1];
+      const currentPoint = chartPoints[index];
+      const isCurrentLast = index === chartPoints.length - 1;
+      const currentPointRadius = isCurrentLast ? 8.2 : 6.3;
+
+      const previousEdges = getLabelEdges(previous.x, previous.anchor, previous.width);
+      const currentEdges = getLabelEdges(current.x, current.anchor, current.width);
+      const horizontalOverlap =
+        currentEdges.leftEdge <= previousEdges.rightEdge + 6 &&
+        previousEdges.leftEdge <= currentEdges.rightEdge + 6;
+      const verticalConflict = Math.abs(current.y - previous.y) < current.height + 3;
+
+      if (horizontalOverlap && verticalConflict) {
+        let movedY = previous.y - (current.height + 8);
+        movedY = nudgeAwayFromGrid(movedY);
+        movedY = clampYToSafeZone(movedY, currentPoint.y, currentPointRadius, true);
+
+        if (movedY <= topBound + 1) {
+          movedY = Math.min(
+            bottomBound,
+            Math.max(
+              topBound,
+              previous.y + current.height + currentPointRadius + minPointGap,
+            ),
+          );
+          movedY = nudgeAwayFromGrid(movedY);
+          movedY = clampYToSafeZone(movedY, currentPoint.y, currentPointRadius, false);
+        }
+
+        current.y = movedY;
+      }
+    }
+
+    return layouts;
+  }, [chartPoints, left, plotHeight, right, top, width, yAxisMax, yTickValues]);
 
   const [activePointIndex, setActivePointIndex] = useState(
     Math.max(0, chartPoints.length - 1),
@@ -380,6 +543,7 @@ function InvestorGrowthChart({
           {chartPoints.map((point, index) => {
             const isLast = index === chartPoints.length - 1;
             const isActive = index === activePointIndex;
+            const valueLabelLayout = valueLabelLayouts[index];
             return (
             <g
               key={`point-${point.stepLabel}`}
@@ -396,9 +560,9 @@ function InvestorGrowthChart({
                 className="highlights-chart-card__point"
               />
               <text
-                x={point.x}
-                y={point.y - 14}
-                textAnchor="middle"
+                x={valueLabelLayout?.x ?? point.x}
+                y={valueLabelLayout?.y ?? point.y - 14}
+                textAnchor={valueLabelLayout?.anchor ?? "middle"}
                 className="highlights-chart-card__value-label"
               >
                 {formatCompactK(point.value)}
