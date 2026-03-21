@@ -1507,7 +1507,8 @@ a {
   border: 1px solid #dce5f0;
   border-radius: 12px;
   background: linear-gradient(180deg, #ffffff, #f8fbff);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .highlights-chart-card__svg-wrap svg {
@@ -1532,19 +1533,6 @@ a {
   stroke-width: 3.6;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.highlights-chart-card__target-line {
-  stroke: rgba(220, 111, 35, 0.78);
-  stroke-width: 1.6;
-  stroke-dasharray: 6 4;
-}
-
-.highlights-chart-card__target-label {
-  fill: #b15e20;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
 }
 
 .highlights-chart-card__guide-line {
@@ -1591,9 +1579,8 @@ a {
   font-weight: 600;
 }
 
-.highlights-chart-card__x-stage {
-  fill: #8a99ad;
-  font-size: 9.5px;
+.highlights-chart-card__x-label.is-dense {
+  font-size: 10px;
 }
 
 .highlights-chart-card__legend {
@@ -1632,15 +1619,11 @@ a {
   outline-offset: 1px;
 }
 
-.highlights-chart-card__legend-item b {
+.highlights-chart-card__legend-dot {
   width: 16px;
   height: 16px;
   border-radius: 50%;
   display: inline-grid;
-  place-items: center;
-  font-size: 10px;
-  line-height: 1;
-  color: #fff;
   background: linear-gradient(135deg, var(--primary), var(--accent));
 }
 
@@ -1649,22 +1632,6 @@ a {
   font-style: normal;
   font-weight: 700;
   color: #2e4564;
-}
-
-.highlights-chart-card__goal-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-  margin-top: 2px;
-  color: #51647f;
-  font-size: 13px;
-}
-
-.highlights-chart-card__goal-meta strong {
-  font-size: 14px;
-  color: #17395f;
 }
 
 .highlights-chart-card__tooltip-bg {

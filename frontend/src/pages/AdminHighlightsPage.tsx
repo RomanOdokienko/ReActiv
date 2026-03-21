@@ -63,7 +63,6 @@ interface HighlightMetricGroup {
 }
 
 const PHOTO_COVERAGE_GOAL_PERCENT = 85;
-const STOCK_GROWTH_TARGET = 50_000;
 const TENANT_GROWTH_ORDER: ImportTenantId[] = ["gpb", "reso", "alpha", "sovcombank"];
 
 const TENANT_LABELS: Record<ImportTenantId, string> = {
@@ -185,6 +184,56 @@ function formatCompactK(value: number): string {
   return value.toLocaleString("ru-RU");
 }
 
+function getNiceStep(rawStep: number): number {
+  if (!Number.isFinite(rawStep) || rawStep <= 0) {
+    return 1;
+  }
+
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const normalized = rawStep / magnitude;
+  if (normalized <= 1) {
+    return magnitude;
+  }
+  if (normalized <= 2) {
+    return 2 * magnitude;
+  }
+  if (normalized <= 5) {
+    return 5 * magnitude;
+  }
+  return 10 * magnitude;
+}
+
+function buildYAxisTicks(maxValue: number, targetTickCount = 5): {
+  axisMax: number;
+  ticks: number[];
+} {
+  const safeMax = Math.max(1, Math.ceil(maxValue));
+  const step = getNiceStep(safeMax / targetTickCount);
+  const axisMax = Math.ceil(safeMax / step) * step;
+  const tickCount = Math.max(2, Math.round(axisMax / step));
+  const ticks = Array.from({ length: tickCount + 1 }, (_, index) => index * step);
+  return { axisMax, ticks };
+}
+
+function formatAxisValue(value: number): string {
+  if (value >= 1000) {
+    const compact = value / 1000;
+    const precision = compact >= 10 ? 0 : 1;
+    return `${compact.toLocaleString("ru-RU", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: precision,
+    })}k`;
+  }
+  return value.toLocaleString("ru-RU");
+}
+
+function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `${value.slice(0, maxLength - 1)}…`;
+}
+
 function getDeltaPercent(current: number, previous: number | null): number | null {
   if (previous === null || previous <= 0) {
     return null;
@@ -265,23 +314,38 @@ function InvestorGrowthChart({
   subtitle,
   points,
 }: InvestorGrowthChartProps) {
-  const width = 660;
-  const height = 270;
   const left = 44;
   const right = 14;
   const top = 24;
-  const bottom = 74;
+  const bottom = 52;
+  const minStepSpacing = 96;
+  const width = Math.max(
+    660,
+    left + right + Math.max(1, points.length - 1) * minStepSpacing,
+  );
+  const height = 270;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
-  const yAxisMax = STOCK_GROWTH_TARGET;
-  const yTickValues = [0, 10_000, 20_000, 30_000, 40_000, 50_000];
-
-  const chartPoints = points.map((item, index) => {
-    const ratioX = points.length > 1 ? index / (points.length - 1) : 0;
-    const x = left + ratioX * plotWidth;
-    const y = top + plotHeight - (Math.min(item.value, yAxisMax) / yAxisMax) * plotHeight;
-    return { ...item, x, y };
-  });
+  const denseLabels = points.length >= 7;
+  const maxPointValue = useMemo(
+    () => Math.max(1, ...points.map((point) => point.value)),
+    [points],
+  );
+  const { axisMax: yAxisMax, ticks: yTickValues } = useMemo(
+    () => buildYAxisTicks(maxPointValue, 5),
+    [maxPointValue],
+  );
+  const chartPoints = useMemo(
+    () =>
+      points.map((item, index) => {
+        const ratioX = points.length > 1 ? index / (points.length - 1) : 0;
+        const x = left + ratioX * plotWidth;
+        const y =
+          top + plotHeight - (Math.min(item.value, yAxisMax) / yAxisMax) * plotHeight;
+        return { ...item, x, y };
+      }),
+    [left, plotHeight, plotWidth, points, top, yAxisMax],
+  );
   const valueLabelLayouts = useMemo(() => {
     type ValueLabelAnchor = "start" | "middle" | "end";
     interface ValueLabelLayout {
@@ -294,11 +358,11 @@ function InvestorGrowthChart({
 
     const labelHeight = 12;
     const axisSafeLeft = left + 12;
-    const safeRight = width - right - 10;
+    const safeRight = width - right - 12;
     const minGridGap = 12;
     const minPointGap = 14;
     const topBound = top + labelHeight + 2;
-    const bottomBound = top + plotHeight - 10;
+    const bottomBound = top + plotHeight - 8;
     const gridYs = yTickValues.map(
       (value) => top + plotHeight - (value / yAxisMax) * plotHeight,
     );
@@ -446,32 +510,60 @@ function InvestorGrowthChart({
     return layouts;
   }, [chartPoints, left, plotHeight, right, top, width, yAxisMax, yTickValues]);
 
-  const [activePointIndex, setActivePointIndex] = useState(
-    Math.max(0, chartPoints.length - 1),
-  );
+  const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
 
   useEffect(() => {
-    setActivePointIndex(Math.max(0, chartPoints.length - 1));
+    setActivePointIndex(null);
   }, [chartPoints.length]);
 
   const activePoint =
-    chartPoints[activePointIndex] ?? chartPoints[chartPoints.length - 1] ?? null;
+    activePointIndex === null ? null : (chartPoints[activePointIndex] ?? null);
   const linePath = buildSvgPath(chartPoints);
-  const tooltipWidth = 176;
-  const tooltipHeight = 58;
-  const tooltipX = activePoint
-    ? Math.min(
-        Math.max(activePoint.x - tooltipWidth / 2, left),
-        width - right - tooltipWidth,
-      )
-    : left;
-  const tooltipY = activePoint
-    ? Math.max(6, activePoint.y - (tooltipHeight + 14))
-    : top;
-  const currentValue = chartPoints[chartPoints.length - 1]?.value ?? 0;
-  const progressPercent = Math.min(100, Math.round((currentValue / yAxisMax) * 1000) / 10);
-  const remainingToGoal = Math.max(0, yAxisMax - currentValue);
-  const targetLineY = top + plotHeight - (yAxisMax / yAxisMax) * plotHeight;
+  const tooltipWidth = 244;
+  const tooltipHeight = 62;
+  const tooltipSafePadding = 12;
+  const tooltipGap = 14;
+  const tooltipLayout = useMemo(() => {
+    if (!activePoint || activePointIndex === null) {
+      return null;
+    }
+
+    const isFirst = activePointIndex === 0;
+    const isLast = activePointIndex === chartPoints.length - 1;
+    let x = activePoint.x - tooltipWidth / 2;
+    if (isLast) {
+      x = activePoint.x - tooltipWidth - tooltipGap;
+    } else if (isFirst) {
+      x = activePoint.x + tooltipGap;
+    }
+
+    x = Math.max(
+      tooltipSafePadding,
+      Math.min(x, width - tooltipSafePadding - tooltipWidth),
+    );
+
+    const maxTooltipY = top + plotHeight - tooltipHeight - 4;
+    let y = activePoint.y - (tooltipHeight + tooltipGap);
+    if (y < tooltipSafePadding) {
+      y = Math.min(maxTooltipY, activePoint.y + tooltipGap);
+    }
+    y = Math.max(tooltipSafePadding, Math.min(y, maxTooltipY));
+
+    return { x, y };
+  }, [
+    activePoint,
+    activePointIndex,
+    chartPoints.length,
+    plotHeight,
+    right,
+    top,
+    tooltipGap,
+    tooltipHeight,
+    tooltipSafePadding,
+    tooltipWidth,
+    width,
+  ]);
+  const tooltipDetail = activePoint ? truncateText(activePoint.detail, 44) : "";
 
   return (
     <article className="highlights-chart-card">
@@ -485,7 +577,8 @@ function InvestorGrowthChart({
           viewBox={`0 0 ${width} ${height}`}
           role="img"
           aria-label={title}
-          onMouseLeave={() => setActivePointIndex(Math.max(0, chartPoints.length - 1))}
+          style={{ minWidth: "100%", width, height: "auto" }}
+          onMouseLeave={() => setActivePointIndex(null)}
         >
           {yTickValues.map((value) => {
             const y = top + plotHeight - (value / yAxisMax) * plotHeight;
@@ -504,27 +597,11 @@ function InvestorGrowthChart({
                   textAnchor="end"
                   className="highlights-chart-card__axis-label"
                 >
-                  {value === 0 ? "0" : `${Math.round(value / 1000)}k`}
+                  {formatAxisValue(value)}
                 </text>
               </g>
             );
           })}
-
-          <line
-            x1={left}
-            y1={targetLineY}
-            x2={width - right}
-            y2={targetLineY}
-            className="highlights-chart-card__target-line"
-          />
-          <text
-            x={width - right - 4}
-            y={targetLineY - 8}
-            textAnchor="end"
-            className="highlights-chart-card__target-label"
-          >
-            Цель — 50k
-          </text>
 
           {linePath ? (
             <path d={linePath} className="highlights-chart-card__line" />
@@ -551,6 +628,7 @@ function InvestorGrowthChart({
                 isLast ? " is-last" : ""
               }${isActive ? " is-active" : ""}`}
               onMouseEnter={() => setActivePointIndex(index)}
+              onFocus={() => setActivePointIndex(index)}
             >
               <title>{point.detail}</title>
               <circle
@@ -569,29 +647,23 @@ function InvestorGrowthChart({
               </text>
               <text
                 x={point.x}
-                y={height - 30}
+                y={height - (denseLabels && index % 2 === 1 ? 14 : 24)}
                 textAnchor="middle"
-                className="highlights-chart-card__x-label"
+                className={`highlights-chart-card__x-label${
+                  denseLabels ? " is-dense" : ""
+                }`}
               >
                 {point.stepLabel}
-              </text>
-              <text
-                x={point.x}
-                y={height - 12}
-                textAnchor="middle"
-                className="highlights-chart-card__x-stage"
-              >
-                этап {index + 1}
               </text>
             </g>
           );
           })}
 
-          {activePoint ? (
+          {activePoint && tooltipLayout ? (
             <g className="highlights-chart-card__tooltip">
               <rect
-                x={tooltipX}
-                y={tooltipY}
+                x={tooltipLayout.x}
+                y={tooltipLayout.y}
                 width={tooltipWidth}
                 height={tooltipHeight}
                 rx={10}
@@ -599,25 +671,25 @@ function InvestorGrowthChart({
                 className="highlights-chart-card__tooltip-bg"
               />
               <text
-                x={tooltipX + 10}
-                y={tooltipY + 18}
+                x={tooltipLayout.x + 10}
+                y={tooltipLayout.y + 18}
                 className="highlights-chart-card__tooltip-title"
               >
                 {activePoint.stepLabel}
               </text>
               <text
-                x={tooltipX + 10}
-                y={tooltipY + 38}
+                x={tooltipLayout.x + 10}
+                y={tooltipLayout.y + 38}
                 className="highlights-chart-card__tooltip-value"
               >
                 {activePoint.value.toLocaleString("ru-RU")} позиций
               </text>
               <text
-                x={tooltipX + 10}
-                y={tooltipY + 53}
+                x={tooltipLayout.x + 10}
+                y={tooltipLayout.y + 53}
                 className="highlights-chart-card__tooltip-detail"
               >
-                {activePoint.detail}
+                {tooltipDetail}
               </text>
             </g>
           ) : null}
@@ -634,22 +706,14 @@ function InvestorGrowthChart({
             }`}
             title={point.detail}
             onMouseEnter={() => setActivePointIndex(index)}
+            onMouseLeave={() => setActivePointIndex(null)}
             onFocus={() => setActivePointIndex(index)}
-            onClick={() => setActivePointIndex(index)}
+            onBlur={() => setActivePointIndex(null)}
           >
-            <b>{index + 1}</b>
+            <span className="highlights-chart-card__legend-dot" aria-hidden="true" />
             <em>{point.stepLabel}</em>
           </button>
         ))}
-      </div>
-
-      <div className="highlights-chart-card__goal-meta">
-        <span>
-          Прогресс к цели: <strong>{progressPercent.toLocaleString("ru-RU", { maximumFractionDigits: 1 })}%</strong>
-        </span>
-        <span>
-          До 50k: <strong>{remainingToGoal.toLocaleString("ru-RU")}</strong> позиций
-        </span>
       </div>
     </article>
   );
