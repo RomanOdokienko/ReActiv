@@ -1534,6 +1534,19 @@ a {
   stroke-linejoin: round;
 }
 
+.highlights-chart-card__target-line {
+  stroke: rgba(220, 111, 35, 0.78);
+  stroke-width: 1.6;
+  stroke-dasharray: 6 4;
+}
+
+.highlights-chart-card__target-label {
+  fill: #b15e20;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
 .highlights-chart-card__guide-line {
   stroke: rgba(42, 103, 199, 0.18);
   stroke-width: 1.4;
@@ -1635,6 +1648,22 @@ a {
   font-style: normal;
   font-weight: 700;
   color: #2e4564;
+}
+
+.highlights-chart-card__goal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-top: 2px;
+  color: #51647f;
+  font-size: 13px;
+}
+
+.highlights-chart-card__goal-meta strong {
+  font-size: 14px;
+  color: #17395f;
 }
 
 .highlights-chart-card__tooltip-bg {

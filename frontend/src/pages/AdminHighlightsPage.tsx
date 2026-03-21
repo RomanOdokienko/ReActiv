@@ -63,6 +63,7 @@ interface HighlightMetricGroup {
 }
 
 const PHOTO_COVERAGE_GOAL_PERCENT = 85;
+const STOCK_GROWTH_TARGET = 50_000;
 const TENANT_GROWTH_ORDER: ImportTenantId[] = ["gpb", "reso", "alpha", "sovcombank"];
 
 const TENANT_LABELS: Record<ImportTenantId, string> = {
@@ -272,13 +273,13 @@ function InvestorGrowthChart({
   const bottom = 74;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
-  const maxValue = Math.max(1, ...points.map((item) => item.value));
-  const yTickRatios = [0.25, 0.5, 0.75, 1];
+  const yAxisMax = STOCK_GROWTH_TARGET;
+  const yTickValues = [0, 10_000, 20_000, 30_000, 40_000, 50_000];
 
   const chartPoints = points.map((item, index) => {
     const ratioX = points.length > 1 ? index / (points.length - 1) : 0;
     const x = left + ratioX * plotWidth;
-    const y = top + plotHeight - (item.value / maxValue) * plotHeight;
+    const y = top + plotHeight - (Math.min(item.value, yAxisMax) / yAxisMax) * plotHeight;
     return { ...item, x, y };
   });
 
@@ -304,6 +305,10 @@ function InvestorGrowthChart({
   const tooltipY = activePoint
     ? Math.max(6, activePoint.y - (tooltipHeight + 14))
     : top;
+  const currentValue = chartPoints[chartPoints.length - 1]?.value ?? 0;
+  const progressPercent = Math.min(100, Math.round((currentValue / yAxisMax) * 1000) / 10);
+  const remainingToGoal = Math.max(0, yAxisMax - currentValue);
+  const targetLineY = top + plotHeight - (yAxisMax / yAxisMax) * plotHeight;
 
   return (
     <article className="highlights-chart-card">
@@ -319,11 +324,10 @@ function InvestorGrowthChart({
           aria-label={title}
           onMouseLeave={() => setActivePointIndex(Math.max(0, chartPoints.length - 1))}
         >
-          {yTickRatios.map((ratio) => {
-            const y = top + plotHeight - ratio * plotHeight;
-            const value = Math.round(maxValue * ratio);
+          {yTickValues.map((value) => {
+            const y = top + plotHeight - (value / yAxisMax) * plotHeight;
             return (
-              <g key={`y-grid-${ratio}`}>
+              <g key={`y-grid-${value}`}>
                 <line
                   x1={left}
                   y1={y}
@@ -337,11 +341,27 @@ function InvestorGrowthChart({
                   textAnchor="end"
                   className="highlights-chart-card__axis-label"
                 >
-                  {formatCompactK(value)}
+                  {value === 0 ? "0" : `${Math.round(value / 1000)}k`}
                 </text>
               </g>
             );
           })}
+
+          <line
+            x1={left}
+            y1={targetLineY}
+            x2={width - right}
+            y2={targetLineY}
+            className="highlights-chart-card__target-line"
+          />
+          <text
+            x={width - right - 4}
+            y={targetLineY - 8}
+            textAnchor="end"
+            className="highlights-chart-card__target-label"
+          >
+            Цель — 50k
+          </text>
 
           {linePath ? (
             <path d={linePath} className="highlights-chart-card__line" />
@@ -457,6 +477,15 @@ function InvestorGrowthChart({
             <em>{point.stepLabel}</em>
           </button>
         ))}
+      </div>
+
+      <div className="highlights-chart-card__goal-meta">
+        <span>
+          Прогресс к цели: <strong>{progressPercent.toLocaleString("ru-RU", { maximumFractionDigits: 1 })}%</strong>
+        </span>
+        <span>
+          До 50k: <strong>{remainingToGoal.toLocaleString("ru-RU")}</strong> позиций
+        </span>
       </div>
     </article>
   );
