@@ -84,11 +84,11 @@ const WEEKLY_HIGHLIGHTS: WeeklyHighlightItem[] = [
     period: "19-22 февраля 2026",
     title: "Старт платформы",
     points: [
-      "Поднят production-контур ReActiv с автодеплоем из GitHub и стабильным релизным циклом.",
+      "Поднят продовый контур ReActiv с автодеплоем из GitHub и стабильным релизным циклом.",
       "Собран базовый домен данных: офферы, импортные партии и история изменений по загрузкам.",
-      "Собран базовый backend-контракт каталога: список, карточка лота, фильтры, пагинация.",
+      "Собран базовый API-контур каталога: список, карточка лота, фильтры, пагинация.",
       "Запущен первый импорт лизингового стока и базовая нормализация полей под витрину.",
-      "Подготовлен фундамент multi-tenant архитектуры для подключения новых лизингодателей.",
+      "Подготовлен фундамент мультиисточниковой архитектуры для подключения новых лизингодателей.",
     ],
   },
   {
@@ -96,8 +96,8 @@ const WEEKLY_HIGHLIGHTS: WeeklyHighlightItem[] = [
     title: "Admin и аналитика",
     points: [
       "Реализован ролевой контур доступа и управление пользователями через админ-панель.",
-      "Введен журнал активности: просмотры, переходы, heartbeat-события, действия в витрине.",
-      "Собран первый admin-dashboard по операционным событиям и пользовательской активности.",
+      "Введен журнал активности: просмотры, переходы, сервисные события и действия в витрине.",
+      "Собран первый админ-дашборд по операционным событиям и пользовательской активности.",
       "Существенно усилен UX на мобильных сценариях каталога и административных таблиц.",
     ],
   },
@@ -107,7 +107,7 @@ const WEEKLY_HIGHLIGHTS: WeeklyHighlightItem[] = [
     points: [
       "Импортный пайплайн усилен валидацией, предупреждениями и историей загрузок по батчам.",
       "Добавлены дельты между партиями и показатель новых позиций за цикл/неделю.",
-      "Зафиксирован import contract и архитектурные guardrails для безопасного масштабирования.",
+      "Зафиксирован импортный контракт и архитектурные ограничения для безопасного масштабирования.",
       "Стабилизированы сценарии ручной загрузки файлов и контроль качества входящих данных.",
     ],
   },
@@ -115,22 +115,22 @@ const WEEKLY_HIGHLIGHTS: WeeklyHighlightItem[] = [
     period: "9-15 марта 2026",
     title: "Мультилизинг и медиа-пайплайн",
     points: [
-      "Запущен tenant-scoped импорт: единая витрина для нескольких лизингодателей.",
+      "Запущен импорт по лизингодателям: единая витрина для нескольких источников.",
       "Добавлена нормализация типов техники и брендов между разными форматами источников.",
-      "Реализован VIN-based media enrichment для RESO с пост-импортным массовым обновлением.",
-      "Собран защищенный bulk media sync API с токеном и контролем размера батчей.",
-      "Введены fallback-механики и диагностика ошибок медиа-источников для ускоренного восстановления.",
+      "Реализовано обогащение фото по VIN для RESO с пост-импортным массовым обновлением.",
+      "Собран защищенный API массовой синхронизации медиа с токеном и контролем размера батчей.",
+      "Введены резервные сценарии и диагностика ошибок медиа-источников для ускоренного восстановления.",
     ],
   },
   {
     period: "16-20 марта 2026",
-    title: "Масштабирование supply и скорости",
+    title: "Масштабирование стока и скорости",
     points: [
-      "Подключены новые источники supply: Альфа-Лизинг и Совкомбанк Лизинг.",
-      "Запущен media sync pipeline для Альфы и расширены правила классификации/soft-мэппинга новых файлов.",
-      "Внедрены performance-улучшения витрины: API, фильтры, превью и загрузка карточек.",
+      "Подключены новые источники стока: Альфа-Лизинг и Совкомбанк Лизинг.",
+      "Запущен контур синхронизации медиа для Альфы и расширены правила классификации/мягкого мэппинга файлов.",
+      "Внедрены оптимизации производительности витрины: API, фильтры, превью и загрузка карточек.",
       "Реализован функционал избранного для авторизованных пользователей (витрина + карточка).",
-      "Собран Investor/Highlights-раздел с ключевыми метриками, графиками роста и weekly snapshot.",
+      "Собран раздел Highlights с ключевыми метриками, графиками роста и недельной сводкой.",
     ],
   },
 ];
@@ -263,21 +263,21 @@ function getProductStatus(snapshot: HighlightsKpiSnapshot | null): {
 
   if (snapshot.tenantCount >= 4 && snapshot.photoCoveragePercent >= 70) {
     return {
-      label: "Scale Mode",
-      description: "Платформа в фазе масштабирования supply и операционного контура.",
+      label: "Режим масштабирования",
+      description: "Платформа в фазе активного расширения стока и ускорения витрины.",
     };
   }
 
   if (snapshot.tenantCount >= 3) {
     return {
-      label: "Growth Mode",
-      description: "Платформа расширяет покрытие поставщиков и ускоряет витрину.",
+      label: "Режим роста",
+      description: "Платформа расширяет покрытие источников и качество карточек.",
     };
   }
 
   return {
-    label: "Foundation Mode",
-    description: "База продукта собрана, акцент на расширение источников и конверсии.",
+    label: "Базовый режим",
+    description: "Базовый контур собран, фокус на масштабирование стока и контента.",
   };
 }
 
@@ -913,12 +913,12 @@ export function AdminHighlightsPage() {
     );
     const immediateTargetLine =
       cardsToCoverageTarget > 0
-        ? `Immediate target: +${cardsToCoverageTarget.toLocaleString("ru-RU")} карточек с превью для достижения ${PHOTO_COVERAGE_GOAL_PERCENT}% coverage.`
-        : `Immediate target: удерживать coverage на уровне ${PHOTO_COVERAGE_GOAL_PERCENT}%+ при росте supply.`;
+        ? `Ближайшая цель: +${cardsToCoverageTarget.toLocaleString("ru-RU")} карточек с превью до уровня ${PHOTO_COVERAGE_GOAL_PERCENT}%.`
+        : `Ближайшая цель: удерживать покрытие превью на уровне ${PHOTO_COVERAGE_GOAL_PERCENT}%+ при росте стока.`;
 
     return [
-      `Supply: ${snapshot.totalOffers.toLocaleString("ru-RU")} total позиций, weekly net new +${snapshot.newThisWeekCount.toLocaleString("ru-RU")}.`,
-      `Active lessors: ${snapshot.tenantCount.toLocaleString("ru-RU")}. Preview coverage: ${snapshot.photoCoveragePercent.toFixed(1)}% (${snapshot.offersWithPreview.toLocaleString("ru-RU")} из ${snapshot.totalOffers.toLocaleString("ru-RU")}).`,
+      `В каталоге ${snapshot.totalOffers.toLocaleString("ru-RU")} позиций, чистый прирост за неделю: +${snapshot.newThisWeekCount.toLocaleString("ru-RU")}.`,
+      `Активных лизингодателей: ${snapshot.tenantCount.toLocaleString("ru-RU")}. Покрытие превью: ${snapshot.photoCoveragePercent.toFixed(1)}% (${snapshot.offersWithPreview.toLocaleString("ru-RU")} из ${snapshot.totalOffers.toLocaleString("ru-RU")}).`,
       immediateTargetLine,
     ];
   }, [snapshot]);
@@ -928,59 +928,77 @@ export function AdminHighlightsPage() {
       return [];
     }
 
+    const shareOfNewPercent =
+      snapshot.totalOffers > 0 ? (snapshot.newThisWeekCount / snapshot.totalOffers) * 100 : 0;
+    const newPerLessor =
+      snapshot.tenantCount > 0 ? snapshot.newThisWeekCount / snapshot.tenantCount : 0;
+    const cardsToCoverageTarget = Math.max(
+      0,
+      Math.ceil((PHOTO_COVERAGE_GOAL_PERCENT / 100) * snapshot.totalOffers) -
+        snapshot.offersWithPreview,
+    );
+
     return [
       {
         id: "supply",
-        title: "Supply",
-        subtitle: "Размер и приток предложения",
+        title: "Разбор предложения",
+        subtitle: "Структура прироста и динамика цикла",
         metrics: [
           {
-            label: "Позиции в каталоге",
-            value: snapshot.totalOffers.toLocaleString("ru-RU"),
-            help: "Текущий доступный объем предложения.",
+            label: "Доля новых в стоке",
+            value: `${shareOfNewPercent.toFixed(1)}%`,
+            help: "Новые / общий каталог.",
             accent: "primary",
           },
           {
-            label: "Новые за неделю",
-            value: `+${snapshot.newThisWeekCount.toLocaleString("ru-RU")}`,
-            help: "Темп обновления относительно прошлого импорт-цикла.",
+            label: "Дельта к прошлому циклу",
+            value: formatSignedPercent(snapshot.newThisWeekDeltaPercent),
+            help: "Относительно прошлого импорта.",
             trend: {
               value: formatSignedPercent(snapshot.newThisWeekDeltaPercent),
               tone: getTrendTone(snapshot.newThisWeekDeltaPercent),
             },
+            caption:
+              snapshot.previousImportNewCount !== null
+                ? `База сравнения: ${snapshot.previousImportNewCount.toLocaleString("ru-RU")} новых`
+                : "База сравнения: н/д",
           },
           {
-            label: "Активные лизингодатели",
-            value: snapshot.tenantCount.toLocaleString("ru-RU"),
-            help: "Диверсификация и устойчивость supply-канала.",
-            caption: snapshot.tenantLabels.join(", ") || "-",
+            label: "Новых на 1 источник",
+            value: newPerLessor.toLocaleString("ru-RU", { maximumFractionDigits: 0 }),
+            help: "Средний недельный приток.",
+            caption: snapshot.tenantLabels.join(", "),
           },
         ],
       },
       {
         id: "quality",
-        title: "Quality / Coverage",
-        subtitle: "Качество карточек и визуального контента",
+        title: "Разбор покрытия",
+        subtitle: "Качество контента и зона доработки",
         metrics: [
-          {
-            label: "Покрытие превью",
-            value: `${snapshot.photoCoveragePercent.toFixed(1)}%`,
-            help: "Доля карточек с визуально готовым превью на витрине.",
-            accent: "success",
-            caption:
-              snapshot.coverageToGoalPercent > 0
-                ? `До цели ${PHOTO_COVERAGE_GOAL_PERCENT}%: ${snapshot.coverageToGoalPercent.toFixed(1)} п.п.`
-                : "Целевой порог покрытия достигнут",
-          },
           {
             label: "Карточки с превью",
             value: snapshot.offersWithPreview.toLocaleString("ru-RU"),
-            help: "Позиции, готовые к полноценному просмотру на витрине.",
+            help: "Готовы к просмотру.",
+            accent: "success",
           },
           {
             label: "Карточки без превью",
             value: snapshot.noPreviewOffers.toLocaleString("ru-RU"),
-            help: "Зона ближайшей доработки для роста конверсии в просмотр.",
+            help: "Кандидаты на обогащение.",
+            caption: `${((snapshot.noPreviewOffers / Math.max(1, snapshot.totalOffers)) * 100).toFixed(1)}% от каталога`,
+          },
+          {
+            label: `До цели ${PHOTO_COVERAGE_GOAL_PERCENT}%`,
+            value:
+              cardsToCoverageTarget > 0
+                ? cardsToCoverageTarget.toLocaleString("ru-RU")
+                : "0",
+            help: "Нужно добавить превью.",
+            caption:
+              snapshot.coverageToGoalPercent > 0
+                ? `${snapshot.coverageToGoalPercent.toFixed(1)} п.п. до целевого уровня`
+                : "Цель по покрытию достигнута",
           },
         ],
       },
@@ -1013,13 +1031,13 @@ export function AdminHighlightsPage() {
 
   const summaryText = useMemo(() => {
     const lines: string[] = [];
-    lines.push("ReActiv — Highlights");
+    lines.push("ReActiv — Сводка");
     lines.push(`Дата: ${new Date().toLocaleDateString("ru-RU")}`);
     lines.push(`Статус: ${productStatus.label}`);
     lines.push("");
 
     if (snapshot) {
-      lines.push("TL;DR:");
+      lines.push("Кратко:");
       heroTldr.forEach((line) => lines.push(`- ${line}`));
       lines.push("");
 
@@ -1057,7 +1075,7 @@ export function AdminHighlightsPage() {
 
   return (
     <section className="highlights-page">
-      <h1>Highlights</h1>
+      <h1>Сводка</h1>
 
       <div className="panel highlights-hero">
         <div className="highlights-hero__topline">
@@ -1067,10 +1085,10 @@ export function AdminHighlightsPage() {
 
         <div className="highlights-hero__grid">
           <div className="highlights-hero__main">
-            <h2>Weekly snapshot</h2>
+            <h2>Недельная сводка</h2>
 
             {isLoading ? (
-              <p>Собираем executive summary...</p>
+              <p>Собираем краткую сводку...</p>
             ) : error ? (
               <p className="error">{error}</p>
             ) : (
@@ -1084,22 +1102,31 @@ export function AdminHighlightsPage() {
 
           <aside className="highlights-hero__aside">
             <article className="highlights-snapshot-card">
-              <span>Supply</span>
+              <span>Сток</span>
               <strong>{snapshot ? snapshot.totalOffers.toLocaleString("ru-RU") : "-"}</strong>
-              <p>позиций в каталоге</p>
+              <p>всего позиций</p>
             </article>
             <article className="highlights-snapshot-card">
-              <span>Coverage</span>
-              <strong>{snapshot ? `${snapshot.photoCoveragePercent.toFixed(1)}%` : "-"}</strong>
-              <p>карточек с превью</p>
+              <span>Новые за неделю</span>
+              <strong>{snapshot ? `+${snapshot.newThisWeekCount.toLocaleString("ru-RU")}` : "-"}</strong>
+              <p>
+                {snapshot
+                  ? `к прошлому циклу ${formatSignedPercent(snapshot.newThisWeekDeltaPercent)}`
+                  : "сравнение: н/д"}
+              </p>
             </article>
             <article className="highlights-snapshot-card">
-              <span>Lessors</span>
+              <span>Лизингодатели</span>
               <strong>{snapshot ? snapshot.tenantCount.toLocaleString("ru-RU") : "-"}</strong>
-              <p>активных лизингодателей</p>
+              <p>активных источника</p>
+            </article>
+            <article className="highlights-snapshot-card">
+              <span>Покрытие превью</span>
+              <strong>{snapshot ? `${snapshot.photoCoveragePercent.toFixed(1)}%` : "-"}</strong>
+              <p>{`цель: ${PHOTO_COVERAGE_GOAL_PERCENT}%`}</p>
             </article>
             <button type="button" className="secondary-button highlights-copy-button" onClick={() => void handleCopySummary()}>
-              {copyStatus === "success" ? "Скопировано" : copyStatus === "error" ? "Ошибка копирования" : "Скопировать summary"}
+              {copyStatus === "success" ? "Скопировано" : copyStatus === "error" ? "Ошибка копирования" : "Скопировать сводку"}
             </button>
           </aside>
         </div>
@@ -1165,7 +1192,7 @@ export function AdminHighlightsPage() {
             />
             <InvestorSimpleLessorGrowth
               title="Кумулятивный рост лизингодателей"
-              subtitle="Рост числа активных источников в supply-цепочке"
+              subtitle="Рост числа активных источников в цепочке предложения"
               points={lessorGrowthChartPoints}
             />
           </div>

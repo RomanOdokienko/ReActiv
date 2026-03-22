@@ -1316,16 +1316,19 @@ a {
 
 .highlights-hero__aside {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
 }
 
 .highlights-snapshot-card {
   border: 1px solid rgba(15, 76, 129, 0.18);
   border-radius: 14px;
   background: #ffffff;
-  padding: 12px;
+  padding: 10px;
   display: grid;
-  gap: 4px;
+  gap: 3px;
+  min-height: 92px;
 }
 
 .highlights-snapshot-card span {
@@ -1338,7 +1341,7 @@ a {
 
 .highlights-snapshot-card strong {
   font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
-  font-size: 34px;
+  font-size: clamp(26px, 2.2vw, 32px);
   line-height: 1;
   letter-spacing: -0.02em;
 }
@@ -1350,6 +1353,7 @@ a {
 
 .highlights-copy-button {
   width: 100%;
+  grid-column: 1 / -1;
 }
 
 .highlights-groups {
@@ -3788,6 +3792,14 @@ tbody tr:nth-child(even) {
 
   .highlights-hero__grid {
     grid-template-columns: 1fr;
+  }
+
+  .highlights-hero__aside {
+    grid-template-columns: 1fr;
+  }
+
+  .highlights-copy-button {
+    grid-column: auto;
   }
 
   .highlights-snapshot-card strong {
