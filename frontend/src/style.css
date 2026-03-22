@@ -1283,35 +1283,20 @@ a {
   font-size: clamp(21px, 1.85vw, 27px);
 }
 
-.highlights-hero__tldr {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 6px;
-}
-
-.highlights-hero__tldr li {
-  position: relative;
-  min-height: 40px;
-  padding: 8px 10px 8px 22px;
+.highlights-hero__summary-card {
   border: 1px solid rgba(15, 76, 129, 0.12);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.76);
-  line-height: 1.34;
-  font-size: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 12px 14px;
+  display: grid;
+  gap: 10px;
 }
 
-.highlights-hero__tldr li::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 13px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  box-shadow: 0 0 0 2px rgba(29, 126, 229, 0.11);
+.highlights-hero__summary-line {
+  margin: 0;
+  color: #24384e;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 .highlights-hero__aside {
@@ -1349,11 +1334,6 @@ a {
 .highlights-snapshot-card p {
   color: var(--muted);
   font-size: 13px;
-}
-
-.highlights-copy-button {
-  width: 100%;
-  grid-column: 1 / -1;
 }
 
 .highlights-groups {
@@ -1441,34 +1421,6 @@ a {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
-}
-
-.highlights-trend {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 24px;
-  padding: 0 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  font-style: normal;
-  white-space: nowrap;
-}
-
-.highlights-trend--up {
-  color: #146847;
-  background: rgba(23, 107, 79, 0.12);
-}
-
-.highlights-trend--down {
-  color: #9e3a28;
-  background: rgba(190, 87, 54, 0.12);
-}
-
-.highlights-trend--neutral {
-  color: #54667e;
-  background: rgba(90, 109, 133, 0.12);
 }
 
 .highlights-charts-stack {
@@ -3866,10 +3818,6 @@ tbody tr:nth-child(even) {
 
   .highlights-hero__aside {
     grid-template-columns: 1fr;
-  }
-
-  .highlights-copy-button {
-    grid-column: auto;
   }
 
   .highlights-snapshot-card strong {

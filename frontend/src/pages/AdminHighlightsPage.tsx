@@ -12,6 +12,7 @@ interface HighlightsKpiSnapshot {
   offersWithPreview: number;
   noPreviewOffers: number;
   photoCoveragePercent: number;
+  stockValueRub: number | null;
   coverageToGoalPercent: number;
   newThisWeekCount: number;
   previousImportNewCount: number | null;
@@ -41,17 +42,11 @@ interface TenantGrowthPoint {
   cumulativeTenantCount: number;
 }
 
-interface MetricTrend {
-  value: string;
-  tone: "up" | "down" | "neutral";
-}
-
 interface HighlightMetric {
   label: string;
   value: string;
   help: string;
   caption?: string;
-  trend?: MetricTrend;
   accent?: "primary" | "success";
 }
 
@@ -165,6 +160,13 @@ function formatCompactK(value: number): string {
   }
 
   return value.toLocaleString("ru-RU");
+}
+
+function formatCurrencyRub(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
+    return "—";
+  }
+  return `${Math.round(value).toLocaleString("ru-RU")} ₽`;
 }
 
 function getNiceStep(rawStep: number): number {
@@ -600,6 +602,7 @@ export function AdminHighlightsPage() {
           offersWithPreview,
           noPreviewOffers,
           photoCoveragePercent,
+          stockValueRub: null,
           coverageToGoalPercent,
           newThisWeekCount: summaryResult.newThisWeekCount,
           previousImportNewCount,
@@ -640,27 +643,14 @@ export function AdminHighlightsPage() {
 
   const productStatus = useMemo(() => getProductStatus(snapshot), [snapshot]);
 
-  const heroTldr = useMemo(() => {
+  const heroSummary = useMemo(() => {
     if (!snapshot) {
       return [];
     }
 
-    const coverageTargetCount = Math.ceil(
-      (PHOTO_COVERAGE_GOAL_PERCENT / 100) * snapshot.totalOffers,
-    );
-    const cardsToCoverageTarget = Math.max(
-      0,
-      coverageTargetCount - snapshot.offersWithPreview,
-    );
-    const immediateTargetLine =
-      cardsToCoverageTarget > 0
-        ? `Ближайшая цель: +${cardsToCoverageTarget.toLocaleString("ru-RU")} карточек с превью до уровня ${PHOTO_COVERAGE_GOAL_PERCENT}%.`
-        : `Ближайшая цель: удерживать покрытие превью на уровне ${PHOTO_COVERAGE_GOAL_PERCENT}%+ при росте стока.`;
-
     return [
       `В каталоге ${snapshot.totalOffers.toLocaleString("ru-RU")} позиций, чистый прирост за неделю: +${snapshot.newThisWeekCount.toLocaleString("ru-RU")}.`,
       `Активных лизингодателей: ${snapshot.tenantCount.toLocaleString("ru-RU")}. Покрытие превью: ${snapshot.photoCoveragePercent.toFixed(1)}% (${snapshot.offersWithPreview.toLocaleString("ru-RU")} из ${snapshot.totalOffers.toLocaleString("ru-RU")}).`,
-      immediateTargetLine,
     ];
   }, [snapshot]);
 
@@ -669,41 +659,33 @@ export function AdminHighlightsPage() {
       return [];
     }
 
-    const cardsToCoverageTarget = Math.max(
-      0,
-      Math.ceil((PHOTO_COVERAGE_GOAL_PERCENT / 100) * snapshot.totalOffers) -
-        snapshot.offersWithPreview,
-    );
-
     return [
       {
         id: "supply",
-        title: "Предложение",
-        subtitle: "Объем и приток",
+        title: "Экономика предложения",
+        subtitle: "Ключевые бизнес-показатели",
         metrics: [
-          {
-            label: "Позиции в каталоге",
-            value: snapshot.totalOffers.toLocaleString("ru-RU"),
-            help: "Текущий размер каталога.",
-            accent: "primary",
-          },
           {
             label: "Новые за неделю",
             value: `+${snapshot.newThisWeekCount.toLocaleString("ru-RU")}`,
             help: "Добавлено за последние 7 дней.",
+            accent: "primary",
           },
           {
-            label: "Активные лизингодатели",
-            value: snapshot.tenantCount.toLocaleString("ru-RU"),
-            help: "Источники стока в каталоге.",
-            caption: snapshot.tenantLabels.join(", "),
+            label: "Объем стока, ₽",
+            value: formatCurrencyRub(snapshot.stockValueRub),
+            help: "Суммарная стоимость каталога.",
+            caption:
+              snapshot.stockValueRub === null
+                ? "Временная заглушка до backend-агрегации"
+                : undefined,
           },
         ],
       },
       {
         id: "quality",
         title: "Покрытие контента",
-        subtitle: "Готовность карточек к просмотру",
+        subtitle: "Текущее состояние витрины",
         metrics: [
           {
             label: "Карточки с превью",
@@ -715,18 +697,6 @@ export function AdminHighlightsPage() {
             label: "Карточки без превью",
             value: snapshot.noPreviewOffers.toLocaleString("ru-RU"),
             help: "Без фото превью.",
-          },
-          {
-            label: `До цели ${PHOTO_COVERAGE_GOAL_PERCENT}%`,
-            value:
-              cardsToCoverageTarget > 0
-                ? cardsToCoverageTarget.toLocaleString("ru-RU")
-                : "0",
-            help: "Нужно добавить превью до цели.",
-            caption:
-              snapshot.coverageToGoalPercent > 0
-                ? `${snapshot.coverageToGoalPercent.toFixed(1)} п.п. до целевого уровня`
-                : "Цель по покрытию достигнута",
           },
         ],
       },
@@ -764,11 +734,13 @@ export function AdminHighlightsPage() {
             ) : error ? (
               <p className="error">{error}</p>
             ) : (
-              <ul className="highlights-hero__tldr">
-                {heroTldr.map((line) => (
-                  <li key={line}>{line}</li>
+              <div className="highlights-hero__summary-card">
+                {heroSummary.map((line) => (
+                  <p key={line} className="highlights-hero__summary-line">
+                    {line}
+                  </p>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
 
@@ -789,9 +761,9 @@ export function AdminHighlightsPage() {
               <p>активных источника</p>
             </article>
             <article className="highlights-snapshot-card">
-              <span>Покрытие превью</span>
-              <strong>{snapshot ? `${snapshot.photoCoveragePercent.toFixed(1)}%` : "-"}</strong>
-              <p>{`цель: ${PHOTO_COVERAGE_GOAL_PERCENT}%`}</p>
+              <span>Объем стока, ₽</span>
+              <strong>{snapshot ? formatCurrencyRub(snapshot.stockValueRub) : "-"}</strong>
+              <p>суммарная стоимость каталога</p>
             </article>
           </aside>
         </div>
@@ -822,11 +794,6 @@ export function AdminHighlightsPage() {
                     >
                       <div className="highlights-metric-card__topline">
                         <span>{metric.label}</span>
-                        {metric.trend && (
-                          <em className={`highlights-trend highlights-trend--${metric.trend.tone}`}>
-                            {metric.trend.tone === "up" ? "↑" : metric.trend.tone === "down" ? "↓" : "→"} {metric.trend.value}
-                          </em>
-                        )}
                       </div>
                       <strong>{metric.value}</strong>
                       <p>{metric.help}</p>
