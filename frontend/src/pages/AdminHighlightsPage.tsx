@@ -56,7 +56,7 @@ interface HighlightMetric {
 }
 
 interface HighlightMetricGroup {
-  id: "supply" | "quality" | "operations";
+  id: "supply" | "quality";
   title: string;
   subtitle: string;
   metrics: HighlightMetric[];
@@ -126,13 +126,6 @@ const WEEKLY_HIGHLIGHTS: WeeklyHighlightItem[] = [
       "Запущены избранное и улучшения админ-аналитики.",
     ],
   },
-];
-
-const NEXT_30_DAYS: string[] = [
-  "Довести покрытие карточек фото до целевого уровня и стабилизировать источники медиа.",
-  "Подключать новых лизингодателей через стандартный import onboarding с soft-мэппингом.",
-  "Усилить воронку: сортировка, сигналы интереса, конверсионные сценарии.",
-  "Подготовить investor-ready отчетность на базе автосводки в админке.",
 ];
 
 function parseDateMs(raw: string): number | null {
@@ -972,34 +965,6 @@ export function AdminHighlightsPage() {
           },
         ],
       },
-      {
-        id: "operations",
-        title: "Operations",
-        subtitle: "Надежность и частота обновлений",
-        metrics: [
-          {
-            label: "Импортов за 30 дней",
-            value: snapshot.importsLast30Days.toLocaleString("ru-RU"),
-            help: "Интенсивность обновления стока и рабочих циклов.",
-            accent: "primary",
-          },
-          {
-            label: "Импортов за последние 7 дней",
-            value: snapshot.importsLast7Days.toLocaleString("ru-RU"),
-            help: "Операционная активность в текущем темпе.",
-            trend: {
-              value: formatSignedPercent(snapshot.imports7dDeltaPercent),
-              tone: getTrendTone(snapshot.imports7dDeltaPercent),
-            },
-            caption: `Предыдущие 7 дней: ${snapshot.importsPrev7Days.toLocaleString("ru-RU")}`,
-          },
-          {
-            label: "Последний успешный импорт",
-            value: formatDate(snapshot.latestImportAt),
-            help: "Актуальность данных в контуре витрины.",
-          },
-        ],
-      },
     ];
   }, [snapshot]);
 
@@ -1029,7 +994,7 @@ export function AdminHighlightsPage() {
 
   const summaryText = useMemo(() => {
     const lines: string[] = [];
-    lines.push("ReActiv — Investor Highlights");
+    lines.push("ReActiv — Highlights");
     lines.push(`Дата: ${new Date().toLocaleDateString("ru-RU")}`);
     lines.push(`Статус: ${productStatus.label}`);
     lines.push("");
@@ -1045,9 +1010,6 @@ export function AdminHighlightsPage() {
       lines.push(`- Покрытие превью: ${snapshot.photoCoveragePercent.toFixed(1)}%`);
       lines.push(`- Новые за неделю: +${snapshot.newThisWeekCount.toLocaleString("ru-RU")}`);
       lines.push(`- Активные лизингодатели: ${snapshot.tenantCount}`);
-      lines.push(`- Импортов за 30 дней: ${snapshot.importsLast30Days}`);
-      lines.push(`- Последний успешный импорт: ${formatDate(snapshot.latestImportAt)}`);
-      lines.push("");
     }
 
     lines.push("Понедельные итоги:");
@@ -1056,12 +1018,6 @@ export function AdminHighlightsPage() {
       week.points.forEach((point) => {
         lines.push(`- ${point}`);
       });
-    });
-
-    lines.push("");
-    lines.push("Фокус на 30 дней:");
-    NEXT_30_DAYS.forEach((item) => {
-      lines.push(`- ${item}`);
     });
 
     return lines.join("\n");
@@ -1082,7 +1038,7 @@ export function AdminHighlightsPage() {
 
   return (
     <section className="highlights-page">
-      <h1>Investor Highlights</h1>
+      <h1>Highlights</h1>
 
       <div className="panel highlights-hero">
         <div className="highlights-hero__topline">
@@ -1234,16 +1190,6 @@ export function AdminHighlightsPage() {
         </div>
       </div>
 
-      <div className="panel">
-        <h2>Фокус на 30 дней</h2>
-        <ol className="highlights-next-grid">
-          {NEXT_30_DAYS.map((item) => (
-            <li key={item}>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
     </section>
   );
 }
