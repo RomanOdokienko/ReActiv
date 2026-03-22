@@ -5,25 +5,15 @@ import {
   getCatalogSummary,
   getImportBatches,
 } from "../api/client";
-import type { ImportTenantId } from "../types/api";
+import type { CatalogListItem, ImportTenantId } from "../types/api";
 
 interface HighlightsKpiSnapshot {
   totalOffers: number;
-  offersWithPreview: number;
-  noPreviewOffers: number;
   photoCoveragePercent: number;
   stockValueRub: number | null;
-  coverageToGoalPercent: number;
   newThisWeekCount: number;
-  previousImportNewCount: number | null;
-  newThisWeekDeltaPercent: number | null;
   tenantCount: number;
-  tenantLabels: string[];
   latestImportAt: string | null;
-  importsLast30Days: number;
-  importsLast7Days: number;
-  importsPrev7Days: number;
-  imports7dDeltaPercent: number | null;
   tenantGrowthPoints: TenantGrowthPoint[];
 }
 
@@ -42,22 +32,41 @@ interface TenantGrowthPoint {
   cumulativeTenantCount: number;
 }
 
-interface HighlightMetric {
-  label: string;
-  value: string;
-  help: string;
-  caption?: string;
+interface StructureByCategoryItem {
+  vehicleType: string;
+  avgPriceRub: number;
+  count: number;
+  sharePercent: number;
 }
 
-interface HighlightMetricGroup {
-  id: "supply" | "quality";
-  title: string;
-  subtitle: string;
-  metrics: HighlightMetric[];
+interface StructureTypeShareItem {
+  vehicleType: string;
+  count: number;
+  sharePercent: number;
 }
 
-const PHOTO_COVERAGE_GOAL_PERCENT = 85;
+interface HighlightsStructureSnapshot {
+  averagePriceRub: number | null;
+  medianPriceRub: number | null;
+  averageByCategory: StructureByCategoryItem[];
+  typeShares: StructureTypeShareItem[];
+}
+
 const TENANT_GROWTH_ORDER: ImportTenantId[] = ["gpb", "reso", "alpha", "sovcombank"];
+const STRUCTURE_FETCH_PAGE_SIZE = 100;
+const STRUCTURE_FETCH_CONCURRENCY = 6;
+const STRUCTURE_CATEGORY_LIMIT = 4;
+
+const STRUCTURE_SHARE_COLORS = [
+  "#2f63d3",
+  "#6a8ee2",
+  "#98b1ea",
+  "#b9caf1",
+  "#496fd8",
+  "#7999e5",
+  "#a9beed",
+  "#d1dcf7",
+];
 
 const TENANT_LABELS: Record<ImportTenantId, string> = {
   gpb: "ГПБ Лизинг",
@@ -126,12 +135,6 @@ const WEEKLY_HIGHLIGHTS: WeeklyHighlightItem[] = [
   },
 ];
 
-function parseDateMs(raw: string): number | null {
-  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-  const parsed = Date.parse(normalized);
-  return Number.isNaN(parsed) ? null : parsed;
-}
-
 function formatDate(value: string | null): string {
   if (!value) {
     return "-";
@@ -171,6 +174,189 @@ function formatCurrencyRub(value: number | null): string {
     maximumFractionDigits: 1,
   });
   return `${formatted} млрд ₽`;
+}
+
+function formatMoneyCompact(value: number | null): string {
+  if (value === null || !Number.isFinite(value) || value <= 0) {
+    return "—";
+  }
+
+  if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toLocaleString("ru-RU", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} млрд ₽`;
+  }
+
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toLocaleString("ru-RU", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} млн ₽`;
+  }
+
+  if (value >= 1000) {
+    return `${(value / 1000).toLocaleString("ru-RU", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} тыс ₽`;
+  }
+
+  return `${Math.round(value).toLocaleString("ru-RU")} ₽`;
+}
+
+function formatPercent(value: number): string {
+  return `${value.toLocaleString("ru-RU", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}%`;
+}
+
+function normalizeVehicleType(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim();
+  return normalized.length > 0 ? normalized : "Без типа";
+}
+
+function calculateMedian(values: number[]): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const middleIndex = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[middleIndex - 1] + sorted[middleIndex]) / 2;
+  }
+  return sorted[middleIndex];
+}
+
+async function loadCatalogItemsForStructure(
+  totalOffers: number,
+  signal: AbortSignal,
+): Promise<CatalogListItem[]> {
+  if (totalOffers <= 0) {
+    return [];
+  }
+
+  const totalPages = Math.ceil(totalOffers / STRUCTURE_FETCH_PAGE_SIZE);
+  const items: CatalogListItem[] = [];
+
+  for (
+    let pageStart = 1;
+    pageStart <= totalPages;
+    pageStart += STRUCTURE_FETCH_CONCURRENCY
+  ) {
+    const pageEnd = Math.min(totalPages, pageStart + STRUCTURE_FETCH_CONCURRENCY - 1);
+    const batchRequests: Array<ReturnType<typeof getCatalogItems>> = [];
+    for (let page = pageStart; page <= pageEnd; page += 1) {
+      batchRequests.push(
+        getCatalogItems(
+          {
+            page,
+            pageSize: STRUCTURE_FETCH_PAGE_SIZE,
+            sortBy: "created_at",
+            sortDir: "desc",
+          },
+          { signal },
+        ),
+      );
+    }
+
+    const batchResults = await Promise.all(batchRequests);
+    batchResults.forEach((result) => {
+      items.push(...result.items);
+    });
+  }
+
+  return items;
+}
+
+function resolveVehicleTypeFromTitle(title: string, knownVehicleTypes: string[]): string {
+  const normalizedTitle = title.trim().toLocaleUpperCase("ru-RU");
+  if (!normalizedTitle) {
+    return "Без типа";
+  }
+
+  for (const vehicleType of knownVehicleTypes) {
+    const normalizedType = vehicleType.trim().toLocaleUpperCase("ru-RU");
+    if (!normalizedType) {
+      continue;
+    }
+    if (normalizedTitle.includes(normalizedType)) {
+      return vehicleType;
+    }
+  }
+
+  return "Без типа";
+}
+
+function buildStructureSnapshot(
+  items: CatalogListItem[],
+  vehicleTypes: string[],
+): HighlightsStructureSnapshot {
+  const priceValues = items
+    .map((item) => item.price)
+    .filter((price): price is number => price !== null && Number.isFinite(price) && price > 0);
+
+  const averagePriceRub =
+    priceValues.length > 0
+      ? priceValues.reduce((sum, current) => sum + current, 0) / priceValues.length
+      : null;
+  const medianPriceRub = calculateMedian(priceValues);
+
+  const typeMap = new Map<
+    string,
+    { count: number; pricedCount: number; totalPrice: number }
+  >();
+
+  const sortedVehicleTypes = [...vehicleTypes]
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .sort((left, right) => right.length - left.length);
+
+  items.forEach((item) => {
+    const resolvedType = normalizeVehicleType(
+      resolveVehicleTypeFromTitle(item.title ?? "", sortedVehicleTypes),
+    );
+    const existing = typeMap.get(resolvedType) ?? {
+      count: 0,
+      pricedCount: 0,
+      totalPrice: 0,
+    };
+    existing.count += 1;
+    if (item.price !== null && Number.isFinite(item.price) && item.price > 0) {
+      existing.pricedCount += 1;
+      existing.totalPrice += item.price;
+    }
+    typeMap.set(resolvedType, existing);
+  });
+
+  const totalCount = items.length;
+  const typeShares = Array.from(typeMap.entries())
+    .map(([vehicleType, stats]) => ({
+      vehicleType,
+      count: stats.count,
+      sharePercent: totalCount > 0 ? (stats.count / totalCount) * 100 : 0,
+    }))
+    .sort((left, right) => right.count - left.count);
+
+  const averageByCategory = Array.from(typeMap.entries())
+    .filter(([, stats]) => stats.pricedCount > 0)
+    .map(([vehicleType, stats]) => ({
+      vehicleType,
+      avgPriceRub: stats.totalPrice / stats.pricedCount,
+      count: stats.count,
+      sharePercent: totalCount > 0 ? (stats.count / totalCount) * 100 : 0,
+    }))
+    .sort((left, right) => right.avgPriceRub - left.avgPriceRub)
+    .slice(0, STRUCTURE_CATEGORY_LIMIT);
+
+  return {
+    averagePriceRub,
+    medianPriceRub,
+    averageByCategory,
+    typeShares,
+  };
 }
 
 function getNiceStep(rawStep: number): number {
@@ -214,14 +400,6 @@ function formatAxisValue(value: number): string {
     })}k`;
   }
   return value.toLocaleString("ru-RU");
-}
-
-function getDeltaPercent(current: number, previous: number | null): number | null {
-  if (previous === null || previous <= 0) {
-    return null;
-  }
-
-  return ((current - previous) / previous) * 100;
 }
 
 function getProductStatus(snapshot: HighlightsKpiSnapshot | null): {
@@ -499,15 +677,24 @@ function InvestorGrowthChart({
 
 export function AdminHighlightsPage() {
   const [snapshot, setSnapshot] = useState<HighlightsKpiSnapshot | null>(null);
+  const [structureSnapshot, setStructureSnapshot] = useState<HighlightsStructureSnapshot | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
+  const [isStructureLoading, setIsStructureLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [structureError, setStructureError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
+    const abortController = new AbortController();
 
     async function loadSnapshot(): Promise<void> {
       setIsLoading(true);
+      setIsStructureLoading(true);
       setError(null);
+      setStructureError(null);
+      setStructureSnapshot(null);
 
       try {
         const [
@@ -535,52 +722,18 @@ export function AdminHighlightsPage() {
 
         const totalOffers = totalResult.pagination.total;
         const offersWithPreview = withPreviewResult.pagination.total;
-        const noPreviewOffers = Math.max(0, totalOffers - offersWithPreview);
         const photoCoveragePercent =
           totalOffers > 0 ? Math.round((offersWithPreview / totalOffers) * 1000) / 10 : 0;
-        const coverageToGoalPercent = Math.max(
-          0,
-          Math.round((PHOTO_COVERAGE_GOAL_PERCENT - photoCoveragePercent) * 10) / 10,
-        );
-
-        const tenantIds = (filtersResult.tenantId ?? []).filter((item) => item.trim().length > 0);
-        const tenantLabels = tenantIds.map(
-          (tenantId) => TENANT_LABELS[tenantId as ImportTenantId] ?? tenantId,
+        const tenantIds = (filtersResult.tenantId ?? []).filter(
+          (item) => item.trim().length > 0,
         );
 
         const successfulImports = importResult.items.filter(
           (item) => item.status === "completed" || item.status === "completed_with_errors",
         );
 
-        const latestImportAt = successfulImports[0]?.created_at ?? importResult.items[0]?.created_at ?? null;
-        const previousImportNewCount =
-          successfulImports.length > 1 ? successfulImports[1].added_rows : null;
-        const newThisWeekDeltaPercent = getDeltaPercent(
-          summaryResult.newThisWeekCount,
-          previousImportNewCount,
-        );
-
-        const nowMs = Date.now();
-        const dayMs = 24 * 60 * 60 * 1000;
-        const last7From = nowMs - 7 * dayMs;
-        const prev7From = nowMs - 14 * dayMs;
-
-        const importsLast30Days = successfulImports.filter((item) => {
-          const createdAtMs = parseDateMs(item.created_at);
-          return createdAtMs !== null && createdAtMs >= nowMs - 30 * dayMs;
-        }).length;
-
-        const importsLast7Days = successfulImports.filter((item) => {
-          const createdAtMs = parseDateMs(item.created_at);
-          return createdAtMs !== null && createdAtMs >= last7From;
-        }).length;
-
-        const importsPrev7Days = successfulImports.filter((item) => {
-          const createdAtMs = parseDateMs(item.created_at);
-          return createdAtMs !== null && createdAtMs >= prev7From && createdAtMs < last7From;
-        }).length;
-
-        const imports7dDeltaPercent = getDeltaPercent(importsLast7Days, importsPrev7Days || null);
+        const latestImportAt =
+          successfulImports[0]?.created_at ?? importResult.items[0]?.created_at ?? null;
 
         const tenantRawPoints = TENANT_GROWTH_ORDER.map((tenantId, index) => ({
           tenantId,
@@ -603,29 +756,60 @@ export function AdminHighlightsPage() {
 
         setSnapshot({
           totalOffers,
-          offersWithPreview,
-          noPreviewOffers,
           photoCoveragePercent,
           stockValueRub:
             typeof summaryResult.stockValueRub === "number" &&
             Number.isFinite(summaryResult.stockValueRub)
               ? summaryResult.stockValueRub
               : null,
-          coverageToGoalPercent,
           newThisWeekCount: summaryResult.newThisWeekCount,
-          previousImportNewCount,
-          newThisWeekDeltaPercent,
           tenantCount: tenantIds.length,
-          tenantLabels,
           latestImportAt,
-          importsLast30Days,
-          importsLast7Days,
-          importsPrev7Days,
-          imports7dDeltaPercent,
           tenantGrowthPoints,
         });
+
+        setIsLoading(false);
+
+        try {
+          const structureItems = await loadCatalogItemsForStructure(
+            totalOffers,
+            abortController.signal,
+          );
+          if (!isMounted) {
+            return;
+          }
+
+          setStructureSnapshot(
+            buildStructureSnapshot(structureItems, filtersResult.vehicleType ?? []),
+          );
+        } catch (structureCaughtError) {
+          if (!isMounted) {
+            return;
+          }
+
+          if (
+            structureCaughtError instanceof Error &&
+            structureCaughtError.name === "AbortError"
+          ) {
+            return;
+          }
+
+          if (structureCaughtError instanceof Error) {
+            setStructureError(structureCaughtError.message);
+          } else {
+            setStructureError("Не удалось собрать структуру стока.");
+          }
+        } finally {
+          if (isMounted) {
+            setIsStructureLoading(false);
+          }
+        }
       } catch (caughtError) {
         if (!isMounted) {
+          return;
+        }
+
+        if (caughtError instanceof Error && caughtError.name === "AbortError") {
           return;
         }
 
@@ -634,10 +818,11 @@ export function AdminHighlightsPage() {
           return;
         }
 
-        setError("Не удалось загрузить investor highlights.");
+        setError("Не удалось загрузить highlights.");
       } finally {
         if (isMounted) {
           setIsLoading(false);
+          setIsStructureLoading(false);
         }
       }
     }
@@ -646,6 +831,7 @@ export function AdminHighlightsPage() {
 
     return () => {
       isMounted = false;
+      abortController.abort();
     };
   }, []);
 
@@ -662,52 +848,15 @@ export function AdminHighlightsPage() {
     ];
   }, [snapshot]);
 
-  const metricGroups = useMemo<HighlightMetricGroup[]>(() => {
-    if (!snapshot) {
-      return [];
+  const averageCategoryMaxValue = useMemo(() => {
+    if (!structureSnapshot || structureSnapshot.averageByCategory.length === 0) {
+      return 0;
     }
 
-    return [
-      {
-        id: "supply",
-        title: "Экономика предложения",
-        subtitle: "Ключевые бизнес-показатели",
-        metrics: [
-          {
-            label: "Новые за неделю",
-            value: `+${snapshot.newThisWeekCount.toLocaleString("ru-RU")}`,
-            help: "Добавлено за последние 7 дней.",
-          },
-          {
-            label: "Объем стока, ₽",
-            value: formatCurrencyRub(snapshot.stockValueRub),
-            help: "Суммарная стоимость каталога.",
-            caption:
-              snapshot.stockValueRub === null
-                ? "Временная заглушка до backend-агрегации"
-                : undefined,
-          },
-        ],
-      },
-      {
-        id: "quality",
-        title: "Покрытие контента",
-        subtitle: "Текущее состояние витрины",
-        metrics: [
-          {
-            label: "Карточки с превью",
-            value: snapshot.offersWithPreview.toLocaleString("ru-RU"),
-            help: "С фото превью.",
-          },
-          {
-            label: "Карточки без превью",
-            value: snapshot.noPreviewOffers.toLocaleString("ru-RU"),
-            help: "Без фото превью.",
-          },
-        ],
-      },
-    ];
-  }, [snapshot]);
+    return Math.max(
+      ...structureSnapshot.averageByCategory.map((item) => item.avgPriceRub),
+    );
+  }, [structureSnapshot]);
 
   const stockGrowthChartPoints = useMemo<GrowthChartPoint[]>(() => {
     if (!snapshot) {
@@ -774,39 +923,117 @@ export function AdminHighlightsPage() {
       </div>
 
       <div className="panel">
-        <h2>Ключевые метрики</h2>
+        <h2>Структура стока</h2>
         {isLoading ? (
           <p>Загрузка метрик...</p>
         ) : error ? (
           <p className="error">{error}</p>
-        ) : metricGroups.length === 0 ? (
+        ) : isStructureLoading ? (
+          <p>Считаем структуру каталога...</p>
+        ) : structureError ? (
+          <p className="error">{structureError}</p>
+        ) : !structureSnapshot ? (
           <p className="empty">Нет данных для отображения.</p>
         ) : (
-          <div className="highlights-groups">
-            {metricGroups.map((group) => (
-              <article key={group.id} className="highlights-group-card">
-                <header className="highlights-group-card__header">
-                  <h3>{group.title}</h3>
-                  <p>{group.subtitle}</p>
-                </header>
-
-                <div className="highlights-metrics-grid">
-                  {group.metrics.map((metric) => (
-                    <article
-                      key={`${group.id}-${metric.label}`}
-                      className="highlights-metric-card"
-                    >
-                      <div className="highlights-metric-card__topline">
-                        <span>{metric.label}</span>
-                      </div>
-                      <strong>{metric.value}</strong>
-                      <p>{metric.help}</p>
-                      {metric.caption ? <small>{metric.caption}</small> : null}
-                    </article>
-                  ))}
-                </div>
+          <div className="highlights-structure">
+            <div className="highlights-structure__kpis">
+              <article className="highlights-structure-kpi">
+                <span>Средняя стоимость позиции, ₽</span>
+                <strong>{formatMoneyCompact(structureSnapshot.averagePriceRub)}</strong>
+                <p>по всем позициям каталога</p>
               </article>
-            ))}
+              <article className="highlights-structure-kpi">
+                <span>Медианная стоимость позиции, ₽</span>
+                <strong>{formatMoneyCompact(structureSnapshot.medianPriceRub)}</strong>
+                <p>центральное значение распределения</p>
+              </article>
+            </div>
+
+            <div className="highlights-structure__analytics">
+              <article className="highlights-structure-card">
+                <header className="highlights-structure-card__header">
+                  <h3>Средний чек по категориям</h3>
+                  <p>Топ-{STRUCTURE_CATEGORY_LIMIT} категорий по стоимости</p>
+                </header>
+                {structureSnapshot.averageByCategory.length === 0 ? (
+                  <p className="empty">Недостаточно ценовых данных.</p>
+                ) : (
+                  <ul className="highlights-avg-list">
+                    {structureSnapshot.averageByCategory.map((item) => {
+                      const widthPercent =
+                        averageCategoryMaxValue > 0
+                          ? (item.avgPriceRub / averageCategoryMaxValue) * 100
+                          : 0;
+                      return (
+                        <li key={`avg-${item.vehicleType}`} className="highlights-avg-list__item">
+                          <div className="highlights-avg-list__topline">
+                            <span>{item.vehicleType}</span>
+                            <strong>{formatMoneyCompact(item.avgPriceRub)}</strong>
+                          </div>
+                          <div className="highlights-avg-list__bar">
+                            <span style={{ width: `${Math.max(4, widthPercent)}%` }} />
+                          </div>
+                          <small>
+                            {`${item.count.toLocaleString("ru-RU")} поз. • ${formatPercent(item.sharePercent)}`}
+                          </small>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </article>
+
+              <article className="highlights-structure-card">
+                <header className="highlights-structure-card__header">
+                  <h3>Доля типов техники</h3>
+                  <p>Распределение каталога по типам</p>
+                </header>
+                {structureSnapshot.typeShares.length === 0 ? (
+                  <p className="empty">Типы техники не найдены.</p>
+                ) : (
+                  <>
+                    <div
+                      className="highlights-share-bar"
+                      role="img"
+                      aria-label="Доля типов техники"
+                    >
+                      {structureSnapshot.typeShares.map((item, index) => (
+                        <span
+                          key={`share-segment-${item.vehicleType}`}
+                          style={{
+                            flexGrow: Math.max(item.sharePercent, 0.8),
+                            backgroundColor:
+                              STRUCTURE_SHARE_COLORS[index % STRUCTURE_SHARE_COLORS.length],
+                          }}
+                          title={`${item.vehicleType}: ${formatPercent(item.sharePercent)}`}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="highlights-share-legend">
+                      {structureSnapshot.typeShares.map((item, index) => (
+                        <div
+                          key={`share-legend-${item.vehicleType}`}
+                          className="highlights-share-legend__item"
+                        >
+                          <span
+                            className="highlights-share-legend__dot"
+                            style={{
+                              backgroundColor:
+                                STRUCTURE_SHARE_COLORS[index % STRUCTURE_SHARE_COLORS.length],
+                            }}
+                          />
+                          <span className="highlights-share-legend__name">
+                            {item.vehicleType}
+                          </span>
+                          <strong>{formatPercent(item.sharePercent)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </article>
+            </div>
           </div>
         )}
       </div>
