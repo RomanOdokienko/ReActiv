@@ -286,12 +286,6 @@ interface InvestorGrowthChartProps {
   points: GrowthChartPoint[];
 }
 
-interface InvestorSimpleLessorGrowthProps {
-  title: string;
-  subtitle: string;
-  points: GrowthChartPoint[];
-}
-
 function InvestorGrowthChart({
   title,
   subtitle,
@@ -311,6 +305,7 @@ function InvestorGrowthChart({
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
   const denseXLabels = categoriesCount >= 8;
+  const barWidth = Math.max(44, Math.min(86, plotWidth / Math.max(3, categoriesCount * 1.45)));
 
   const contributions = useMemo(
     () =>
@@ -341,13 +336,12 @@ function InvestorGrowthChart({
     () =>
       Array.from({ length: categoriesCount }, (_, index) =>
         categoriesCount > 1
-          ? left + (index / (categoriesCount - 1)) * plotWidth
+          ? left + barWidth / 2 + 8 + (index / (categoriesCount - 1)) * (plotWidth - barWidth - 16)
           : left + plotWidth / 2,
       ),
-    [categoriesCount, left, plotWidth],
+    [barWidth, categoriesCount, left, plotWidth],
   );
 
-  const barWidth = Math.max(44, Math.min(86, plotWidth / Math.max(3, categoriesCount * 1.45)));
   const waterfallBars = useMemo(
     () =>
       contributions.map((item, index) => {
@@ -452,8 +446,8 @@ function InvestorGrowthChart({
                 style={{ opacity: bar.opacity }}
               />
               <text
-                x={bar.centerX}
-                y={bar.topY - 9}
+                x={index === 0 ? bar.centerX + 12 : bar.centerX}
+                y={Math.max(top + 12, bar.topY - (index === 0 ? 14 : 9))}
                 textAnchor="middle"
                 className="highlights-waterfall__delta-label"
               >
@@ -517,36 +511,6 @@ function InvestorGrowthChart({
           <strong>{totalValue.toLocaleString("ru-RU")}</strong>
           <small>100%</small>
         </div>
-      </div>
-    </article>
-  );
-}
-
-function InvestorSimpleLessorGrowth({
-  title,
-  subtitle,
-  points,
-}: InvestorSimpleLessorGrowthProps) {
-  return (
-    <article className="highlights-lessor-growth">
-      <header className="highlights-lessor-growth__header">
-        <h3>{title}</h3>
-        <p>{subtitle}</p>
-      </header>
-
-      <div className="highlights-lessor-growth__rail" aria-label={title}>
-        {points.map((point, index) => (
-          <div key={`lessor-step-${point.stepLabel}`} className="highlights-lessor-growth__step">
-            <div className="highlights-lessor-growth__dot-wrap">
-              <span className="highlights-lessor-growth__dot">{point.value}</span>
-              {index < points.length - 1 ? (
-                <span className="highlights-lessor-growth__line" aria-hidden />
-              ) : null}
-            </div>
-            <strong>{point.stepLabel}</strong>
-            <p>{point.detail}</p>
-          </div>
-        ))}
       </div>
     </article>
   );
@@ -820,18 +784,6 @@ export function AdminHighlightsPage() {
     }));
   }, [snapshot]);
 
-  const lessorGrowthChartPoints = useMemo<GrowthChartPoint[]>(() => {
-    if (!snapshot) {
-      return [];
-    }
-
-    return snapshot.tenantGrowthPoints.map((point) => ({
-      stepLabel: point.shortLabel,
-      value: point.cumulativeTenantCount,
-      detail: `${point.label}: этап ${point.cumulativeTenantCount}`,
-    }));
-  }, [snapshot]);
-
   const summaryText = useMemo(() => {
     const lines: string[] = [];
     lines.push("ReActiv — Сводка");
@@ -996,11 +948,6 @@ export function AdminHighlightsPage() {
                   : "Как сформирован текущий объём каталога"
               }
               points={stockGrowthChartPoints}
-            />
-            <InvestorSimpleLessorGrowth
-              title="Кумулятивный рост лизингодателей"
-              subtitle="Рост числа активных источников в цепочке предложения"
-              points={lessorGrowthChartPoints}
             />
           </div>
         )}
