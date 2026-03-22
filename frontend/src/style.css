@@ -1268,19 +1268,20 @@ a {
 
 .highlights-hero__grid {
   display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 370px);
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
 }
 
-.highlights-hero__main {
-  display: grid;
-  gap: 7px;
-}
-
-.highlights-hero__main h2 {
+.highlights-hero__headline {
   margin: 0;
   font-size: clamp(21px, 1.85vw, 27px);
+}
+
+.highlights-hero__kpis {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .highlights-hero__summary-card {
@@ -1297,13 +1298,6 @@ a {
   color: #24384e;
   font-size: 15px;
   line-height: 1.45;
-}
-
-.highlights-hero__aside {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
 }
 
 .highlights-snapshot-card {
@@ -3816,8 +3810,8 @@ tbody tr:nth-child(even) {
     grid-template-columns: 1fr;
   }
 
-  .highlights-hero__aside {
-    grid-template-columns: 1fr;
+  .highlights-hero__kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .highlights-snapshot-card strong {

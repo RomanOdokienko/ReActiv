@@ -657,8 +657,8 @@ export function AdminHighlightsPage() {
     }
 
     return [
-      `В каталоге ${snapshot.totalOffers.toLocaleString("ru-RU")} позиций, чистый прирост за неделю: +${snapshot.newThisWeekCount.toLocaleString("ru-RU")}.`,
-      `Активных лизингодателей: ${snapshot.tenantCount.toLocaleString("ru-RU")}. Покрытие превью: ${snapshot.photoCoveragePercent.toFixed(1)}% (${snapshot.offersWithPreview.toLocaleString("ru-RU")} из ${snapshot.totalOffers.toLocaleString("ru-RU")}).`,
+      `В каталоге ${snapshot.totalOffers.toLocaleString("ru-RU")} позиций, чистый прирост за неделю — +${snapshot.newThisWeekCount.toLocaleString("ru-RU")}.`,
+      `Активны ${snapshot.tenantCount.toLocaleString("ru-RU")} лизингодателя, покрытие превью — ${snapshot.photoCoveragePercent.toFixed(1)}%.`,
     ];
   }, [snapshot]);
 
@@ -732,25 +732,9 @@ export function AdminHighlightsPage() {
         </div>
 
         <div className="highlights-hero__grid">
-          <div className="highlights-hero__main">
-            <h2>Недельная сводка</h2>
+          <h2 className="highlights-hero__headline">Недельная сводка</h2>
 
-            {isLoading ? (
-              <p>Собираем краткую сводку...</p>
-            ) : error ? (
-              <p className="error">{error}</p>
-            ) : (
-              <div className="highlights-hero__summary-card">
-                {heroSummary.map((line) => (
-                  <p key={line} className="highlights-hero__summary-line">
-                    {line}
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <aside className="highlights-hero__aside">
+          <div className="highlights-hero__kpis">
             <article className="highlights-snapshot-card">
               <span>Сток</span>
               <strong>{snapshot ? snapshot.totalOffers.toLocaleString("ru-RU") : "-"}</strong>
@@ -771,7 +755,21 @@ export function AdminHighlightsPage() {
               <strong>{snapshot ? formatCurrencyRub(snapshot.stockValueRub) : "-"}</strong>
               <p>суммарная стоимость каталога</p>
             </article>
-          </aside>
+          </div>
+
+          {isLoading ? (
+            <p>Собираем краткую сводку...</p>
+          ) : error ? (
+            <p className="error">{error}</p>
+          ) : (
+            <div className="highlights-hero__summary-card">
+              {heroSummary.map((line) => (
+                <p key={line} className="highlights-hero__summary-line">
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
