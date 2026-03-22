@@ -161,20 +161,6 @@ function formatDate(value: string | null): string {
   });
 }
 
-function formatSignedPercent(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) {
-    return "н/д";
-  }
-
-  if (Math.abs(value) < 0.05) {
-    return "0%";
-  }
-
-  const rounded = Math.round(value * 10) / 10;
-  const sign = rounded > 0 ? "+" : "";
-  return `${sign}${rounded.toLocaleString("ru-RU", { maximumFractionDigits: 1 })}%`;
-}
-
 function formatCompactK(value: number): string {
   if (value >= 1000) {
     const compactValue = Math.round((value / 1000) * 10) / 10;
@@ -233,14 +219,6 @@ function getDeltaPercent(current: number, previous: number | null): number | nul
   }
 
   return ((current - previous) / previous) * 100;
-}
-
-function getTrendTone(value: number | null): "up" | "down" | "neutral" {
-  if (value === null || Math.abs(value) < 0.05) {
-    return "neutral";
-  }
-
-  return value > 0 ? "up" : "down";
 }
 
 function getProductStatus(snapshot: HighlightsKpiSnapshot | null): {
@@ -520,7 +498,6 @@ export function AdminHighlightsPage() {
   const [snapshot, setSnapshot] = useState<HighlightsKpiSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle");
 
   useEffect(() => {
     let isMounted = true;
@@ -695,10 +672,6 @@ export function AdminHighlightsPage() {
       return [];
     }
 
-    const shareOfNewPercent =
-      snapshot.totalOffers > 0 ? (snapshot.newThisWeekCount / snapshot.totalOffers) * 100 : 0;
-    const newPerLessor =
-      snapshot.tenantCount > 0 ? snapshot.newThisWeekCount / snapshot.tenantCount : 0;
     const cardsToCoverageTarget = Math.max(
       0,
       Math.ceil((PHOTO_COVERAGE_GOAL_PERCENT / 100) * snapshot.totalOffers) -
@@ -708,52 +681,43 @@ export function AdminHighlightsPage() {
     return [
       {
         id: "supply",
-        title: "Разбор предложения",
-        subtitle: "Структура прироста и динамика цикла",
+        title: "Предложение",
+        subtitle: "Объем и приток",
         metrics: [
           {
-            label: "Доля новых в стоке",
-            value: `${shareOfNewPercent.toFixed(1)}%`,
-            help: "Новые / общий каталог.",
+            label: "Позиции в каталоге",
+            value: snapshot.totalOffers.toLocaleString("ru-RU"),
+            help: "Текущий размер каталога.",
             accent: "primary",
           },
           {
-            label: "Дельта к прошлому циклу",
-            value: formatSignedPercent(snapshot.newThisWeekDeltaPercent),
-            help: "Относительно прошлого импорта.",
-            trend: {
-              value: formatSignedPercent(snapshot.newThisWeekDeltaPercent),
-              tone: getTrendTone(snapshot.newThisWeekDeltaPercent),
-            },
-            caption:
-              snapshot.previousImportNewCount !== null
-                ? `База сравнения: ${snapshot.previousImportNewCount.toLocaleString("ru-RU")} новых`
-                : "База сравнения: н/д",
+            label: "Новые за неделю",
+            value: `+${snapshot.newThisWeekCount.toLocaleString("ru-RU")}`,
+            help: "Добавлено за последние 7 дней.",
           },
           {
-            label: "Новых на 1 источник",
-            value: newPerLessor.toLocaleString("ru-RU", { maximumFractionDigits: 0 }),
-            help: "Средний недельный приток.",
+            label: "Активные лизингодатели",
+            value: snapshot.tenantCount.toLocaleString("ru-RU"),
+            help: "Источники стока в каталоге.",
             caption: snapshot.tenantLabels.join(", "),
           },
         ],
       },
       {
         id: "quality",
-        title: "Разбор покрытия",
-        subtitle: "Качество контента и зона доработки",
+        title: "Покрытие контента",
+        subtitle: "Готовность карточек к просмотру",
         metrics: [
           {
             label: "Карточки с превью",
             value: snapshot.offersWithPreview.toLocaleString("ru-RU"),
-            help: "Готовы к просмотру.",
+            help: "С фото превью.",
             accent: "success",
           },
           {
             label: "Карточки без превью",
             value: snapshot.noPreviewOffers.toLocaleString("ru-RU"),
-            help: "Кандидаты на обогащение.",
-            caption: `${((snapshot.noPreviewOffers / Math.max(1, snapshot.totalOffers)) * 100).toFixed(1)}% от каталога`,
+            help: "Без фото превью.",
           },
           {
             label: `До цели ${PHOTO_COVERAGE_GOAL_PERCENT}%`,
@@ -761,7 +725,7 @@ export function AdminHighlightsPage() {
               cardsToCoverageTarget > 0
                 ? cardsToCoverageTarget.toLocaleString("ru-RU")
                 : "0",
-            help: "Нужно добавить превью.",
+            help: "Нужно добавить превью до цели.",
             caption:
               snapshot.coverageToGoalPercent > 0
                 ? `${snapshot.coverageToGoalPercent.toFixed(1)} п.п. до целевого уровня`
@@ -783,50 +747,6 @@ export function AdminHighlightsPage() {
       detail: `${point.label}: +${point.stockCount.toLocaleString("ru-RU")} позиций`,
     }));
   }, [snapshot]);
-
-  const summaryText = useMemo(() => {
-    const lines: string[] = [];
-    lines.push("ReActiv — Сводка");
-    lines.push(`Дата: ${new Date().toLocaleDateString("ru-RU")}`);
-    lines.push(`Статус: ${productStatus.label}`);
-    lines.push("");
-
-    if (snapshot) {
-      lines.push("Кратко:");
-      heroTldr.forEach((line) => lines.push(`- ${line}`));
-      lines.push("");
-
-      lines.push("Ключевые метрики:");
-      lines.push(`- Позиции в каталоге: ${snapshot.totalOffers.toLocaleString("ru-RU")}`);
-      lines.push(`- Позиции с превью: ${snapshot.offersWithPreview.toLocaleString("ru-RU")}`);
-      lines.push(`- Покрытие превью: ${snapshot.photoCoveragePercent.toFixed(1)}%`);
-      lines.push(`- Новые за неделю: +${snapshot.newThisWeekCount.toLocaleString("ru-RU")}`);
-      lines.push(`- Активные лизингодатели: ${snapshot.tenantCount}`);
-    }
-
-    lines.push("Понедельные итоги:");
-    WEEKLY_HIGHLIGHTS.forEach((week) => {
-      lines.push(`${week.period} — ${week.title}`);
-      week.points.forEach((point) => {
-        lines.push(`- ${point}`);
-      });
-    });
-
-    return lines.join("\n");
-  }, [heroTldr, productStatus.label, snapshot]);
-
-  async function handleCopySummary(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(summaryText);
-      setCopyStatus("success");
-    } catch {
-      setCopyStatus("error");
-    }
-
-    window.setTimeout(() => {
-      setCopyStatus("idle");
-    }, 1800);
-  }
 
   return (
     <section className="highlights-page">
@@ -864,11 +784,7 @@ export function AdminHighlightsPage() {
             <article className="highlights-snapshot-card">
               <span>Новые за неделю</span>
               <strong>{snapshot ? `+${snapshot.newThisWeekCount.toLocaleString("ru-RU")}` : "-"}</strong>
-              <p>
-                {snapshot
-                  ? `к прошлому циклу ${formatSignedPercent(snapshot.newThisWeekDeltaPercent)}`
-                  : "сравнение: н/д"}
-              </p>
+              <p>за последние 7 дней</p>
             </article>
             <article className="highlights-snapshot-card">
               <span>Лизингодатели</span>
@@ -880,9 +796,6 @@ export function AdminHighlightsPage() {
               <strong>{snapshot ? `${snapshot.photoCoveragePercent.toFixed(1)}%` : "-"}</strong>
               <p>{`цель: ${PHOTO_COVERAGE_GOAL_PERCENT}%`}</p>
             </article>
-            <button type="button" className="secondary-button highlights-copy-button" onClick={() => void handleCopySummary()}>
-              {copyStatus === "success" ? "Скопировано" : copyStatus === "error" ? "Ошибка копирования" : "Скопировать сводку"}
-            </button>
           </aside>
         </div>
       </div>
