@@ -1586,6 +1586,76 @@ a {
   font-size: 10px;
 }
 
+.highlights-waterfall__connector {
+  stroke: rgba(57, 91, 174, 0.38);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 5 4;
+}
+
+.highlights-waterfall__bar {
+  fill: #5f86d8;
+  stroke: rgba(31, 70, 145, 0.12);
+  stroke-width: 1;
+}
+
+.highlights-waterfall__bar.is-total {
+  fill: #3858ba;
+  stroke: rgba(31, 64, 128, 0.2);
+  stroke-width: 1.2;
+  filter: drop-shadow(0 4px 10px rgba(47, 75, 154, 0.2));
+}
+
+.highlights-waterfall__delta-label {
+  fill: #193a6a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.highlights-waterfall__total-label {
+  fill: #122d58;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.highlights-waterfall__legend {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+.highlights-waterfall__legend-item {
+  border: 1px solid rgba(15, 76, 129, 0.15);
+  border-radius: 10px;
+  background: #f7faff;
+  padding: 7px 9px;
+  display: grid;
+  gap: 2px;
+}
+
+.highlights-waterfall__legend-item span {
+  font-size: 11px;
+  color: #6a7c94;
+  font-weight: 600;
+}
+
+.highlights-waterfall__legend-item strong {
+  font-size: 14px;
+  color: #173d75;
+  line-height: 1.2;
+}
+
+.highlights-waterfall__legend-item small {
+  font-size: 11px;
+  color: #8091a8;
+}
+
+.highlights-waterfall__legend-item.is-total {
+  background: #eff4ff;
+  border-color: rgba(30, 74, 153, 0.25);
+}
+
 .highlights-chart-card__legend {
   margin-top: 2px;
   display: flex;

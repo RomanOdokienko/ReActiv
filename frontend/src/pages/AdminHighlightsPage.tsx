@@ -227,13 +227,6 @@ function formatAxisValue(value: number): string {
   return value.toLocaleString("ru-RU");
 }
 
-function truncateText(value: string, maxLength: number): string {
-  if (value.length <= maxLength) {
-    return value;
-  }
-  return `${value.slice(0, maxLength - 1)}…`;
-}
-
 function getDeltaPercent(current: number, previous: number | null): number | null {
   if (previous === null || previous <= 0) {
     return null;
@@ -299,271 +292,104 @@ interface InvestorSimpleLessorGrowthProps {
   points: GrowthChartPoint[];
 }
 
-function buildSvgPath(points: Array<{ x: number; y: number }>): string {
-  if (points.length === 0) {
-    return "";
-  }
-
-  return points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
-    .join(" ");
-}
-
 function InvestorGrowthChart({
   title,
   subtitle,
   points,
 }: InvestorGrowthChartProps) {
-  const left = 44;
-  const right = 14;
+  const left = 52;
+  const right = 18;
   const top = 24;
-  const bottom = 52;
-  const minStepSpacing = 96;
+  const bottom = 58;
+  const categoriesCount = points.length + 1;
+  const minCategorySpacing = 112;
   const width = Math.max(
-    660,
-    left + right + Math.max(1, points.length - 1) * minStepSpacing,
+    700,
+    left + right + Math.max(1, categoriesCount - 1) * minCategorySpacing,
   );
-  const height = 270;
+  const height = 300;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
-  const denseLabels = points.length >= 7;
-  const maxPointValue = useMemo(
-    () => Math.max(1, ...points.map((point) => point.value)),
+  const denseXLabels = categoriesCount >= 8;
+
+  const contributions = useMemo(
+    () =>
+      points.map((point, index) => {
+        const previousValue = index === 0 ? 0 : Math.max(0, points[index - 1].value);
+        const currentValue = Math.max(0, point.value);
+        const contribution = Math.max(0, currentValue - previousValue);
+        return {
+          ...point,
+          previousValue,
+          currentValue,
+          contribution,
+        };
+      }),
     [points],
   );
+
+  const totalValue = contributions[contributions.length - 1]?.currentValue ?? 0;
   const { axisMax: yAxisMax, ticks: yTickValues } = useMemo(
-    () => buildYAxisTicks(maxPointValue, 5),
-    [maxPointValue],
+    () => buildYAxisTicks(Math.max(1, totalValue), 5),
+    [totalValue],
   );
-  const chartPoints = useMemo(
+
+  const valueToY = (value: number): number =>
+    top + plotHeight - (Math.min(Math.max(0, value), yAxisMax) / yAxisMax) * plotHeight;
+
+  const xCenters = useMemo(
     () =>
-      points.map((item, index) => {
-        const ratioX = points.length > 1 ? index / (points.length - 1) : 0;
-        const x = left + ratioX * plotWidth;
-        const y =
-          top + plotHeight - (Math.min(item.value, yAxisMax) / yAxisMax) * plotHeight;
-        return { ...item, x, y };
-      }),
-    [left, plotHeight, plotWidth, points, top, yAxisMax],
+      Array.from({ length: categoriesCount }, (_, index) =>
+        categoriesCount > 1
+          ? left + (index / (categoriesCount - 1)) * plotWidth
+          : left + plotWidth / 2,
+      ),
+    [categoriesCount, left, plotWidth],
   );
-  const valueLabelLayouts = useMemo(() => {
-    type ValueLabelAnchor = "start" | "middle" | "end";
-    interface ValueLabelLayout {
-      x: number;
-      y: number;
-      anchor: ValueLabelAnchor;
-      width: number;
-      height: number;
-    }
 
-    const labelHeight = 12;
-    const axisSafeLeft = left + 12;
-    const safeRight = width - right - 12;
-    const minGridGap = 12;
-    const minPointGap = 14;
-    const topBound = top + labelHeight + 2;
-    const bottomBound = top + plotHeight - 8;
-    const gridYs = yTickValues.map(
-      (value) => top + plotHeight - (value / yAxisMax) * plotHeight,
-    );
+  const barWidth = Math.max(44, Math.min(86, plotWidth / Math.max(3, categoriesCount * 1.45)));
+  const waterfallBars = useMemo(
+    () =>
+      contributions.map((item, index) => {
+        const yStart = valueToY(item.previousValue);
+        const yEnd = valueToY(item.currentValue);
+        const topY = Math.min(yStart, yEnd);
+        const barHeight = Math.max(2, Math.abs(yEnd - yStart));
+        return {
+          ...item,
+          index,
+          centerX: xCenters[index],
+          x: xCenters[index] - barWidth / 2,
+          topY,
+          barHeight,
+          opacity: Math.max(0.5, 0.94 - index * 0.09),
+        };
+      }),
+    [barWidth, contributions, xCenters],
+  );
 
-    const getLabelEdges = (
-      centerX: number,
-      anchor: ValueLabelAnchor,
-      textWidth: number,
-    ): { leftEdge: number; rightEdge: number } => {
-      if (anchor === "start") {
-        return { leftEdge: centerX, rightEdge: centerX + textWidth };
-      }
-      if (anchor === "end") {
-        return { leftEdge: centerX - textWidth, rightEdge: centerX };
-      }
-      return {
-        leftEdge: centerX - textWidth / 2,
-        rightEdge: centerX + textWidth / 2,
-      };
-    };
+  const connectorLines = useMemo(
+    () =>
+      waterfallBars.slice(0, -1).map((bar, index) => ({
+        x1: bar.x + barWidth,
+        x2: xCenters[index + 1] - barWidth / 2,
+        y: valueToY(bar.currentValue),
+      })),
+    [barWidth, waterfallBars, xCenters],
+  );
 
-    const clampXToPlot = (
-      valueX: number,
-      anchor: ValueLabelAnchor,
-      textWidth: number,
-    ): number => {
-      let x = valueX;
-      if (anchor === "start") {
-        x = Math.max(axisSafeLeft, Math.min(x, safeRight - textWidth));
-        return x;
-      }
-
-      if (anchor === "end") {
-        x = Math.min(safeRight, Math.max(x, axisSafeLeft + textWidth));
-        return x;
-      }
-
-      const minCenter = axisSafeLeft + textWidth / 2;
-      const maxCenter = safeRight - textWidth / 2;
-      x = Math.max(minCenter, Math.min(x, maxCenter));
-      return x;
-    };
-
-    const nudgeAwayFromGrid = (sourceY: number): number => {
-      let y = sourceY;
-      gridYs.forEach((gridY) => {
-        const distance = Math.abs(y - gridY);
-        if (distance < minGridGap) {
-          const moveUp = y <= gridY;
-          y = gridY + (moveUp ? -1 : 1) * (minGridGap + 2);
-        }
-      });
-      return y;
-    };
-
-    const clampYToSafeZone = (
-      sourceY: number,
-      pointY: number,
-      pointRadius: number,
-      preferAbovePoint: boolean,
-    ): number => {
-      const maxAbovePointY = pointY - (pointRadius + minPointGap);
-      let y = Math.min(sourceY, maxAbovePointY);
-      y = Math.min(bottomBound, Math.max(topBound, y));
-
-      if (preferAbovePoint && maxAbovePointY < topBound) {
-        y = Math.min(
-          bottomBound,
-          Math.max(topBound, pointY + pointRadius + labelHeight + 4),
-        );
-      }
-
-      return y;
-    };
-
-    const layouts: ValueLabelLayout[] = chartPoints.map((point, index) => {
-      const isFirst = index === 0;
-      const isLast = index === chartPoints.length - 1;
-      const pointRadius = isLast ? 8.2 : 6.3;
-      const labelText = formatCompactK(point.value);
-      const textWidth = Math.max(34, labelText.length * 7);
-      let anchor: ValueLabelAnchor = "middle";
-      let x = point.x;
-
-      if (isFirst) {
-        anchor = "start";
-        x += 14;
-      } else if (isLast) {
-        anchor = "end";
-        x -= 6;
-      }
-
-      x = clampXToPlot(x, anchor, textWidth);
-
-      let y = point.y - (pointRadius + 16);
-      y = nudgeAwayFromGrid(y);
-      y = clampYToSafeZone(y, point.y, pointRadius, true);
-      y = nudgeAwayFromGrid(y);
-      y = clampYToSafeZone(y, point.y, pointRadius, true);
-
-      return {
-        x,
-        y,
-        anchor,
-        width: textWidth,
-        height: labelHeight,
-      };
-    });
-
-    for (let index = 1; index < layouts.length; index += 1) {
-      const current = layouts[index];
-      const previous = layouts[index - 1];
-      const currentPoint = chartPoints[index];
-      const isCurrentLast = index === chartPoints.length - 1;
-      const currentPointRadius = isCurrentLast ? 8.2 : 6.3;
-
-      const previousEdges = getLabelEdges(previous.x, previous.anchor, previous.width);
-      const currentEdges = getLabelEdges(current.x, current.anchor, current.width);
-      const horizontalOverlap =
-        currentEdges.leftEdge <= previousEdges.rightEdge + 6 &&
-        previousEdges.leftEdge <= currentEdges.rightEdge + 6;
-      const verticalConflict = Math.abs(current.y - previous.y) < current.height + 3;
-
-      if (horizontalOverlap && verticalConflict) {
-        let movedY = previous.y - (current.height + 8);
-        movedY = nudgeAwayFromGrid(movedY);
-        movedY = clampYToSafeZone(movedY, currentPoint.y, currentPointRadius, true);
-
-        if (movedY <= topBound + 1) {
-          movedY = Math.min(
-            bottomBound,
-            Math.max(
-              topBound,
-              previous.y + current.height + currentPointRadius + minPointGap,
-            ),
-          );
-          movedY = nudgeAwayFromGrid(movedY);
-          movedY = clampYToSafeZone(movedY, currentPoint.y, currentPointRadius, false);
-        }
-
-        current.y = movedY;
-      }
-    }
-
-    return layouts;
-  }, [chartPoints, left, plotHeight, right, top, width, yAxisMax, yTickValues]);
-
-  const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    setActivePointIndex(null);
-  }, [chartPoints.length]);
-
-  const activePoint =
-    activePointIndex === null ? null : (chartPoints[activePointIndex] ?? null);
-  const linePath = buildSvgPath(chartPoints);
-  const tooltipWidth = 244;
-  const tooltipHeight = 62;
-  const tooltipSafePadding = 12;
-  const tooltipGap = 14;
-  const tooltipLayout = useMemo(() => {
-    if (!activePoint || activePointIndex === null) {
-      return null;
-    }
-
-    const isFirst = activePointIndex === 0;
-    const isLast = activePointIndex === chartPoints.length - 1;
-    let x = activePoint.x - tooltipWidth / 2;
-    if (isLast) {
-      x = activePoint.x - tooltipWidth - tooltipGap;
-    } else if (isFirst) {
-      x = activePoint.x + tooltipGap;
-    }
-
-    x = Math.max(
-      tooltipSafePadding,
-      Math.min(x, width - tooltipSafePadding - tooltipWidth),
-    );
-
-    const maxTooltipY = top + plotHeight - tooltipHeight - 4;
-    let y = activePoint.y - (tooltipHeight + tooltipGap);
-    if (y < tooltipSafePadding) {
-      y = Math.min(maxTooltipY, activePoint.y + tooltipGap);
-    }
-    y = Math.max(tooltipSafePadding, Math.min(y, maxTooltipY));
-
-    return { x, y };
-  }, [
-    activePoint,
-    activePointIndex,
-    chartPoints.length,
-    plotHeight,
-    right,
-    top,
-    tooltipGap,
-    tooltipHeight,
-    tooltipSafePadding,
-    tooltipWidth,
-    width,
-  ]);
-  const tooltipDetail = activePoint ? truncateText(activePoint.detail, 44) : "";
+  const totalCenterX = xCenters[categoriesCount - 1] ?? left + plotWidth;
+  const totalTopY = valueToY(totalValue);
+  const totalBarHeight = Math.max(2, top + plotHeight - totalTopY);
+  const legendItems = useMemo(
+    () =>
+      waterfallBars.map((bar) => ({
+        stepLabel: bar.stepLabel,
+        contribution: bar.contribution,
+        sharePercent: totalValue > 0 ? (bar.contribution / totalValue) * 100 : 0,
+      })),
+    [totalValue, waterfallBars],
+  );
 
   return (
     <article className="highlights-chart-card">
@@ -578,12 +404,11 @@ function InvestorGrowthChart({
           role="img"
           aria-label={title}
           style={{ minWidth: "100%", width, height: "auto" }}
-          onMouseLeave={() => setActivePointIndex(null)}
         >
           {yTickValues.map((value) => {
-            const y = top + plotHeight - (value / yAxisMax) * plotHeight;
+            const y = valueToY(value);
             return (
-              <g key={`y-grid-${value}`}>
+              <g key={`waterfall-grid-${value}`}>
                 <line
                   x1={left}
                   y1={y}
@@ -592,7 +417,7 @@ function InvestorGrowthChart({
                   className="highlights-chart-card__grid-line"
                 />
                 <text
-                  x={left - 8}
+                  x={left - 10}
                   y={y + 4}
                   textAnchor="end"
                   className="highlights-chart-card__axis-label"
@@ -603,117 +428,95 @@ function InvestorGrowthChart({
             );
           })}
 
-          {linePath ? (
-            <path d={linePath} className="highlights-chart-card__line" />
-          ) : null}
-
-          {activePoint ? (
+          {connectorLines.map((line, index) => (
             <line
-              x1={activePoint.x}
-              y1={top}
-              x2={activePoint.x}
-              y2={top + plotHeight}
-              className="highlights-chart-card__guide-line"
+              key={`waterfall-connector-${index}`}
+              x1={line.x1}
+              y1={line.y}
+              x2={line.x2}
+              y2={line.y}
+              className="highlights-waterfall__connector"
             />
-          ) : null}
+          ))}
 
-          {chartPoints.map((point, index) => {
-            const isLast = index === chartPoints.length - 1;
-            const isActive = index === activePointIndex;
-            const valueLabelLayout = valueLabelLayouts[index];
-            return (
-            <g
-              key={`point-${point.stepLabel}`}
-              className={`highlights-chart-card__point-group${
-                isLast ? " is-last" : ""
-              }${isActive ? " is-active" : ""}`}
-              onMouseEnter={() => setActivePointIndex(index)}
-              onFocus={() => setActivePointIndex(index)}
-            >
-              <title>{point.detail}</title>
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r={isLast ? 8.2 : 6.3}
-                className="highlights-chart-card__point"
+          {waterfallBars.map((bar, index) => (
+            <g key={`waterfall-bar-${bar.stepLabel}`}>
+              <rect
+                x={bar.x}
+                y={bar.topY}
+                width={barWidth}
+                height={bar.barHeight}
+                rx={5}
+                ry={5}
+                className="highlights-waterfall__bar"
+                style={{ opacity: bar.opacity }}
               />
               <text
-                x={valueLabelLayout?.x ?? point.x}
-                y={valueLabelLayout?.y ?? point.y - 14}
-                textAnchor={valueLabelLayout?.anchor ?? "middle"}
-                className="highlights-chart-card__value-label"
+                x={bar.centerX}
+                y={bar.topY - 9}
+                textAnchor="middle"
+                className="highlights-waterfall__delta-label"
               >
-                {formatCompactK(point.value)}
+                {`${index === 0 ? "" : "+"}${formatCompactK(bar.contribution)}`}
               </text>
               <text
-                x={point.x}
-                y={height - (denseLabels && index % 2 === 1 ? 14 : 24)}
+                x={bar.centerX}
+                y={height - 16}
                 textAnchor="middle"
                 className={`highlights-chart-card__x-label${
-                  denseLabels ? " is-dense" : ""
+                  denseXLabels ? " is-dense" : ""
                 }`}
               >
-                {point.stepLabel}
+                {bar.stepLabel}
               </text>
             </g>
-          );
-          })}
+          ))}
 
-          {activePoint && tooltipLayout ? (
-            <g className="highlights-chart-card__tooltip">
-              <rect
-                x={tooltipLayout.x}
-                y={tooltipLayout.y}
-                width={tooltipWidth}
-                height={tooltipHeight}
-                rx={10}
-                ry={10}
-                className="highlights-chart-card__tooltip-bg"
-              />
-              <text
-                x={tooltipLayout.x + 10}
-                y={tooltipLayout.y + 18}
-                className="highlights-chart-card__tooltip-title"
-              >
-                {activePoint.stepLabel}
-              </text>
-              <text
-                x={tooltipLayout.x + 10}
-                y={tooltipLayout.y + 38}
-                className="highlights-chart-card__tooltip-value"
-              >
-                {activePoint.value.toLocaleString("ru-RU")} позиций
-              </text>
-              <text
-                x={tooltipLayout.x + 10}
-                y={tooltipLayout.y + 53}
-                className="highlights-chart-card__tooltip-detail"
-              >
-                {tooltipDetail}
-              </text>
-            </g>
-          ) : null}
+          <g>
+            <rect
+              x={totalCenterX - barWidth / 2}
+              y={totalTopY}
+              width={barWidth}
+              height={totalBarHeight}
+              rx={6}
+              ry={6}
+              className="highlights-waterfall__bar is-total"
+            />
+            <text
+              x={totalCenterX}
+              y={totalTopY - 10}
+              textAnchor="middle"
+              className="highlights-waterfall__total-label"
+            >
+              {formatCompactK(totalValue)}
+            </text>
+            <text
+              x={totalCenterX}
+              y={height - 16}
+              textAnchor="middle"
+              className={`highlights-chart-card__x-label${
+                denseXLabels ? " is-dense" : ""
+              }`}
+            >
+              ИТОГО
+            </text>
+          </g>
         </svg>
       </div>
 
-      <div className="highlights-chart-card__legend" aria-label="Этапы роста">
-        {points.map((point, index) => (
-          <button
-            type="button"
-            key={`legend-${point.stepLabel}`}
-            className={`highlights-chart-card__legend-item${
-              index === activePointIndex ? " is-active" : ""
-            }`}
-            title={point.detail}
-            onMouseEnter={() => setActivePointIndex(index)}
-            onMouseLeave={() => setActivePointIndex(null)}
-            onFocus={() => setActivePointIndex(index)}
-            onBlur={() => setActivePointIndex(null)}
-          >
-            <span className="highlights-chart-card__legend-dot" aria-hidden="true" />
-            <em>{point.stepLabel}</em>
-          </button>
+      <div className="highlights-waterfall__legend" aria-label="Вклад лизингодателей">
+        {legendItems.map((item) => (
+          <div key={`contribution-${item.stepLabel}`} className="highlights-waterfall__legend-item">
+            <span>{item.stepLabel}</span>
+            <strong>{`+${formatCompactK(item.contribution)}`}</strong>
+            <small>{`${item.sharePercent.toFixed(1)}%`}</small>
+          </div>
         ))}
+        <div className="highlights-waterfall__legend-item is-total">
+          <span>ИТОГО</span>
+          <strong>{totalValue.toLocaleString("ru-RU")}</strong>
+          <small>100%</small>
+        </div>
       </div>
     </article>
   );
@@ -1186,8 +989,12 @@ export function AdminHighlightsPage() {
         ) : (
           <div className="highlights-charts-stack">
             <InvestorGrowthChart
-              title="Кумулятивный рост стока"
-              subtitle="Этапы: ГПБ -> РЕСО -> АЛЬФА -> СОВКОМ (по доступным данным)"
+              title="Вклад лизингодателей в текущий сток"
+              subtitle={
+                snapshot
+                  ? `Как сформирован текущий объём каталога (${snapshot.totalOffers.toLocaleString("ru-RU")} позиций)`
+                  : "Как сформирован текущий объём каталога"
+              }
               points={stockGrowthChartPoints}
             />
             <InvestorSimpleLessorGrowth
