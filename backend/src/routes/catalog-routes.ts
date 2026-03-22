@@ -6,6 +6,7 @@ import { getLatestSuccessfulImportBatch } from "../repositories/import-batch-rep
 import {
   findCatalogItemById,
   getCatalogFiltersMetadata,
+  getCatalogStructureSummaryMetrics,
   getCatalogStockValueRub,
   searchCatalogItems,
 } from "../repositories/catalog-repository";
@@ -76,11 +77,16 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     try {
       const latestImportBatch = getLatestSuccessfulImportBatch();
       const stockValueRub = getCatalogStockValueRub();
+      const structureMetrics = getCatalogStructureSummaryMetrics();
       const etag = buildWeakEtag(
         "catalog-summary",
         latestImportBatch?.id ?? "none",
         latestImportBatch?.added_rows ?? 0,
         stockValueRub,
+        structureMetrics.avgPriceRub ?? "na",
+        structureMetrics.medianPriceRub ?? "na",
+        JSON.stringify(structureMetrics.avgPriceByVehicleType),
+        JSON.stringify(structureMetrics.vehicleTypeShare),
       );
 
       if (_request.headers["if-none-match"] === etag) {
@@ -94,6 +100,10 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
       return reply.code(200).send({
         newThisWeekCount: latestImportBatch?.added_rows ?? 0,
         stockValueRub,
+        avgPriceRub: structureMetrics.avgPriceRub,
+        medianPriceRub: structureMetrics.medianPriceRub,
+        avgPriceByVehicleType: structureMetrics.avgPriceByVehicleType,
+        vehicleTypeShare: structureMetrics.vehicleTypeShare,
       });
     } catch {
       return reply.code(500).send({ message: "Failed to fetch catalog summary" });

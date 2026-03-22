@@ -121,6 +121,25 @@ export interface CatalogListItem {
   previewUrl: string | null;
 }
 
+export interface CatalogSummaryAvgByVehicleTypeItem {
+  vehicleType: string;
+  avgPriceRub: number;
+  count: number;
+}
+
+export interface CatalogSummaryVehicleTypeShareItem {
+  vehicleType: string;
+  count: number;
+  sharePercent: number;
+}
+
+export interface CatalogStructureSummaryMetrics {
+  avgPriceRub: number | null;
+  medianPriceRub: number | null;
+  avgPriceByVehicleType: CatalogSummaryAvgByVehicleTypeItem[];
+  vehicleTypeShare: CatalogSummaryVehicleTypeShareItem[];
+}
+
 function mapDbBoolean(value: number | null): boolean | null {
   if (value === 1) {
     return true;
@@ -1192,6 +1211,137 @@ export function getCatalogStockValueRub(): number {
   }
 
   return row.total;
+}
+
+export function getCatalogStructureSummaryMetrics(): CatalogStructureSummaryMetrics {
+  const averageRow = db
+    .prepare(
+      `
+        SELECT AVG(price) AS avgPriceRub
+        FROM vehicle_offers
+        WHERE price IS NOT NULL
+          AND price > 0
+      `,
+    )
+    .get() as { avgPriceRub: number | null };
+
+  const medianRow = db
+    .prepare(
+      `
+        SELECT AVG(price) AS medianPriceRub
+        FROM (
+          SELECT price
+          FROM vehicle_offers
+          WHERE price IS NOT NULL
+            AND price > 0
+          ORDER BY price
+          LIMIT (
+            2 - (
+              SELECT COUNT(*)
+              FROM vehicle_offers
+              WHERE price IS NOT NULL
+                AND price > 0
+            ) % 2
+          )
+          OFFSET (
+            SELECT CAST((COUNT(*) - 1) / 2 AS INTEGER)
+            FROM vehicle_offers
+            WHERE price IS NOT NULL
+              AND price > 0
+          )
+        )
+      `,
+    )
+    .get() as { medianPriceRub: number | null };
+
+  const avgByVehicleTypeRows = db
+    .prepare(
+      `
+        SELECT
+          CASE
+            WHEN TRIM(COALESCE(vehicle_type, '')) = '' THEN 'Без типа'
+            ELSE vehicle_type
+          END AS vehicleType,
+          COUNT(*) AS count,
+          AVG(price) AS avgPriceRub
+        FROM vehicle_offers
+        WHERE price IS NOT NULL
+          AND price > 0
+        GROUP BY
+          CASE
+            WHEN TRIM(COALESCE(vehicle_type, '')) = '' THEN 'Без типа'
+            ELSE vehicle_type
+          END
+        ORDER BY avgPriceRub DESC
+        LIMIT 4
+      `,
+    )
+    .all() as Array<{
+    vehicleType: string;
+    count: number;
+    avgPriceRub: number | null;
+  }>;
+
+  const vehicleTypeShareRows = db
+    .prepare(
+      `
+        WITH typed_offers AS (
+          SELECT
+            CASE
+              WHEN TRIM(COALESCE(vehicle_type, '')) = '' THEN 'Без типа'
+              ELSE vehicle_type
+            END AS vehicleType
+          FROM vehicle_offers
+        ),
+        totals AS (
+          SELECT COUNT(*) AS totalCount
+          FROM typed_offers
+        )
+        SELECT
+          typed_offers.vehicleType AS vehicleType,
+          COUNT(*) AS count,
+          CASE
+            WHEN totals.totalCount > 0
+              THEN COUNT(*) * 100.0 / totals.totalCount
+            ELSE 0
+          END AS sharePercent
+        FROM typed_offers
+        CROSS JOIN totals
+        GROUP BY typed_offers.vehicleType
+        ORDER BY count DESC, typed_offers.vehicleType ASC
+      `,
+    )
+    .all() as Array<{
+    vehicleType: string;
+    count: number;
+    sharePercent: number;
+  }>;
+
+  return {
+    avgPriceRub:
+      averageRow.avgPriceRub !== null && Number.isFinite(averageRow.avgPriceRub)
+        ? averageRow.avgPriceRub
+        : null,
+    medianPriceRub:
+      medianRow.medianPriceRub !== null && Number.isFinite(medianRow.medianPriceRub)
+        ? medianRow.medianPriceRub
+        : null,
+    avgPriceByVehicleType: avgByVehicleTypeRows
+      .filter(
+        (item): item is { vehicleType: string; count: number; avgPriceRub: number } =>
+          item.avgPriceRub !== null && Number.isFinite(item.avgPriceRub),
+      )
+      .map((item) => ({
+        vehicleType: item.vehicleType,
+        count: item.count,
+        avgPriceRub: item.avgPriceRub,
+      })),
+    vehicleTypeShare: vehicleTypeShareRows.map((item) => ({
+      vehicleType: item.vehicleType,
+      count: item.count,
+      sharePercent: Number.isFinite(item.sharePercent) ? item.sharePercent : 0,
+    })),
+  };
 }
 
 export function getCatalogFiltersMetadata(): Record<string, unknown> {

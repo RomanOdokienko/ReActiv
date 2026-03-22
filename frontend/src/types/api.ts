@@ -177,6 +177,18 @@ export interface FavoriteMutationResponse {
 export interface CatalogSummaryResponse {
   newThisWeekCount: number;
   stockValueRub?: number;
+  avgPriceRub?: number | null;
+  medianPriceRub?: number | null;
+  avgPriceByVehicleType?: Array<{
+    vehicleType: string;
+    avgPriceRub: number;
+    count: number;
+  }>;
+  vehicleTypeShare?: Array<{
+    vehicleType: string;
+    count: number;
+    sharePercent: number;
+  }>;
 }
 
 export interface CatalogFiltersResponse {

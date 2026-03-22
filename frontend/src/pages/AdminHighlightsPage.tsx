@@ -5,7 +5,10 @@ import {
   getCatalogSummary,
   getImportBatches,
 } from "../api/client";
-import type { CatalogListItem, ImportTenantId } from "../types/api";
+import type {
+  CatalogSummaryResponse,
+  ImportTenantId,
+} from "../types/api";
 
 interface HighlightsKpiSnapshot {
   totalOffers: number;
@@ -53,8 +56,6 @@ interface HighlightsStructureSnapshot {
 }
 
 const TENANT_GROWTH_ORDER: ImportTenantId[] = ["gpb", "reso", "alpha", "sovcombank"];
-const STRUCTURE_FETCH_PAGE_SIZE = 100;
-const STRUCTURE_FETCH_CONCURRENCY = 6;
 const STRUCTURE_CATEGORY_LIMIT = 4;
 
 const STRUCTURE_SHARE_COLORS = [
@@ -212,148 +213,54 @@ function formatPercent(value: number): string {
   })}%`;
 }
 
-function normalizeVehicleType(value: string | null | undefined): string {
-  const normalized = (value ?? "").trim();
-  return normalized.length > 0 ? normalized : "Без типа";
-}
-
-function calculateMedian(values: number[]): number | null {
-  if (values.length === 0) {
-    return null;
-  }
-
-  const sorted = [...values].sort((left, right) => left - right);
-  const middleIndex = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 0) {
-    return (sorted[middleIndex - 1] + sorted[middleIndex]) / 2;
-  }
-  return sorted[middleIndex];
-}
-
-async function loadCatalogItemsForStructure(
-  totalOffers: number,
-  signal: AbortSignal,
-): Promise<CatalogListItem[]> {
-  if (totalOffers <= 0) {
-    return [];
-  }
-
-  const totalPages = Math.ceil(totalOffers / STRUCTURE_FETCH_PAGE_SIZE);
-  const items: CatalogListItem[] = [];
-
-  for (
-    let pageStart = 1;
-    pageStart <= totalPages;
-    pageStart += STRUCTURE_FETCH_CONCURRENCY
-  ) {
-    const pageEnd = Math.min(totalPages, pageStart + STRUCTURE_FETCH_CONCURRENCY - 1);
-    const batchRequests: Array<ReturnType<typeof getCatalogItems>> = [];
-    for (let page = pageStart; page <= pageEnd; page += 1) {
-      batchRequests.push(
-        getCatalogItems(
-          {
-            page,
-            pageSize: STRUCTURE_FETCH_PAGE_SIZE,
-            sortBy: "created_at",
-            sortDir: "desc",
-          },
-          { signal },
-        ),
-      );
-    }
-
-    const batchResults = await Promise.all(batchRequests);
-    batchResults.forEach((result) => {
-      items.push(...result.items);
-    });
-  }
-
-  return items;
-}
-
-function resolveVehicleTypeFromTitle(title: string, knownVehicleTypes: string[]): string {
-  const normalizedTitle = title.trim().toLocaleUpperCase("ru-RU");
-  if (!normalizedTitle) {
-    return "Без типа";
-  }
-
-  for (const vehicleType of knownVehicleTypes) {
-    const normalizedType = vehicleType.trim().toLocaleUpperCase("ru-RU");
-    if (!normalizedType) {
-      continue;
-    }
-    if (normalizedTitle.includes(normalizedType)) {
-      return vehicleType;
-    }
-  }
-
-  return "Без типа";
-}
-
-function buildStructureSnapshot(
-  items: CatalogListItem[],
-  vehicleTypes: string[],
+function buildStructureSnapshotFromSummary(
+  summary: CatalogSummaryResponse,
 ): HighlightsStructureSnapshot {
-  const priceValues = items
-    .map((item) => item.price)
-    .filter((price): price is number => price !== null && Number.isFinite(price) && price > 0);
+  const typeShares = (summary.vehicleTypeShare ?? [])
+    .filter(
+      (item) =>
+        typeof item.vehicleType === "string" &&
+        item.vehicleType.trim().length > 0 &&
+        Number.isFinite(item.count) &&
+        Number.isFinite(item.sharePercent),
+    )
+    .map((item) => ({
+      vehicleType: item.vehicleType.trim(),
+      count: item.count,
+      sharePercent: item.sharePercent,
+    }));
 
-  const averagePriceRub =
-    priceValues.length > 0
-      ? priceValues.reduce((sum, current) => sum + current, 0) / priceValues.length
-      : null;
-  const medianPriceRub = calculateMedian(priceValues);
-
-  const typeMap = new Map<
-    string,
-    { count: number; pricedCount: number; totalPrice: number }
-  >();
-
-  const sortedVehicleTypes = [...vehicleTypes]
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0)
-    .sort((left, right) => right.length - left.length);
-
-  items.forEach((item) => {
-    const resolvedType = normalizeVehicleType(
-      resolveVehicleTypeFromTitle(item.title ?? "", sortedVehicleTypes),
-    );
-    const existing = typeMap.get(resolvedType) ?? {
-      count: 0,
-      pricedCount: 0,
-      totalPrice: 0,
-    };
-    existing.count += 1;
-    if (item.price !== null && Number.isFinite(item.price) && item.price > 0) {
-      existing.pricedCount += 1;
-      existing.totalPrice += item.price;
-    }
-    typeMap.set(resolvedType, existing);
+  const sharePercentByType = new Map<string, number>();
+  typeShares.forEach((item) => {
+    sharePercentByType.set(item.vehicleType, item.sharePercent);
   });
 
-  const totalCount = items.length;
-  const typeShares = Array.from(typeMap.entries())
-    .map(([vehicleType, stats]) => ({
-      vehicleType,
-      count: stats.count,
-      sharePercent: totalCount > 0 ? (stats.count / totalCount) * 100 : 0,
-    }))
-    .sort((left, right) => right.count - left.count);
-
-  const averageByCategory = Array.from(typeMap.entries())
-    .filter(([, stats]) => stats.pricedCount > 0)
-    .map(([vehicleType, stats]) => ({
-      vehicleType,
-      avgPriceRub: stats.totalPrice / stats.pricedCount,
-      count: stats.count,
-      sharePercent: totalCount > 0 ? (stats.count / totalCount) * 100 : 0,
+  const averageByCategory = (summary.avgPriceByVehicleType ?? [])
+    .filter(
+      (item) =>
+        typeof item.vehicleType === "string" &&
+        item.vehicleType.trim().length > 0 &&
+        Number.isFinite(item.avgPriceRub) &&
+        Number.isFinite(item.count),
+    )
+    .map((item) => ({
+      vehicleType: item.vehicleType.trim(),
+      avgPriceRub: item.avgPriceRub,
+      count: item.count,
+      sharePercent: sharePercentByType.get(item.vehicleType.trim()) ?? 0,
     }))
     .sort((left, right) => right.avgPriceRub - left.avgPriceRub)
     .slice(0, STRUCTURE_CATEGORY_LIMIT);
 
   return {
-    averagePriceRub,
-    medianPriceRub,
+    averagePriceRub:
+      typeof summary.avgPriceRub === "number" && Number.isFinite(summary.avgPriceRub)
+        ? summary.avgPriceRub
+        : null,
+    medianPriceRub:
+      typeof summary.medianPriceRub === "number" && Number.isFinite(summary.medianPriceRub)
+        ? summary.medianPriceRub
+        : null,
     averageByCategory,
     typeShares,
   };
@@ -681,19 +588,14 @@ export function AdminHighlightsPage() {
     null,
   );
   const [isLoading, setIsLoading] = useState(true);
-  const [isStructureLoading, setIsStructureLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [structureError, setStructureError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    const abortController = new AbortController();
 
     async function loadSnapshot(): Promise<void> {
       setIsLoading(true);
-      setIsStructureLoading(true);
       setError(null);
-      setStructureError(null);
       setStructureSnapshot(null);
 
       try {
@@ -767,49 +669,9 @@ export function AdminHighlightsPage() {
           latestImportAt,
           tenantGrowthPoints,
         });
-
-        setIsLoading(false);
-
-        try {
-          const structureItems = await loadCatalogItemsForStructure(
-            totalOffers,
-            abortController.signal,
-          );
-          if (!isMounted) {
-            return;
-          }
-
-          setStructureSnapshot(
-            buildStructureSnapshot(structureItems, filtersResult.vehicleType ?? []),
-          );
-        } catch (structureCaughtError) {
-          if (!isMounted) {
-            return;
-          }
-
-          if (
-            structureCaughtError instanceof Error &&
-            structureCaughtError.name === "AbortError"
-          ) {
-            return;
-          }
-
-          if (structureCaughtError instanceof Error) {
-            setStructureError(structureCaughtError.message);
-          } else {
-            setStructureError("Не удалось собрать структуру стока.");
-          }
-        } finally {
-          if (isMounted) {
-            setIsStructureLoading(false);
-          }
-        }
+        setStructureSnapshot(buildStructureSnapshotFromSummary(summaryResult));
       } catch (caughtError) {
         if (!isMounted) {
-          return;
-        }
-
-        if (caughtError instanceof Error && caughtError.name === "AbortError") {
           return;
         }
 
@@ -822,7 +684,6 @@ export function AdminHighlightsPage() {
       } finally {
         if (isMounted) {
           setIsLoading(false);
-          setIsStructureLoading(false);
         }
       }
     }
@@ -831,7 +692,6 @@ export function AdminHighlightsPage() {
 
     return () => {
       isMounted = false;
-      abortController.abort();
     };
   }, []);
 
@@ -928,10 +788,6 @@ export function AdminHighlightsPage() {
           <p>Загрузка метрик...</p>
         ) : error ? (
           <p className="error">{error}</p>
-        ) : isStructureLoading ? (
-          <p>Считаем структуру каталога...</p>
-        ) : structureError ? (
-          <p className="error">{structureError}</p>
         ) : !structureSnapshot ? (
           <p className="empty">Нет данных для отображения.</p>
         ) : (
