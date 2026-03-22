@@ -58,6 +58,8 @@ interface HighlightsStructureSnapshot {
 
 const TENANT_GROWTH_ORDER: ImportTenantId[] = ["gpb", "reso", "alpha", "sovcombank"];
 const STRUCTURE_CATEGORY_LIMIT = 4;
+const STRUCTURE_SHARE_PRIMARY_LIMIT = 4;
+const STRUCTURE_SHARE_OTHER_LABEL = "Прочее";
 
 const STRUCTURE_SHARE_COLORS = [
   "#2f63d3",
@@ -715,6 +717,39 @@ export function AdminHighlightsPage() {
     );
   }, [structureSnapshot]);
 
+  const displayTypeShares = useMemo<StructureTypeShareItem[]>(() => {
+    if (!structureSnapshot || structureSnapshot.typeShares.length === 0) {
+      return [];
+    }
+
+    const sortedShares = [...structureSnapshot.typeShares].sort(
+      (left, right) => right.sharePercent - left.sharePercent,
+    );
+    const primaryShares = sortedShares.slice(0, STRUCTURE_SHARE_PRIMARY_LIMIT);
+    const restShares = sortedShares.slice(STRUCTURE_SHARE_PRIMARY_LIMIT);
+
+    if (restShares.length === 0) {
+      return primaryShares;
+    }
+
+    const otherShare: StructureTypeShareItem = {
+      vehicleType: STRUCTURE_SHARE_OTHER_LABEL,
+      count: restShares.reduce((sum, item) => sum + item.count, 0),
+      sharePercent: restShares.reduce((sum, item) => sum + item.sharePercent, 0),
+    };
+
+    return [...primaryShares, otherShare].sort(
+      (left, right) => right.sharePercent - left.sharePercent,
+    );
+  }, [structureSnapshot]);
+
+  const maxDisplayTypeSharePercent = useMemo(() => {
+    if (displayTypeShares.length === 0) {
+      return 0;
+    }
+    return Math.max(...displayTypeShares.map((item) => item.sharePercent));
+  }, [displayTypeShares]);
+
   const stockGrowthChartPoints = useMemo<GrowthChartPoint[]>(() => {
     if (!snapshot) {
       return [];
@@ -841,7 +876,7 @@ export function AdminHighlightsPage() {
                   <h3>Доля типов техники</h3>
                   <p>Распределение каталога по типам</p>
                 </header>
-                {structureSnapshot.typeShares.length === 0 ? (
+                {displayTypeShares.length === 0 ? (
                   <p className="empty">Типы техники не найдены.</p>
                 ) : (
                   <>
@@ -850,7 +885,7 @@ export function AdminHighlightsPage() {
                       role="img"
                       aria-label="Доля типов техники"
                     >
-                      {structureSnapshot.typeShares.map((item, index) => (
+                      {displayTypeShares.map((item, index) => (
                         <span
                           key={`share-segment-${item.vehicleType}`}
                           style={{
@@ -863,28 +898,42 @@ export function AdminHighlightsPage() {
                       ))}
                     </div>
 
-                    <div className="highlights-share-legend">
-                      {structureSnapshot.typeShares.map((item, index) => (
-                        <div
-                          key={`share-legend-${item.vehicleType}`}
-                          className="highlights-share-legend__item"
-                        >
-                          <span
-                            className="highlights-share-legend__dot"
-                            style={{
-                              backgroundColor:
-                                STRUCTURE_SHARE_COLORS[index % STRUCTURE_SHARE_COLORS.length],
-                            }}
-                          />
-                          <span
-                            className="highlights-share-legend__name"
-                            title={item.vehicleType}
+                    <div className="highlights-share-ranking" role="list">
+                      {displayTypeShares.map((item, index) => {
+                        const widthPercent =
+                          maxDisplayTypeSharePercent > 0
+                            ? (item.sharePercent / maxDisplayTypeSharePercent) * 100
+                            : 0;
+                        const color =
+                          STRUCTURE_SHARE_COLORS[index % STRUCTURE_SHARE_COLORS.length];
+
+                        return (
+                          <div
+                            key={`share-row-${item.vehicleType}`}
+                            className="highlights-share-ranking__row"
+                            role="listitem"
                           >
-                            {item.vehicleType}
-                          </span>
-                          <strong>{formatPercent(item.sharePercent)}</strong>
-                        </div>
-                      ))}
+                            <div className="highlights-share-ranking__topline">
+                              <span
+                                className="highlights-share-ranking__dot"
+                                style={{ backgroundColor: color }}
+                              />
+                              <span className="highlights-share-ranking__name">
+                                {item.vehicleType}
+                              </span>
+                              <strong>{formatPercent(item.sharePercent)}</strong>
+                            </div>
+                            <div className="highlights-share-ranking__bar">
+                              <span
+                                style={{
+                                  width: `${Math.max(4, widthPercent)}%`,
+                                  backgroundColor: color,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </>
                 )}
