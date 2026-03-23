@@ -37,6 +37,11 @@ interface PopularBrand {
   logoSrc: string;
 }
 
+interface FeaturedBrandTarget {
+  name: string;
+  query: string;
+}
+
 const BENEFIT_CARDS: BenefitCard[] = [
   {
     title: "Цена ниже вторичного рынка",
@@ -119,6 +124,19 @@ const POPULAR_BRANDS: PopularBrand[] = [
   { name: "Haval", query: "Haval", logoSrc: "/brands/haval.png" },
 ];
 
+const FEATURED_BRAND_TARGETS: FeaturedBrandTarget[] = [
+  { name: "SITRAK", query: "SITRAK" },
+  { name: "Shacman", query: "Shacman" },
+  { name: "Haval", query: "Haval" },
+  { name: "BMW", query: "BMW" },
+];
+
+const FEATURED_PRICE_MIN_RUB = 1_500_000;
+const FEATURED_PRICE_MAX_RUB = 8_000_000;
+const FEATURED_CANDIDATE_PAGE_SIZE = 8;
+
+const previewLivenessCache = new Map<string, boolean>();
+
 function formatPrice(value: number | null): string {
   if (value === null) {
     return "Цена по запросу";
@@ -149,6 +167,52 @@ function getItemPreviewUrl(item: CatalogListItem): string | null {
   }
 
   return getMediaPreviewImageUrl(item.previewUrl, { width: 360 });
+}
+
+async function isPreviewAlive(previewUrl: string): Promise<boolean> {
+  const cached = previewLivenessCache.get(previewUrl);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const imageUrl = getMediaPreviewImageUrl(previewUrl, { width: 360 });
+  try {
+    const response = await fetch(imageUrl, {
+      method: "HEAD",
+      credentials: "include",
+      cache: "no-store",
+    });
+    const isAlive = response.ok;
+    previewLivenessCache.set(previewUrl, isAlive);
+    return isAlive;
+  } catch {
+    previewLivenessCache.set(previewUrl, false);
+    return false;
+  }
+}
+
+async function pickFeaturedItemByBrand(
+  target: FeaturedBrandTarget,
+): Promise<CatalogListItem | null> {
+  const response = await getCatalogItems({
+    page: 1,
+    pageSize: FEATURED_CANDIDATE_PAGE_SIZE,
+    sortBy: "created_at",
+    sortDir: "desc",
+    brand: target.query,
+    priceMin: FEATURED_PRICE_MIN_RUB,
+    priceMax: FEATURED_PRICE_MAX_RUB,
+    onlyWithPreview: "true",
+  });
+
+  const candidates = response.items.filter((item) => Boolean(item.previewUrl));
+  for (const item of candidates) {
+    if (item.previewUrl && (await isPreviewAlive(item.previewUrl))) {
+      return item;
+    }
+  }
+
+  return null;
 }
 
 function BrandLogo({ brand, src }: { brand: string; src: string }) {
@@ -204,19 +268,18 @@ export function LandingPage() {
       setError(null);
 
       try {
-        const itemsResponse = await getCatalogItems({
-          page: 1,
-          pageSize: 4,
-          sortBy: "created_at",
-          sortDir: "desc",
-        });
+        const featuredByBrand = await Promise.all(
+          FEATURED_BRAND_TARGETS.map((target) => pickFeaturedItemByBrand(target)),
+        );
 
         if (!isMounted) {
           return;
         }
 
         setCatalogState({
-          featuredItems: itemsResponse.items.slice(0, 4),
+          featuredItems: featuredByBrand.filter(
+            (item): item is CatalogListItem => item !== null,
+          ),
         });
       } catch (caughtError) {
         if (!isMounted) {
