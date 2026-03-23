@@ -141,6 +141,11 @@ export interface CatalogStructureSummaryMetrics {
   vehicleTypeShare: CatalogSummaryVehicleTypeShareItem[];
 }
 
+export interface CatalogSitemapItemRow {
+  id: number;
+  createdAt: string;
+}
+
 function mapDbBoolean(value: number | null): boolean | null {
   if (value === 1) {
     return true;
@@ -1283,6 +1288,59 @@ export function findCatalogItemById(id: number): CatalogItem | null {
   }
 
   return mapDbRow(row);
+}
+
+export function countCatalogSitemapItems(): number {
+  const row = db
+    .prepare(
+      `
+        SELECT COUNT(*) AS total
+        FROM vehicle_offers
+      `,
+    )
+    .get() as { total: number };
+
+  return row.total;
+}
+
+export function getCatalogSitemapLastModifiedAt(): string | null {
+  const row = db
+    .prepare(
+      `
+        SELECT MAX(created_at) AS lastCreatedAt
+        FROM vehicle_offers
+      `,
+    )
+    .get() as { lastCreatedAt: string | null };
+
+  return row.lastCreatedAt ?? null;
+}
+
+export function listCatalogSitemapItems(
+  limit: number,
+  offset: number,
+): CatalogSitemapItemRow[] {
+  const safeLimit = Number.isFinite(limit)
+    ? Math.max(1, Math.min(10_000, Math.floor(limit)))
+    : 5000;
+  const safeOffset = Number.isFinite(offset) ? Math.max(0, Math.floor(offset)) : 0;
+
+  const rows = db
+    .prepare(
+      `
+        SELECT id, created_at
+        FROM vehicle_offers
+        ORDER BY id ASC
+        LIMIT ?
+        OFFSET ?
+      `,
+    )
+    .all(safeLimit, safeOffset) as Array<{ id: number; created_at: string }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+  }));
 }
 
 export function getCatalogStockValueRub(): number {

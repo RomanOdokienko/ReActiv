@@ -9,4 +9,5 @@ Disallow: /staff-login-reactiv
 Disallow: /api/
 
 Sitemap: https://reactiv.pro/sitemap.xml
+Sitemap: https://api.reactiv.pro/sitemap.xml
 Host: https://reactiv.pro

@@ -15,6 +15,7 @@ import { registerMediaRoutes } from "./routes/media-routes";
 import { registerPlatformRoutes } from "./routes/platform-routes";
 import { registerShareRoutes } from "./routes/share-routes";
 import { registerFavoriteRoutes } from "./routes/favorite-routes";
+import { registerSitemapRoutes } from "./routes/sitemap-routes";
 import { getPlatformMode } from "./repositories/platform-settings-repository";
 import { authenticateRequest } from "./services/auth-service";
 import { ensureBootstrapAdmin } from "./startup/bootstrap-admin";
@@ -34,6 +35,7 @@ const host = process.env.HOST ?? "0.0.0.0";
 
 const ALWAYS_PUBLIC_PATHS = new Set([
   "/health",
+  "/sitemap.xml",
   "/api/auth/login",
   "/api/platform/mode",
   "/api/public/activity/events",
@@ -43,6 +45,7 @@ const ALWAYS_PUBLIC_PATHS = new Set([
   "/api/admin/alpha-media/bulk-update",
 ]);
 const ALWAYS_PUBLIC_PREFIXES = ["/showcase/"];
+const ALWAYS_PUBLIC_DYNAMIC_PREFIXES = ["/sitemaps/"];
 
 const OPEN_MODE_PUBLIC_PREFIXES = [
   "/api/catalog/summary",
@@ -91,6 +94,9 @@ async function startServer(): Promise<void> {
     if (ALWAYS_PUBLIC_PREFIXES.some((prefix) => requestPath.startsWith(prefix))) {
       return;
     }
+    if (ALWAYS_PUBLIC_DYNAMIC_PREFIXES.some((prefix) => requestPath.startsWith(prefix))) {
+      return;
+    }
 
     if (isOpenModePublicPath(requestPath) && getPlatformMode() === "open") {
       return;
@@ -109,6 +115,7 @@ async function startServer(): Promise<void> {
   await registerFavoriteRoutes(app);
   await registerMediaRoutes(app);
   await registerShareRoutes(app);
+  await registerSitemapRoutes(app);
   await registerAdminUserRoutes(app);
   await registerAdminHighlightsRoutes(app);
   await registerAdminResoMediaRoutes(app);
