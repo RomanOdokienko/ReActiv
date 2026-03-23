@@ -523,6 +523,7 @@ export function ShowcasePage({
   const skipNextUrlToStateSyncRef = useRef(false);
   const lastKnownUrlFilterPresenceRef = useRef(hasKnownUrlParams);
   const hasInitializedUrlSyncRef = useRef(false);
+  const copyFiltersLinkResetTimeoutRef = useRef<number | null>(null);
 
   const [filters, setFilters] = useState<CatalogFiltersResponse | null>(null);
   const [itemsResponse, setItemsResponse] = useState<CatalogItemsResponse | null>(
@@ -558,6 +559,9 @@ export function ShowcasePage({
   const [favoritePendingItemIds, setFavoritePendingItemIds] = useState<Set<number>>(
     new Set(),
   );
+  const [copyFiltersLinkStatus, setCopyFiltersLinkStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
 
   useEffect(() => {
     return () => {
@@ -568,6 +572,11 @@ export function ShowcasePage({
       if (restoreTimeoutRef.current !== null) {
         window.clearTimeout(restoreTimeoutRef.current);
         restoreTimeoutRef.current = null;
+      }
+
+      if (copyFiltersLinkResetTimeoutRef.current !== null) {
+        window.clearTimeout(copyFiltersLinkResetTimeoutRef.current);
+        copyFiltersLinkResetTimeoutRef.current = null;
       }
     };
   }, []);
@@ -1695,6 +1704,65 @@ export function ShowcasePage({
     setSelectedVehicleTypes([]);
   }
 
+  function buildCurrentShowcaseLink(): string | null {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const currentSearch = new URLSearchParams(searchParams);
+    const nextFilterParams = buildShowcaseFilterSearchParams(showcaseUiState);
+    const mergedParams = mergeShowcaseSearchParams(currentSearch, nextFilterParams);
+    const queryString = mergedParams.toString();
+    const encodedUrl = `${window.location.origin}${window.location.pathname}${
+      queryString ? `?${queryString}` : ""
+    }`;
+
+    try {
+      return decodeURI(encodedUrl);
+    } catch {
+      return encodedUrl;
+    }
+  }
+
+  async function copyCurrentShowcaseLink(): Promise<void> {
+    const link = buildCurrentShowcaseLink();
+    if (!link || typeof window === "undefined") {
+      return;
+    }
+
+    const clearStatusLater = (nextStatus: "success" | "error") => {
+      setCopyFiltersLinkStatus(nextStatus);
+      if (copyFiltersLinkResetTimeoutRef.current !== null) {
+        window.clearTimeout(copyFiltersLinkResetTimeoutRef.current);
+      }
+      copyFiltersLinkResetTimeoutRef.current = window.setTimeout(() => {
+        setCopyFiltersLinkStatus("idle");
+      }, 2500);
+    };
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else if (typeof document !== "undefined") {
+        const helperTextarea = document.createElement("textarea");
+        helperTextarea.value = link;
+        helperTextarea.setAttribute("readonly", "true");
+        helperTextarea.style.position = "fixed";
+        helperTextarea.style.left = "-9999px";
+        document.body.appendChild(helperTextarea);
+        helperTextarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(helperTextarea);
+      } else {
+        throw new Error("clipboard_not_available");
+      }
+
+      clearStatusLater("success");
+    } catch {
+      clearStatusLater("error");
+    }
+  }
+
   async function toggleFavorite(
     event: MouseEvent<HTMLButtonElement>,
     itemId: number,
@@ -1847,13 +1915,30 @@ export function ShowcasePage({
                       </button>
                     ))}
                   </div>
-                  <button
-                    type="button"
-                    className="secondary-button showcase-reset-button"
-                    onClick={clearFilters}
-                  >
-                    Сбросить фильтры
-                  </button>
+                  <div className="showcase-filter-buttons">
+                    {canFilterByTenant && (
+                      <button
+                        type="button"
+                        className="secondary-button showcase-copy-link-button"
+                        onClick={() => {
+                          void copyCurrentShowcaseLink();
+                        }}
+                      >
+                        {copyFiltersLinkStatus === "success"
+                          ? "Скопировано"
+                          : copyFiltersLinkStatus === "error"
+                            ? "Ошибка копирования"
+                            : "Скопировать ссылку"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="secondary-button showcase-reset-button"
+                      onClick={clearFilters}
+                    >
+                      Сбросить фильтры
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -2025,7 +2025,21 @@ button:disabled {
   gap: 8px;
 }
 
+.showcase-filter-buttons {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .showcase-reset-button {
+  min-height: 40px;
+  white-space: nowrap;
+  align-self: flex-start;
+}
+
+.showcase-copy-link-button {
   min-height: 40px;
   white-space: nowrap;
   align-self: flex-start;
@@ -3597,7 +3611,12 @@ tbody tr:nth-child(even) {
     flex-direction: column;
   }
 
-  .showcase-reset-button {
+  .showcase-filter-buttons {
+    width: 100%;
+  }
+
+  .showcase-reset-button,
+  .showcase-copy-link-button {
     width: 100%;
   }
 
