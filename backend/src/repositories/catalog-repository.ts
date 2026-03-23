@@ -1496,6 +1496,124 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
       return accumulator;
     }, {});
 
+  const brandsByTenantRows = db
+    .prepare(
+      `
+        SELECT tenant_id, brand
+        FROM vehicle_offers
+        WHERE tenant_id != '' AND brand != ''
+        GROUP BY tenant_id, brand
+        ORDER BY tenant_id ASC, brand ASC
+      `,
+    )
+    .all() as Array<{ tenant_id: string; brand: string }>;
+
+  const brandsByTenantMap = new Map<string, Map<string, string>>();
+  brandsByTenantRows.forEach((row) => {
+    const tenantId = cleanDisplayValue(row.tenant_id);
+    if (!tenantId) {
+      return;
+    }
+
+    if (!brandsByTenantMap.has(tenantId)) {
+      brandsByTenantMap.set(tenantId, new Map<string, string>());
+    }
+
+    const brandMap = brandsByTenantMap.get(tenantId);
+    if (!brandMap) {
+      return;
+    }
+
+    const brandKey = normalizeComparableText(row.brand);
+    const brandLabel = brandDisplayMap.get(brandKey) ?? cleanDisplayValue(row.brand);
+    if (!brandLabel) {
+      return;
+    }
+
+    const current = brandMap.get(brandKey);
+    if (!current) {
+      brandMap.set(brandKey, brandLabel);
+      return;
+    }
+
+    brandMap.set(brandKey, pickPreferredDisplayLabel(current, brandLabel));
+  });
+
+  const brandsByTenant = Array.from(brandsByTenantMap.keys())
+    .sort((left, right) => left.localeCompare(right, "ru", { sensitivity: "base" }))
+    .reduce<Record<string, string[]>>((accumulator, tenantId) => {
+      const brandMap = brandsByTenantMap.get(tenantId);
+      accumulator[tenantId] = brandMap ? sortDisplayValues(brandMap.values()) : [];
+      return accumulator;
+    }, {});
+
+  const modelsByBrandAndTenantRows = db
+    .prepare(
+      `
+        SELECT tenant_id, brand, model
+        FROM vehicle_offers
+        WHERE tenant_id != '' AND brand != '' AND model != ''
+        GROUP BY tenant_id, brand, model
+        ORDER BY tenant_id ASC, brand ASC, model ASC
+      `,
+    )
+    .all() as Array<{ tenant_id: string; brand: string; model: string }>;
+
+  const modelsByBrandAndTenantMap = new Map<string, Map<string, Map<string, string>>>();
+  modelsByBrandAndTenantRows.forEach((row) => {
+    const tenantId = cleanDisplayValue(row.tenant_id);
+    if (!tenantId) {
+      return;
+    }
+
+    if (!modelsByBrandAndTenantMap.has(tenantId)) {
+      modelsByBrandAndTenantMap.set(tenantId, new Map<string, Map<string, string>>());
+    }
+
+    const brandGroups = modelsByBrandAndTenantMap.get(tenantId);
+    if (!brandGroups) {
+      return;
+    }
+
+    const brandKey = normalizeComparableText(row.brand);
+    const brandLabel = brandDisplayMap.get(brandKey) ?? cleanDisplayValue(row.brand);
+    if (!brandLabel) {
+      return;
+    }
+
+    if (!brandGroups.has(brandLabel)) {
+      brandGroups.set(brandLabel, new Map<string, string>());
+    }
+
+    const modelMap = brandGroups.get(brandLabel);
+    if (!modelMap) {
+      return;
+    }
+
+    mergeDisplayValue(modelMap, row.model);
+  });
+
+  const modelsByBrandAndTenant = Array.from(modelsByBrandAndTenantMap.keys())
+    .sort((left, right) => left.localeCompare(right, "ru", { sensitivity: "base" }))
+    .reduce<Record<string, Record<string, string[]>>>((accumulator, tenantId) => {
+      const brandGroups = modelsByBrandAndTenantMap.get(tenantId);
+      if (!brandGroups) {
+        accumulator[tenantId] = {};
+        return accumulator;
+      }
+
+      const groupedModels = Array.from(brandGroups.keys())
+        .sort((left, right) => left.localeCompare(right, "ru", { sensitivity: "base" }))
+        .reduce<Record<string, string[]>>((brandAccumulator, brandLabel) => {
+          const modelMap = brandGroups.get(brandLabel);
+          brandAccumulator[brandLabel] = modelMap ? sortDisplayValues(modelMap.values()) : [];
+          return brandAccumulator;
+        }, {});
+
+      accumulator[tenantId] = groupedModels;
+      return accumulator;
+    }, {});
+
   const brandsByVehicleTypeRows = db
     .prepare(
       `
@@ -1651,6 +1769,8 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
     // Returning distinct values here can make /catalog/filters payload too heavy.
     yandexDiskUrl: [],
     modelsByBrand,
+    brandsByTenant,
+    modelsByBrandAndTenant,
     brandsByVehicleType,
     modelsByBrandAndVehicleType,
     ...rangeRow,

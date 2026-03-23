@@ -212,6 +212,8 @@ export interface CatalogFiltersResponse {
   websiteUrl: string[];
   yandexDiskUrl: string[];
   modelsByBrand?: Record<string, string[]>;
+  brandsByTenant?: Record<string, string[]>;
+  modelsByBrandAndTenant?: Record<string, Record<string, string[]>>;
   brandsByVehicleType?: Record<string, string[]>;
   modelsByBrandAndVehicleType?: Record<string, Record<string, string[]>>;
   priceMin: number | null;

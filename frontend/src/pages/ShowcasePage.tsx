@@ -1353,92 +1353,168 @@ export function ShowcasePage({
     }
   }, [filters, vehicleTypeOptions]);
 
+  const tenantMetadataKey = useMemo(() => {
+    if (!filters || !tenantId) {
+      return "";
+    }
+
+    const normalizedTenant = normalizeFilterValueForCompare(tenantId);
+    const candidates = new Set<string>([
+      ...(filters.tenantId ?? []),
+      ...Object.keys(filters.brandsByTenant ?? {}),
+      ...Object.keys(filters.modelsByBrandAndTenant ?? {}),
+    ]);
+
+    const matched = Array.from(candidates).find(
+      (value) => normalizeFilterValueForCompare(value) === normalizedTenant,
+    );
+
+    return matched ?? "";
+  }, [filters, tenantId]);
+
   const availableBrands = useMemo(() => {
     if (!filters) {
       return [];
     }
 
-    if (selectedVehicleTypes.length === 0) {
-      return filters.brand;
-    }
-
+    const scopedBrandSets: Set<string>[] = [];
     const brandsByVehicleType = filters.brandsByVehicleType ?? {};
     const modelsByBrandAndVehicleType = filters.modelsByBrandAndVehicleType ?? {};
     const hasVehicleTypeMetadata =
       Object.keys(brandsByVehicleType).length > 0 ||
       Object.keys(modelsByBrandAndVehicleType).length > 0;
 
-    if (!hasVehicleTypeMetadata) {
+    if (selectedVehicleTypes.length > 0 && hasVehicleTypeMetadata) {
+      const selectedVehicleTypeKeys = new Set(
+        selectedVehicleTypes.map((value) => value.trim().toLowerCase()),
+      );
+      const vehicleTypeScopedBrands = new Set<string>();
+
+      Object.entries(brandsByVehicleType).forEach(([vehicleType, brands]) => {
+        if (!selectedVehicleTypeKeys.has(vehicleType.trim().toLowerCase())) {
+          return;
+        }
+
+        brands.forEach((value) => {
+          vehicleTypeScopedBrands.add(value);
+        });
+      });
+
+      if (vehicleTypeScopedBrands.size === 0) {
+        Object.entries(modelsByBrandAndVehicleType).forEach(
+          ([vehicleType, modelsByBrand]) => {
+            if (!selectedVehicleTypeKeys.has(vehicleType.trim().toLowerCase())) {
+              return;
+            }
+
+            Object.keys(modelsByBrand).forEach((value) => {
+              vehicleTypeScopedBrands.add(value);
+            });
+          },
+        );
+      }
+
+      scopedBrandSets.push(vehicleTypeScopedBrands);
+    }
+
+    const brandsByTenant = filters.brandsByTenant ?? {};
+    if (tenantMetadataKey && Object.keys(brandsByTenant).length > 0) {
+      scopedBrandSets.push(new Set(brandsByTenant[tenantMetadataKey] ?? []));
+    }
+
+    if (scopedBrandSets.length === 0) {
       return filters.brand;
     }
 
-    const selectedVehicleTypeKeys = new Set(
-      selectedVehicleTypes.map((value) => value.trim().toLowerCase()),
-    );
-    const union = new Set<string>();
-
-    Object.entries(brandsByVehicleType).forEach(([vehicleType, brands]) => {
-      if (!selectedVehicleTypeKeys.has(vehicleType.trim().toLowerCase())) {
-        return;
-      }
-
-      brands.forEach((value) => {
-        union.add(value);
-      });
-    });
-
-    if (union.size === 0) {
-      Object.entries(modelsByBrandAndVehicleType).forEach(
-        ([vehicleType, modelsByBrand]) => {
-          if (!selectedVehicleTypeKeys.has(vehicleType.trim().toLowerCase())) {
-            return;
-          }
-
-          Object.keys(modelsByBrand).forEach((value) => {
-            union.add(value);
-          });
-        },
+    let intersection = new Set(scopedBrandSets[0]);
+    for (let index = 1; index < scopedBrandSets.length; index += 1) {
+      const currentSet = scopedBrandSets[index];
+      intersection = new Set(
+        Array.from(intersection).filter((value) => currentSet.has(value)),
       );
     }
 
-    return sortUniqueValues(union);
-  }, [filters, selectedVehicleTypes]);
+    return sortUniqueValues(intersection);
+  }, [filters, selectedVehicleTypes, tenantMetadataKey]);
 
   const availableModels = useMemo(() => {
     if (!filters || !brand) {
       return [];
     }
 
-    if (selectedVehicleTypes.length === 0) {
-      return filters.modelsByBrand?.[brand] ?? [];
+    const scopedModelSets: Set<string>[] = [];
+    const modelsByBrand = filters.modelsByBrand ?? {};
+    const matchingBrandKey = Object.keys(modelsByBrand).find(
+      (value) =>
+        normalizeFilterValueForCompare(value) ===
+        normalizeFilterValueForCompare(brand),
+    );
+    if (matchingBrandKey) {
+      scopedModelSets.push(new Set(modelsByBrand[matchingBrandKey] ?? []));
     }
 
     const modelsByBrandAndVehicleType = filters.modelsByBrandAndVehicleType ?? {};
     const hasVehicleTypeMetadata = Object.keys(modelsByBrandAndVehicleType).length > 0;
 
-    if (!hasVehicleTypeMetadata) {
-      return filters.modelsByBrand?.[brand] ?? [];
+    if (selectedVehicleTypes.length > 0 && hasVehicleTypeMetadata) {
+      const selectedVehicleTypeKeys = new Set(
+        selectedVehicleTypes.map((value) => value.trim().toLowerCase()),
+      );
+      const vehicleTypeScopedModels = new Set<string>();
+
+      Object.entries(modelsByBrandAndVehicleType).forEach(
+        ([vehicleType, modelsByCurrentBrand]) => {
+          if (!selectedVehicleTypeKeys.has(vehicleType.trim().toLowerCase())) {
+            return;
+          }
+
+          const matchingBrandByVehicleType = Object.keys(modelsByCurrentBrand).find(
+            (value) =>
+              normalizeFilterValueForCompare(value) ===
+              normalizeFilterValueForCompare(brand),
+          );
+          if (!matchingBrandByVehicleType) {
+            return;
+          }
+
+          (modelsByCurrentBrand[matchingBrandByVehicleType] ?? []).forEach((value) => {
+            vehicleTypeScopedModels.add(value);
+          });
+        },
+      );
+
+      scopedModelSets.push(vehicleTypeScopedModels);
     }
 
-    const selectedVehicleTypeKeys = new Set(
-      selectedVehicleTypes.map((value) => value.trim().toLowerCase()),
-    );
-    const union = new Set<string>();
+    const modelsByBrandAndTenant = filters.modelsByBrandAndTenant ?? {};
+    if (tenantMetadataKey && Object.keys(modelsByBrandAndTenant).length > 0) {
+      const modelsByTenant = modelsByBrandAndTenant[tenantMetadataKey] ?? {};
+      const matchingBrandByTenant = Object.keys(modelsByTenant).find(
+        (value) =>
+          normalizeFilterValueForCompare(value) ===
+          normalizeFilterValueForCompare(brand),
+      );
+      if (matchingBrandByTenant) {
+        scopedModelSets.push(new Set(modelsByTenant[matchingBrandByTenant] ?? []));
+      } else {
+        scopedModelSets.push(new Set());
+      }
+    }
 
-    Object.entries(modelsByBrandAndVehicleType).forEach(
-      ([vehicleType, modelsByBrand]) => {
-        if (!selectedVehicleTypeKeys.has(vehicleType.trim().toLowerCase())) {
-          return;
-        }
+    if (scopedModelSets.length === 0) {
+      return [];
+    }
 
-        (modelsByBrand[brand] ?? []).forEach((value) => {
-          union.add(value);
-        });
-      },
-    );
+    let intersection = new Set(scopedModelSets[0]);
+    for (let index = 1; index < scopedModelSets.length; index += 1) {
+      const currentSet = scopedModelSets[index];
+      intersection = new Set(
+        Array.from(intersection).filter((value) => currentSet.has(value)),
+      );
+    }
 
-    return sortUniqueValues(union);
-  }, [brand, filters, selectedVehicleTypes]);
+    return sortUniqueValues(intersection);
+  }, [brand, filters, selectedVehicleTypes, tenantMetadataKey]);
 
   useEffect(() => {
     if (!filters || !brand) {
