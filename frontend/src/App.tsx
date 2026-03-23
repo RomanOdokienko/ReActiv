@@ -26,6 +26,7 @@ type PlatformModeState = "checking" | PlatformMode;
 
 const HIDDEN_ADMIN_LOGIN_PATH = "/staff-login-reactiv";
 const ACTIVITY_VIEWER_LOGINS = new Set(["alexey"]);
+const SEO_WEB_BASE_URL = "https://reactiv.pro";
 const PUBLIC_TITLE = "ReActiv — агрегатор изъятой лизинговой техники";
 
 function upsertMetaByName(name: string, content: string): void {
@@ -42,6 +43,21 @@ function upsertMetaByName(name: string, content: string): void {
   element.setAttribute("content", content);
 }
 
+function upsertMetaByProperty(property: string, content: string): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  let element = document.head.querySelector(
+    `meta[property="${property}"]`,
+  ) as HTMLMetaElement | null;
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute("property", property);
+    document.head.appendChild(element);
+  }
+  element.setAttribute("content", content);
+}
 function upsertCanonicalLink(href: string): void {
   if (typeof document === "undefined") {
     return;
@@ -209,29 +225,44 @@ export function App() {
       pathname === HIDDEN_ADMIN_LOGIN_PATH ||
       pathname === "/upload" ||
       pathname === "/catalog" ||
+      pathname === "/favorites" ||
       pathname.startsWith("/admin");
     const isItemPage = pathname.startsWith("/showcase/");
 
-    const title = isServicePath
-      ? "ReActiv"
-      : isItemPage
-        ? "Лот техники — ReActiv"
-        : isLandingPath
-          ? PUBLIC_TITLE
-          : isShowcasePath
-          ? "Каталог техники — ReActiv"
-          : PUBLIC_TITLE;
+    const canonicalPath = pathname === "/showcase" ? "/" : pathname;
+    const canonicalUrl = `${SEO_WEB_BASE_URL}${canonicalPath}`;
+
+    let title = PUBLIC_TITLE;
+    let description =
+      "Лоты со всей России в одном месте: быстрый поиск, фильтры и удобная навигация.";
+    let robots = "index, follow, max-image-preview:large";
+
+    if (isServicePath) {
+      title = "ReActiv";
+      robots = "noindex, nofollow";
+    } else if (isItemPage) {
+      title = "Карточка лота — РеАктив";
+      description =
+        "Подробная карточка техники: фото, характеристики, цена и расположение.";
+    } else if (isLandingPath) {
+      title = "О платформе — РеАктив";
+      description =
+        "РеАктив — агрегатор техники из лизинга: единый каталог, фильтры и актуальные предложения по России.";
+    } else if (isShowcasePath) {
+      title = "Каталог техники — РеАктив";
+      description =
+        "Каталог техники после лизинга: быстрый поиск по марке, цене, году, пробегу и региону.";
+    }
+
     document.title = title;
-
-    upsertMetaByName("robots", isServicePath ? "noindex, nofollow" : "index, follow");
-    upsertMetaByName(
-      "description",
-      isLandingPath
-        ? "ReActiv — единый агрегатор автомобилей после лизинга с каталогом актуальных лотов по всей России."
-        : "Каталог автомобилей после лизинга, изъятых лотов и актуальных предложений ReActiv.",
-    );
-
-    upsertCanonicalLink(`https://reactiv.pro${pathname === "/showcase" ? "/" : pathname}`);
+    upsertMetaByName("robots", robots);
+    upsertMetaByName("description", description);
+    upsertMetaByName("twitter:title", title);
+    upsertMetaByName("twitter:description", description);
+    upsertMetaByProperty("og:title", title);
+    upsertMetaByProperty("og:description", description);
+    upsertMetaByProperty("og:url", canonicalUrl);
+    upsertCanonicalLink(canonicalUrl);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -551,3 +582,4 @@ export function App() {
     </>
   );
 }
+
