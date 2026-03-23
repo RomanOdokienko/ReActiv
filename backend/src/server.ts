@@ -16,6 +16,7 @@ import { registerPlatformRoutes } from "./routes/platform-routes";
 import { registerShareRoutes } from "./routes/share-routes";
 import { registerFavoriteRoutes } from "./routes/favorite-routes";
 import { registerSitemapRoutes } from "./routes/sitemap-routes";
+import { registerSiteVerificationRoutes } from "./routes/site-verification-routes";
 import { getPlatformMode } from "./repositories/platform-settings-repository";
 import { authenticateRequest } from "./services/auth-service";
 import { ensureBootstrapAdmin } from "./startup/bootstrap-admin";
@@ -97,6 +98,12 @@ async function startServer(): Promise<void> {
     if (ALWAYS_PUBLIC_DYNAMIC_PREFIXES.some((prefix) => requestPath.startsWith(prefix))) {
       return;
     }
+    if (
+      requestPath.startsWith("/yandex_") &&
+      requestPath.endsWith(".html")
+    ) {
+      return;
+    }
 
     if (isOpenModePublicPath(requestPath) && getPlatformMode() === "open") {
       return;
@@ -116,6 +123,7 @@ async function startServer(): Promise<void> {
   await registerMediaRoutes(app);
   await registerShareRoutes(app);
   await registerSitemapRoutes(app);
+  await registerSiteVerificationRoutes(app);
   await registerAdminUserRoutes(app);
   await registerAdminHighlightsRoutes(app);
   await registerAdminResoMediaRoutes(app);
