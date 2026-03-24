@@ -13,8 +13,18 @@ const loginBodySchema = z.object({
   password: z.string().min(1),
 });
 
+function applyNoStoreHeaders(reply: {
+  header: (name: string, value: string) => unknown;
+}): void {
+  reply.header("Cache-Control", "no-store, no-cache, must-revalidate");
+  reply.header("Pragma", "no-cache");
+  reply.header("Expires", "0");
+}
+
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   app.post("/api/auth/login", async (request, reply) => {
+    applyNoStoreHeaders(reply);
+
     try {
       const payload = loginBodySchema.parse(request.body);
       const loginResult = loginWithPassword(payload.login, payload.password);
@@ -48,6 +58,8 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/api/auth/me", async (request, reply) => {
+    applyNoStoreHeaders(reply);
+
     if (!request.authUser) {
       return reply.code(401).send({ message: "Требуется авторизация" });
     }
@@ -64,6 +76,8 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post("/api/auth/logout", async (request, reply) => {
+    applyNoStoreHeaders(reply);
+
     logoutRequest(request);
 
     reply.clearCookie(getSessionCookieName(), {
