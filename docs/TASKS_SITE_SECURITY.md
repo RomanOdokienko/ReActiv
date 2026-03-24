@@ -209,6 +209,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | PERF-01-P2 | Added caching for catalog item details | Added ETag + scoped cache-control for `/api/catalog/items/:id` with 304 support |
 | 2026-03-25 | PERF-01-P3 | Enabled app-level response compression | Added built-in gzip/br compression (configurable) for compressible payloads with size threshold and `Vary: Accept-Encoding` |
 | 2026-03-25 | PERF-02-P1 | Deferred analytics/chat bootstrap | Switched Yandex Metrika to load on idle after page load and Jivo chat to interaction/timeout-based lazy load |
+| 2026-03-25 | PERF-02-P2 | Added runtime toggles for 3rd-party scripts | Added `window.__APP_RUNTIME_CONFIG__` flags for analytics/chat enablement and load timing control |
 | 2026-03-25 | QA-01-P1 | Executed local smoke re-audit | Added `docs/SECURITY_QA_REPORT_2026-03-25.md` with outcomes and residual risks |
 | 2026-03-25 | STATUS-CLOSE | Closed implemented tasks after verification | Set `SEC-02`, `SEC-03`, `API-01`, `API-02`, `PERF-01`, `QA-01` to `done` |
 

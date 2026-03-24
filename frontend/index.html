@@ -43,14 +43,28 @@
     <meta name="yandex-verification" content="fedf308208a9b3f7" />
     <link rel="canonical" href="https://reactiv.pro/" />
 
+    <script>
+      window.__APP_RUNTIME_CONFIG__ = {
+        METRIKA_ENABLED: true,
+        METRIKA_ID: 106991436,
+        METRIKA_IDLE_TIMEOUT_MS: 2500,
+        JIVO_ENABLED: true,
+        JIVO_SRC: "https://code.jivo.ru/widget/ZaUQHxLJ11",
+        JIVO_AUTOLOAD_TIMEOUT_MS: 12000,
+      };
+    </script>
+
     <!-- Deferred third-party scripts (analytics/chat) -->
     <script type="text/javascript">
       (function () {
-        var METRIKA_ID = 106991436;
+        var appConfig = window.__APP_RUNTIME_CONFIG__ || {};
+        var METRIKA_ID = Number(appConfig.METRIKA_ID || 106991436);
+        var METRIKA_ENABLED = appConfig.METRIKA_ENABLED !== false;
+        var JIVO_ENABLED = appConfig.JIVO_ENABLED !== false;
         var METRIKA_SRC = "https://mc.yandex.ru/metrika/tag.js?id=" + METRIKA_ID;
-        var JIVO_SRC = "https://code.jivo.ru/widget/ZaUQHxLJ11";
-        var METRIKA_IDLE_TIMEOUT_MS = 2500;
-        var JIVO_AUTOLOAD_TIMEOUT_MS = 12000;
+        var JIVO_SRC = appConfig.JIVO_SRC || "https://code.jivo.ru/widget/ZaUQHxLJ11";
+        var METRIKA_IDLE_TIMEOUT_MS = Number(appConfig.METRIKA_IDLE_TIMEOUT_MS || 2500);
+        var JIVO_AUTOLOAD_TIMEOUT_MS = Number(appConfig.JIVO_AUTOLOAD_TIMEOUT_MS || 12000);
         var metrikaLoaded = false;
         var jivoLoaded = false;
         var jivoAutoloadTimer = null;
@@ -93,6 +107,10 @@
         }
 
         function loadMetrika() {
+          if (!METRIKA_ENABLED || !METRIKA_ID) {
+            return;
+          }
+
           if (metrikaLoaded) {
             return;
           }
@@ -113,10 +131,17 @@
         }
 
         function scheduleMetrikaLoad() {
+          if (!METRIKA_ENABLED) {
+            return;
+          }
           runOnIdle(loadMetrika, METRIKA_IDLE_TIMEOUT_MS);
         }
 
         function loadJivo() {
+          if (!JIVO_ENABLED) {
+            return;
+          }
+
           if (jivoLoaded) {
             return;
           }
@@ -142,14 +167,16 @@
 
         var listenerOptions = { passive: true };
         var chatTriggerEvents = ["pointerdown", "keydown", "touchstart", "scroll"];
-        for (var j = 0; j < chatTriggerEvents.length; j += 1) {
-          window.addEventListener(chatTriggerEvents[j], loadJivoOnInteraction, listenerOptions);
-        }
+        if (JIVO_ENABLED) {
+          for (var j = 0; j < chatTriggerEvents.length; j += 1) {
+            window.addEventListener(chatTriggerEvents[j], loadJivoOnInteraction, listenerOptions);
+          }
 
-        jivoAutoloadTimer = window.setTimeout(function () {
-          loadJivo();
-          detachChatListeners();
-        }, JIVO_AUTOLOAD_TIMEOUT_MS);
+          jivoAutoloadTimer = window.setTimeout(function () {
+            loadJivo();
+            detachChatListeners();
+          }, JIVO_AUTOLOAD_TIMEOUT_MS);
+        }
 
         if (document.readyState === "complete") {
           scheduleMetrikaLoad();
