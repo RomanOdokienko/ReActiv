@@ -66,7 +66,7 @@ A task can be moved to `deferred` if:
 | DEC-01 | Canonical domain: `reactiv.pro` or `www.reactiv.pro` | done (`reactiv.pro`) | SEO-01, SEC-01 |
 | DEC-02 | Trusted origin allowlist (prod/stage/local) | done (`https://reactiv.pro`,`https://www.reactiv.pro`,`http://localhost:5173`,`http://127.0.0.1:5173`) | SEC-01 |
 | DEC-03 | Approved public catalog field set | done (`docs/PUBLIC_CATALOG_FIELDS.md`) | API-02 |
-| DEC-04 | Target frontend SLO metrics (LCP/TBT/CLS) | pending | PERF-02 |
+| DEC-04 | Target frontend SLO metrics (LCP/TBT/CLS) | done (`docs/FRONTEND_PERFORMANCE_SLO.md`) | PERF-02 |
 | DEC-05 | Confirm whether ADR is required for SEC-00 access model boundaries | done | SEC-00, SEC-02 |
 
 ## Current endpoint zone map (draft for SEC-00)
@@ -211,6 +211,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | PERF-02-P1 | Deferred analytics/chat bootstrap | Switched Yandex Metrika to load on idle after page load and Jivo chat to interaction/timeout-based lazy load |
 | 2026-03-25 | PERF-02-P2 | Added runtime toggles for 3rd-party scripts | Added `window.__APP_RUNTIME_CONFIG__` flags for analytics/chat enablement and load timing control |
 | 2026-03-25 | PERF-02-P3 | Added environment and network-aware 3rd-party loading | Enabled analytics/chat by default only on approved production hosts and disabled Jivo autoload on save-data/slow connections |
+| 2026-03-25 | DEC-04 | Approved frontend performance SLO targets | Added `docs/FRONTEND_PERFORMANCE_SLO.md` with LCP/CLS/TBT thresholds and release guardrails |
 | 2026-03-25 | QA-01-P1 | Executed local smoke re-audit | Added `docs/SECURITY_QA_REPORT_2026-03-25.md` with outcomes and residual risks |
 | 2026-03-25 | STATUS-CLOSE | Closed implemented tasks after verification | Set `SEC-02`, `SEC-03`, `API-01`, `API-02`, `PERF-01`, `QA-01` to `done` |
 
