@@ -59,6 +59,12 @@ const PUBLIC_CATALOG_ITEMS_MAX_REQUESTS = parsePositiveIntEnv(
   10,
   20_000,
 );
+const PUBLIC_CATALOG_MAX_PAGE_SIZE = parsePositiveIntEnv(
+  "PUBLIC_CATALOG_MAX_PAGE_SIZE",
+  40,
+  5,
+  100,
+);
 const PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS = parsePositiveIntEnv(
   "PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS",
   240,
@@ -186,6 +192,20 @@ function applyPrivateCacheHeaders(
   );
 }
 
+function applyPublicQueryCaps(
+  query: ReturnType<typeof parseCatalogQuery>,
+  isAuthenticated: boolean,
+): ReturnType<typeof parseCatalogQuery> {
+  if (isAuthenticated) {
+    return query;
+  }
+
+  return {
+    ...query,
+    pageSize: Math.min(query.pageSize, PUBLIC_CATALOG_MAX_PAGE_SIZE),
+  };
+}
+
 export async function registerCatalogRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/catalog/summary", async (request, reply) => {
     if (
@@ -248,7 +268,8 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     }
 
     try {
-      const query = parseCatalogQuery(request.query);
+      const parsedQuery = parseCatalogQuery(request.query);
+      const query = applyPublicQueryCaps(parsedQuery, Boolean(request.authUser));
       const latestImportBatch = getLatestSuccessfulImportBatch();
       const roleBucket = request.authUser?.role ?? "public";
       const requestPath = request.raw.url?.split("#")[0] ?? "/api/catalog/items";
