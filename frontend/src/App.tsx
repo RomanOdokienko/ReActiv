@@ -27,7 +27,16 @@ type PlatformModeState = "checking" | PlatformMode;
 const HIDDEN_ADMIN_LOGIN_PATH = "/staff-login-reactiv";
 const ACTIVITY_VIEWER_LOGINS = new Set(["alexey"]);
 const SEO_WEB_BASE_URL = "https://reactiv.pro";
-const PUBLIC_TITLE = "ReActiv — агрегатор изъятой лизинговой техники";
+const SEO_KEYWORDS =
+  "авто после лизинга, изъятые автомобили, конфискат авто, машины после лизинга, техника после лизинга";
+const CATALOG_SEO_TITLE = "Изъятые авто и автомобили после лизинга — каталог Reactiv";
+const CATALOG_SEO_DESCRIPTION =
+  "Каталог авто после лизинга и изъятых автомобилей. В одном месте собраны машины и техника после лизинга, включая конфискат.";
+const LANDING_SEO_TITLE =
+  "Авто после лизинга и изъятые автомобили — витрина лизингового стока Reactiv";
+const LANDING_SEO_DESCRIPTION =
+  "Reactiv — платформа, где собраны авто после лизинга, изъятые автомобили и конфискат. Помогает находить машины и технику после лизинга.";
+const PUBLIC_TITLE = CATALOG_SEO_TITLE;
 
 function upsertMetaByName(name: string, content: string): void {
   if (typeof document === "undefined") {
@@ -233,8 +242,7 @@ export function App() {
     const canonicalUrl = `${SEO_WEB_BASE_URL}${canonicalPath}`;
 
     let title = PUBLIC_TITLE;
-    let description =
-      "Лоты со всей России в одном месте: быстрый поиск, фильтры и удобная навигация.";
+    let description = CATALOG_SEO_DESCRIPTION;
     let robots = "index, follow, max-image-preview:large";
 
     if (isServicePath) {
@@ -245,17 +253,16 @@ export function App() {
       description =
         "Подробная карточка техники: фото, характеристики, цена и расположение.";
     } else if (isLandingPath) {
-      title = "О платформе — РеАктив";
-      description =
-        "РеАктив — агрегатор техники из лизинга: единый каталог, фильтры и актуальные предложения по России.";
+      title = LANDING_SEO_TITLE;
+      description = LANDING_SEO_DESCRIPTION;
     } else if (isShowcasePath) {
-      title = "Каталог техники — РеАктив";
-      description =
-        "Каталог техники после лизинга: быстрый поиск по марке, цене, году, пробегу и региону.";
+      title = CATALOG_SEO_TITLE;
+      description = CATALOG_SEO_DESCRIPTION;
     }
 
     document.title = title;
     upsertMetaByName("robots", robots);
+    upsertMetaByName("keywords", SEO_KEYWORDS);
     upsertMetaByName("description", description);
     upsertMetaByName("twitter:title", title);
     upsertMetaByName("twitter:description", description);

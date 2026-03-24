@@ -10,12 +10,15 @@ const DEFAULT_WEB_BASE_URL = "https://reactiv.pro";
 const DEFAULT_SHARE_BASE_URL = "https://api.reactiv.pro";
 const FALLBACK_PREVIEW_IMAGE_PATH = "/android-chrome-512x512.png";
 const SHARE_DESCRIPTION = "Опубликовано на РеАктив";
-const PUBLIC_CATALOG_TITLE = "РеАктив - агрегатор техники из лизинга";
+const SEO_KEYWORDS =
+  "авто после лизинга, изъятые автомобили, конфискат авто, машины после лизинга, техника после лизинга";
+const PUBLIC_CATALOG_TITLE = "Изъятые авто и автомобили после лизинга — каталог Reactiv";
 const PUBLIC_CATALOG_DESCRIPTION =
-  "Лоты со всей России в одном месте: быстрый поиск, фильтры и удобная навигация.";
-const LANDING_TITLE = "О платформе - РеАктив";
+  "Каталог авто после лизинга и изъятых автомобилей. В одном месте собраны машины и техника после лизинга, включая конфискат.";
+const LANDING_TITLE =
+  "Авто после лизинга и изъятые автомобили — витрина лизингового стока Reactiv";
 const LANDING_DESCRIPTION =
-  "РеАктив - единый агрегатор изъятой лизинговой техники. Актуальные лоты и удобные фильтры.";
+  "Reactiv — платформа, где собраны авто после лизинга, изъятые автомобили и конфискат. Помогает находить машины и технику после лизинга.";
 const CATALOG_SNAPSHOT_SIZE = 6;
 const BOT_USER_AGENT_PATTERN =
   /(telegrambot|twitterbot|facebookexternalhit|vkshare|viber|whatsapp|discordbot|slackbot|linkedinbot|googlebot|yandexbot|bingbot)/i;
@@ -125,6 +128,7 @@ async function resolvePreviewImageSourceUrl(yandexDiskUrl: string): Promise<stri
 function buildShareHtml(args: {
   title: string;
   description: string;
+  keywords?: string;
   shareUrl: string;
   imageUrl: string;
   canonicalUrl: string;
@@ -136,6 +140,7 @@ function buildShareHtml(args: {
   const shareUrl = escapeHtml(args.shareUrl);
   const imageUrl = escapeHtml(args.imageUrl);
   const canonicalUrl = escapeHtml(args.canonicalUrl);
+  const keywords = escapeHtml(args.keywords ?? SEO_KEYWORDS);
   const robots = escapeHtml(args.robots ?? "index, follow, max-image-preview:large");
   const bodyHtml = args.bodyHtml ?? "<main><p>Preview metadata page.</p></main>";
 
@@ -146,6 +151,7 @@ function buildShareHtml(args: {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
     <meta name="description" content="${description}" />
+    <meta name="keywords" content="${keywords}" />
     <meta name="robots" content="${robots}" />
     <link rel="canonical" href="${canonicalUrl}" />
     <meta property="og:type" content="website" />
