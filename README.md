@@ -141,6 +141,8 @@ npm --prefix frontend run dev
 - `CSRF_SECRET` (optional, overrides server-generated CSRF signing secret)
 - `CSRF_PROTECTION_ENABLED` (optional, default: `true`; set to `false` only for emergency rollback)
 - `CSRF_ORIGIN_CHECK_ENABLED` (optional, default: `true`; checks `Origin`/`Referer` on authenticated mutating requests)
+- `RESPONSE_COMPRESSION_ENABLED` (optional, default: `true`; enables gzip/br for compressible responses)
+- `RESPONSE_COMPRESSION_MIN_SIZE_BYTES` (optional, default: `1024`; payload size threshold before compression)
 - `PUBLIC_CATALOG_RATE_LIMIT_WINDOW_MS` (optional, default: `60000`)
 - `PUBLIC_CATALOG_RATE_LIMIT_CLEANUP_INTERVAL_MS` (optional, default: `60000`)
 - `PUBLIC_CATALOG_RATE_LIMIT_MAX_BUCKETS` (optional, default: `20000`)

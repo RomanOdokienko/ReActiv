@@ -1,7 +1,9 @@
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
-import Fastify, { type FastifyRequest } from "fastify";
+import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
+import { promisify } from "node:util";
+import { brotliCompress as brotliCompressCb, gzip as gzipCb } from "node:zlib";
 import { initializeSchema } from "./db/schema";
 import { registerAdminUserRoutes } from "./routes/admin-user-routes";
 import { registerAdminAlphaMediaRoutes } from "./routes/admin-alpha-media-routes";
@@ -54,6 +56,9 @@ const DEFAULT_CSP_REPORT_ONLY_POLICY = [
 ].join("; ");
 const CSP_REPORT_ENDPOINT_PATH = "/api/security/csp-report";
 const BASE_PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=(), usb=()";
+const RESPONSE_COMPRESSION_MIN_SIZE_BYTES = 1024;
+const brotliCompress = promisify(brotliCompressCb);
+const gzipCompress = promisify(gzipCb);
 
 const ALWAYS_PUBLIC_PATHS = new Set([
   "/",
@@ -199,6 +204,30 @@ function parseBooleanEnv(name: string, fallback: boolean): boolean {
   return fallback;
 }
 
+function parsePositiveIntEnv(
+  name: string,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  const normalized = Math.floor(parsed);
+  if (normalized < min) {
+    return fallback;
+  }
+
+  return Math.min(normalized, max);
+}
+
 function resolveCspReportOnlyPolicy(): string {
   const configuredPolicy = process.env.CSP_REPORT_ONLY_POLICY?.trim();
   if (configuredPolicy) {
@@ -314,6 +343,175 @@ function mapReportingApiCspReports(payload: unknown): Array<Record<string, unkno
   return result;
 }
 
+type CompressionEncoding = "br" | "gzip";
+
+function getHeaderTextValue(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (typeof item !== "string") {
+        continue;
+      }
+
+      const normalized = item.trim();
+      if (normalized) {
+        return normalized;
+      }
+    }
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized || null;
+}
+
+function appendVaryHeader(reply: FastifyReply, value: string): void {
+  const currentVary = getHeaderTextValue(reply.getHeader("vary"));
+  if (!currentVary) {
+    reply.header("Vary", value);
+    return;
+  }
+
+  const hasValue = currentVary
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .includes(value.toLowerCase());
+  if (hasValue) {
+    return;
+  }
+
+  reply.header("Vary", `${currentVary}, ${value}`);
+}
+
+function resolvePreferredCompressionEncoding(
+  acceptEncodingHeader: string | string[] | undefined,
+): CompressionEncoding | null {
+  const rawValue = getFirstHeaderValue(acceptEncodingHeader);
+  if (!rawValue) {
+    return null;
+  }
+
+  const qualityByEncoding = new Map<string, number>();
+  rawValue.split(",").forEach((entry) => {
+    const parts = entry
+      .split(";")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const encoding = parts[0]?.toLowerCase();
+    if (!encoding) {
+      return;
+    }
+
+    let quality = 1;
+    parts.slice(1).forEach((param) => {
+      const [rawKey, rawValuePart] = param.split("=");
+      if (rawKey?.trim().toLowerCase() !== "q") {
+        return;
+      }
+
+      const parsedQuality = Number(rawValuePart);
+      if (!Number.isFinite(parsedQuality)) {
+        return;
+      }
+
+      quality = Math.max(0, Math.min(parsedQuality, 1));
+    });
+
+    qualityByEncoding.set(encoding, quality);
+  });
+
+  const wildcardQuality = qualityByEncoding.get("*");
+  const brQuality = qualityByEncoding.get("br") ?? wildcardQuality ?? 0;
+  const gzipQuality = qualityByEncoding.get("gzip") ?? wildcardQuality ?? 0;
+
+  if (brQuality <= 0 && gzipQuality <= 0) {
+    return null;
+  }
+
+  return brQuality >= gzipQuality ? "br" : "gzip";
+}
+
+function isCompressibleContentType(contentType: string | null): boolean {
+  if (!contentType) {
+    return false;
+  }
+
+  const normalized = contentType.toLowerCase();
+  if (normalized.startsWith("text/")) {
+    return true;
+  }
+
+  return (
+    normalized.includes("json") ||
+    normalized.includes("javascript") ||
+    normalized.includes("xml") ||
+    normalized.includes("svg")
+  );
+}
+
+async function maybeCompressResponsePayload(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  payload: unknown,
+  enabled: boolean,
+  minSizeBytes: number,
+): Promise<unknown> {
+  if (!enabled) {
+    return payload;
+  }
+
+  if (request.method === "HEAD") {
+    return payload;
+  }
+
+  if (reply.statusCode === 204 || reply.statusCode === 304) {
+    return payload;
+  }
+
+  if (getHeaderTextValue(reply.getHeader("content-encoding"))) {
+    return payload;
+  }
+
+  if (typeof payload !== "string" && !Buffer.isBuffer(payload)) {
+    return payload;
+  }
+
+  const contentType = getHeaderTextValue(reply.getHeader("content-type"));
+  if (!isCompressibleContentType(contentType)) {
+    return payload;
+  }
+
+  appendVaryHeader(reply, "Accept-Encoding");
+
+  const preferredEncoding = resolvePreferredCompressionEncoding(
+    request.headers["accept-encoding"],
+  );
+  if (!preferredEncoding) {
+    return payload;
+  }
+
+  const rawPayload = typeof payload === "string" ? Buffer.from(payload) : payload;
+  if (rawPayload.byteLength < minSizeBytes) {
+    return payload;
+  }
+
+  const compressedPayload =
+    preferredEncoding === "br"
+      ? await brotliCompress(rawPayload)
+      : await gzipCompress(rawPayload);
+
+  if (compressedPayload.byteLength >= rawPayload.byteLength) {
+    return payload;
+  }
+
+  reply.header("Content-Encoding", preferredEncoding);
+  reply.removeHeader("Content-Length");
+  return compressedPayload;
+}
+
 initializeSchema();
 ensureBootstrapAdmin(app.log);
 
@@ -333,6 +531,13 @@ async function startServer(): Promise<void> {
   );
   const csrfProtectionEnabled = parseBooleanEnv("CSRF_PROTECTION_ENABLED", true);
   const csrfOriginCheckEnabled = parseBooleanEnv("CSRF_ORIGIN_CHECK_ENABLED", true);
+  const responseCompressionEnabled = parseBooleanEnv("RESPONSE_COMPRESSION_ENABLED", true);
+  const responseCompressionMinSizeBytes = parsePositiveIntEnv(
+    "RESPONSE_COMPRESSION_MIN_SIZE_BYTES",
+    RESPONSE_COMPRESSION_MIN_SIZE_BYTES,
+    256,
+    1_048_576,
+  );
 
   await app.register(cors, {
     origin(origin, cb) {
@@ -411,11 +616,13 @@ async function startServer(): Promise<void> {
       csrfOriginCheckEnabled,
       cspReportEndpointEnabled,
       cspEnforceEnabled,
+      responseCompressionEnabled,
+      responseCompressionMinSizeBytes,
     },
     "security_runtime_config",
   );
 
-  app.addHook("onSend", async (_request, reply, payload) => {
+  app.addHook("onSend", async (request, reply, payload) => {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("X-Frame-Options", "DENY");
     reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -430,7 +637,13 @@ async function startServer(): Promise<void> {
       reply.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
     }
 
-    return payload;
+    return maybeCompressResponsePayload(
+      request,
+      reply,
+      payload,
+      responseCompressionEnabled,
+      responseCompressionMinSizeBytes,
+    );
   });
 
   app.addHook("preHandler", async (request, reply) => {
