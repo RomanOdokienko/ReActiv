@@ -119,6 +119,8 @@ function sanitizeCatalogItemForRole<
     responsiblePerson?: string;
     websiteUrl?: string;
     daysOnSale?: number | null;
+    externalId?: string;
+    crmRef?: string;
   },
 >(item: T, role: string | undefined): T {
   if (role === "admin" || role === "stock_owner") {
@@ -136,6 +138,12 @@ function sanitizeCatalogItemForRole<
     ...(Object.prototype.hasOwnProperty.call(item, "daysOnSale")
       ? { daysOnSale: null }
       : {}),
+    ...(Object.prototype.hasOwnProperty.call(item, "externalId")
+      ? { externalId: "" }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(item, "crmRef")
+      ? { crmRef: "" }
+      : {}),
   };
 }
 
@@ -151,6 +159,9 @@ function sanitizeCatalogFiltersForRole(
     ...metadata,
     responsiblePerson: [],
     websiteUrl: [],
+    externalId: [],
+    crmRef: [],
+    yandexDiskUrl: [],
     daysOnSaleMin: null,
     daysOnSaleMax: null,
   };

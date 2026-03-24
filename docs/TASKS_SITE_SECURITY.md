@@ -54,7 +54,7 @@ A task can be moved to `deferred` if:
 | SEC-02 | Security | P0 | in_progress | Add CSRF protection for cookie-auth state-changing endpoints | SEC-00 | POST/PUT/PATCH/DELETE without valid CSRF token are rejected |
 | SEC-03 | Security | P0 | in_progress | Add baseline security headers on frontend/API | SEC-00 | HSTS/CSP/XFO/XCTO/Referrer-Policy/Permissions-Policy are stable |
 | API-01 | API Protection | P1 | in_progress | Limit bulk catalog scraping (rate limit, page-size limits, anti-abuse) | SEC-00 | Automated bulk extraction is reduced without breaking showcase UX |
-| API-02 | Data Exposure | P1 | blocked | Minimize public catalog fields | DEC-03, SEC-00 | Public responses contain only approved field set |
+| API-02 | Data Exposure | P1 | in_progress | Minimize public catalog fields | DEC-03, SEC-00 | Public responses contain only approved field set |
 | PERF-01 | Performance | P1 | todo | Enable gzip/br and correct cache headers | infra-check | Responses include content-encoding and sane cache-control |
 | PERF-02 | Performance | P1 | todo | Reduce impact of 3rd-party scripts (chat/analytics) | DEC-04 | LCP/TBT/CLS improve without losing critical analytics |
 | SEO-01 | SEO | P2 | blocked | Enforce strict host canonicalization (`www` vs `non-www`) | DEC-01 | Single canonical host + 301/308 redirects |
@@ -65,7 +65,7 @@ A task can be moved to `deferred` if:
 |---|---|---|---|
 | DEC-01 | Canonical domain: `reactiv.pro` or `www.reactiv.pro` | done (`reactiv.pro`) | SEO-01, SEC-01 |
 | DEC-02 | Trusted origin allowlist (prod/stage/local) | done (`https://reactiv.pro`,`https://www.reactiv.pro`,`http://localhost:5173`,`http://127.0.0.1:5173`) | SEC-01 |
-| DEC-03 | Approved public catalog field set | pending | API-02 |
+| DEC-03 | Approved public catalog field set | done (`docs/PUBLIC_CATALOG_FIELDS.md`) | API-02 |
 | DEC-04 | Target frontend SLO metrics (LCP/TBT/CLS) | pending | PERF-02 |
 | DEC-05 | Confirm whether ADR is required for SEC-00 access model boundaries | done | SEC-00, SEC-02 |
 
@@ -193,6 +193,8 @@ A task can be moved to `deferred` if:
 | 2026-03-24 | SEC-03-P1 | Added baseline response security headers | Implemented HSTS/XFO/XCTO/Referrer-Policy/Permissions-Policy + `CSP-Report-Only` on backend |
 | 2026-03-24 | SEC-02-P1 | Implemented CSRF enforcement layer | Added `x-csrf-token` validation for cookie-auth mutating endpoints + frontend token propagation from auth endpoints |
 | 2026-03-24 | API-01-P1 | Added baseline public catalog anti-abuse guard | Added per-IP rate limit for public catalog read endpoints with configurable thresholds |
+| 2026-03-24 | DEC-03 | Approved public field policy | Added `docs/PUBLIC_CATALOG_FIELDS.md` as DEC-03 artifact |
+| 2026-03-24 | API-02-P1 | Masked additional public catalog fields | Hid external/CRM identifiers and sensitive filter dimensions for public users |
 
 ## Tracking rules
 - Order is flexible, but respect `Depends on`.
