@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { ZodError } from "zod";
 import { parseCatalogQuery } from "../catalog/catalog-query";
 import { getLatestSuccessfulImportBatch } from "../repositories/import-batch-repository";
@@ -10,6 +10,109 @@ import {
   getCatalogStockValueRub,
   searchCatalogItems,
 } from "../repositories/catalog-repository";
+
+function parsePositiveIntEnv(
+  name: string,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  const normalized = Math.floor(parsed);
+  if (normalized < min) {
+    return fallback;
+  }
+
+  return Math.min(normalized, max);
+}
+
+const PUBLIC_CATALOG_RATE_LIMIT_WINDOW_MS = parsePositiveIntEnv(
+  "PUBLIC_CATALOG_RATE_LIMIT_WINDOW_MS",
+  60_000,
+  1_000,
+  600_000,
+);
+const PUBLIC_CATALOG_SUMMARY_MAX_REQUESTS = parsePositiveIntEnv(
+  "PUBLIC_CATALOG_SUMMARY_MAX_REQUESTS",
+  120,
+  10,
+  20_000,
+);
+const PUBLIC_CATALOG_FILTERS_MAX_REQUESTS = parsePositiveIntEnv(
+  "PUBLIC_CATALOG_FILTERS_MAX_REQUESTS",
+  120,
+  10,
+  20_000,
+);
+const PUBLIC_CATALOG_ITEMS_MAX_REQUESTS = parsePositiveIntEnv(
+  "PUBLIC_CATALOG_ITEMS_MAX_REQUESTS",
+  180,
+  10,
+  20_000,
+);
+const PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS = parsePositiveIntEnv(
+  "PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS",
+  240,
+  10,
+  20_000,
+);
+
+const publicCatalogRateLimitBuckets = new Map<string, number[]>();
+
+function isPublicCatalogRateLimited(
+  key: string,
+  maxRequests: number,
+  nowMs: number,
+): boolean {
+  const bucket = publicCatalogRateLimitBuckets.get(key) ?? [];
+  const threshold = nowMs - PUBLIC_CATALOG_RATE_LIMIT_WINDOW_MS;
+  const fresh = bucket.filter((item) => item >= threshold);
+
+  if (fresh.length >= maxRequests) {
+    publicCatalogRateLimitBuckets.set(key, fresh);
+    return true;
+  }
+
+  fresh.push(nowMs);
+  publicCatalogRateLimitBuckets.set(key, fresh);
+  return false;
+}
+
+function rejectIfPublicCatalogRateLimited(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  endpointKey: string,
+  maxRequests: number,
+): boolean {
+  if (request.authUser) {
+    return false;
+  }
+
+  const nowMs = Date.now();
+  const clientIp = request.ip || "unknown";
+  const key = `${endpointKey}:${clientIp}`;
+  const isLimited = isPublicCatalogRateLimited(key, maxRequests, nowMs);
+  if (!isLimited) {
+    return false;
+  }
+
+  const retryAfterSeconds = Math.max(
+    1,
+    Math.ceil(PUBLIC_CATALOG_RATE_LIMIT_WINDOW_MS / 1000),
+  );
+  reply.header("Retry-After", String(retryAfterSeconds));
+  void reply.code(429).send({ message: "Too many catalog requests" });
+  return true;
+}
 
 function sanitizeCatalogItemForRole<
   T extends {
@@ -73,7 +176,18 @@ function applyPrivateCacheHeaders(
 }
 
 export async function registerCatalogRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/api/catalog/summary", async (_request, reply) => {
+  app.get("/api/catalog/summary", async (request, reply) => {
+    if (
+      rejectIfPublicCatalogRateLimited(
+        request,
+        reply,
+        "catalog-summary",
+        PUBLIC_CATALOG_SUMMARY_MAX_REQUESTS,
+      )
+    ) {
+      return;
+    }
+
     try {
       const latestImportBatch = getLatestSuccessfulImportBatch();
       const stockValueRub = getCatalogStockValueRub();
@@ -89,7 +203,7 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
         JSON.stringify(structureMetrics.vehicleTypeShare),
       );
 
-      if (_request.headers["if-none-match"] === etag) {
+      if (request.headers["if-none-match"] === etag) {
         applyPrivateCacheHeaders(reply, 60, 120);
         reply.header("ETag", etag);
         return reply.code(304).send();
@@ -111,6 +225,17 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
   });
 
   app.get("/api/catalog/items", async (request, reply) => {
+    if (
+      rejectIfPublicCatalogRateLimited(
+        request,
+        reply,
+        "catalog-items",
+        PUBLIC_CATALOG_ITEMS_MAX_REQUESTS,
+      )
+    ) {
+      return;
+    }
+
     try {
       const query = parseCatalogQuery(request.query);
       const latestImportBatch = getLatestSuccessfulImportBatch();
@@ -158,6 +283,17 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
   });
 
   app.get("/api/catalog/filters", async (request, reply) => {
+    if (
+      rejectIfPublicCatalogRateLimited(
+        request,
+        reply,
+        "catalog-filters",
+        PUBLIC_CATALOG_FILTERS_MAX_REQUESTS,
+      )
+    ) {
+      return;
+    }
+
     try {
       const latestImportBatch = getLatestSuccessfulImportBatch();
       const roleBucket = request.authUser?.role ?? "public";
@@ -185,6 +321,17 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
   });
 
   app.get("/api/catalog/items/:id", async (request, reply) => {
+    if (
+      rejectIfPublicCatalogRateLimited(
+        request,
+        reply,
+        "catalog-item-details",
+        PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS,
+      )
+    ) {
+      return;
+    }
+
     const { id } = request.params as { id: string };
     const parsedId = Number(id);
 

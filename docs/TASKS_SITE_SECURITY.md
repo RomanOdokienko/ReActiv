@@ -53,7 +53,7 @@ A task can be moved to `deferred` if:
 | SEC-01 | Security | P0 | done | Restrict CORS to trusted origin allowlist | DEC-02, SEC-00 | Unknown origins do not receive ACAO, trusted origins keep working |
 | SEC-02 | Security | P0 | in_progress | Add CSRF protection for cookie-auth state-changing endpoints | SEC-00 | POST/PUT/PATCH/DELETE without valid CSRF token are rejected |
 | SEC-03 | Security | P0 | in_progress | Add baseline security headers on frontend/API | SEC-00 | HSTS/CSP/XFO/XCTO/Referrer-Policy/Permissions-Policy are stable |
-| API-01 | API Protection | P1 | todo | Limit bulk catalog scraping (rate limit, page-size limits, anti-abuse) | SEC-00 | Automated bulk extraction is reduced without breaking showcase UX |
+| API-01 | API Protection | P1 | in_progress | Limit bulk catalog scraping (rate limit, page-size limits, anti-abuse) | SEC-00 | Automated bulk extraction is reduced without breaking showcase UX |
 | API-02 | Data Exposure | P1 | blocked | Minimize public catalog fields | DEC-03, SEC-00 | Public responses contain only approved field set |
 | PERF-01 | Performance | P1 | todo | Enable gzip/br and correct cache headers | infra-check | Responses include content-encoding and sane cache-control |
 | PERF-02 | Performance | P1 | todo | Reduce impact of 3rd-party scripts (chat/analytics) | DEC-04 | LCP/TBT/CLS improve without losing critical analytics |
@@ -192,6 +192,7 @@ A task can be moved to `deferred` if:
 | 2026-03-24 | SEC-01 | CORS restricted to allowlist | Implemented strict origin allowlist with config override (`CORS_ALLOWED_ORIGINS`) |
 | 2026-03-24 | SEC-03-P1 | Added baseline response security headers | Implemented HSTS/XFO/XCTO/Referrer-Policy/Permissions-Policy + `CSP-Report-Only` on backend |
 | 2026-03-24 | SEC-02-P1 | Implemented CSRF enforcement layer | Added `x-csrf-token` validation for cookie-auth mutating endpoints + frontend token propagation from auth endpoints |
+| 2026-03-24 | API-01-P1 | Added baseline public catalog anti-abuse guard | Added per-IP rate limit for public catalog read endpoints with configurable thresholds |
 
 ## Tracking rules
 - Order is flexible, but respect `Depends on`.

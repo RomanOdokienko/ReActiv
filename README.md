@@ -136,6 +136,11 @@ npm --prefix frontend run dev
 - `CORS_ALLOWED_ORIGINS` (optional, CSV allowlist; default: `https://reactiv.pro,https://www.reactiv.pro,http://localhost:5173,http://127.0.0.1:5173`)
 - `CSP_REPORT_ONLY_POLICY` (optional, overrides default `Content-Security-Policy-Report-Only`)
 - `CSRF_SECRET` (optional, overrides server-generated CSRF signing secret)
+- `PUBLIC_CATALOG_RATE_LIMIT_WINDOW_MS` (optional, default: `60000`)
+- `PUBLIC_CATALOG_SUMMARY_MAX_REQUESTS` (optional, default: `120`)
+- `PUBLIC_CATALOG_FILTERS_MAX_REQUESTS` (optional, default: `120`)
+- `PUBLIC_CATALOG_ITEMS_MAX_REQUESTS` (optional, default: `180`)
+- `PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS` (optional, default: `240`)
 - `BOOTSTRAP_ADMIN_LOGIN` (optional)
 - `BOOTSTRAP_ADMIN_PASSWORD` (optional)
 
