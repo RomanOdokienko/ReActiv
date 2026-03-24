@@ -25,9 +25,34 @@ import { authenticateRequest, getCsrfHeaderName, hasValidCsrfToken } from "./ser
 import { ensureBootstrapAdmin } from "./startup/bootstrap-admin";
 import { startMediaHealthScheduler } from "./services/media-health-scheduler";
 
+const DEFAULT_TRUST_PROXY_HOPS = process.env.NODE_ENV === "production" ? 1 : 0;
+
+function resolveTrustProxyOption(): boolean | number {
+  const fallback = DEFAULT_TRUST_PROXY_HOPS > 0 ? DEFAULT_TRUST_PROXY_HOPS : false;
+  const raw = process.env.TRUST_PROXY_HOPS?.trim();
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  const normalized = Math.floor(parsed);
+  if (normalized <= 0) {
+    return false;
+  }
+
+  return Math.min(normalized, 8);
+}
+
+const trustProxy = resolveTrustProxyOption();
+
 const app = Fastify({
   logger: true,
   bodyLimit: 20 * 1024 * 1024,
+  trustProxy,
 });
 
 app.get("/health", async () => {
@@ -715,6 +740,7 @@ async function startServer(): Promise<void> {
       canonicalRedirectEnabled,
       canonicalWebHost,
       canonicalRedirectFromHosts: Array.from(canonicalRedirectFromHosts.values()),
+      trustProxy,
     },
     "security_runtime_config",
   );

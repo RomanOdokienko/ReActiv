@@ -130,6 +130,7 @@ npm --prefix frontend run dev
 ### Backend
 - `PORT` (default: `3001`)
 - `HOST` (default: `0.0.0.0`)
+- `TRUST_PROXY_HOPS` (optional, non-negative integer; default: `1` in production, `0` locally; controls how many proxy hops are trusted for real client IP resolution)
 - `DATABASE_PATH` (recommended in production: absolute path, e.g. `/data/lease-platform.db`)
 - `PUBLIC_WEB_BASE_URL` (default: `https://reactiv.pro`)
 - `PUBLIC_SHARE_BASE_URL` (default: `https://api.reactiv.pro`)
