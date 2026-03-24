@@ -55,7 +55,7 @@ A task can be moved to `deferred` if:
 | SEC-03 | Security | P0 | in_progress | Add baseline security headers on frontend/API | SEC-00 | HSTS/CSP/XFO/XCTO/Referrer-Policy/Permissions-Policy are stable |
 | API-01 | API Protection | P1 | in_progress | Limit bulk catalog scraping (rate limit, page-size limits, anti-abuse) | SEC-00 | Automated bulk extraction is reduced without breaking showcase UX |
 | API-02 | Data Exposure | P1 | in_progress | Minimize public catalog fields | DEC-03, SEC-00 | Public responses contain only approved field set |
-| PERF-01 | Performance | P1 | todo | Enable gzip/br and correct cache headers | infra-check | Responses include content-encoding and sane cache-control |
+| PERF-01 | Performance | P1 | in_progress | Enable gzip/br and correct cache headers | infra-check | Responses include content-encoding and sane cache-control |
 | PERF-02 | Performance | P1 | todo | Reduce impact of 3rd-party scripts (chat/analytics) | DEC-04 | LCP/TBT/CLS improve without losing critical analytics |
 | SEO-01 | SEO | P2 | blocked | Enforce strict host canonicalization (`www` vs `non-www`) | DEC-01 | Single canonical host + 301/308 redirects |
 | QA-01 | Verification | P1 | todo | Re-audit after fixes | SEC-01..SEO-01 | "Before/after" report with residual risks |
@@ -204,6 +204,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | SEC-02-P3 | Added origin/referrer check for mutating auth requests | Added allowlist validation for `Origin`/`Referer` on authenticated state-changing endpoints with rollback flag |
 | 2026-03-25 | API-01-P3 | Hardened rate limiter state management | Added cleanup interval and max-buckets cap to keep in-memory limiter bounded under abuse |
 | 2026-03-25 | API-01-P4 | Added public query complexity caps | Capped `page`, `search` length and filter-list sizes for public catalog requests to reduce abusive heavy queries |
+| 2026-03-25 | PERF-01-P1 | Scoped cache policy by audience | Public catalog responses now use `public` cache-control; authenticated responses remain `private` |
 
 ## Tracking rules
 - Order is flexible, but respect `Depends on`.

@@ -261,14 +261,15 @@ function buildWeakEtag(...parts: Array<string | number | null | undefined>): str
   return `W/"${digest}"`;
 }
 
-function applyPrivateCacheHeaders(
+function applyScopedCacheHeaders(
   reply: { header: (name: string, value: string) => unknown },
+  visibility: "private" | "public",
   maxAgeSec: number,
   staleWhileRevalidateSec: number,
 ): void {
   reply.header(
     "Cache-Control",
-    `private, max-age=${maxAgeSec}, stale-while-revalidate=${staleWhileRevalidateSec}`,
+    `${visibility}, max-age=${maxAgeSec}, stale-while-revalidate=${staleWhileRevalidateSec}`,
   );
 }
 
@@ -352,12 +353,22 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
       );
 
       if (request.headers["if-none-match"] === etag) {
-        applyPrivateCacheHeaders(reply, 60, 120);
+        applyScopedCacheHeaders(
+          reply,
+          request.authUser ? "private" : "public",
+          60,
+          120,
+        );
         reply.header("ETag", etag);
         return reply.code(304).send();
       }
 
-      applyPrivateCacheHeaders(reply, 60, 120);
+      applyScopedCacheHeaders(
+        reply,
+        request.authUser ? "private" : "public",
+        60,
+        120,
+      );
       reply.header("ETag", etag);
       return reply.code(200).send({
         newThisWeekCount: latestImportBatch?.added_rows ?? 0,
@@ -398,7 +409,12 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
       );
 
       if (request.headers["if-none-match"] === etag) {
-        applyPrivateCacheHeaders(reply, 30, 60);
+        applyScopedCacheHeaders(
+          reply,
+          request.authUser ? "private" : "public",
+          30,
+          60,
+        );
         reply.header("ETag", etag);
         return reply.code(304).send();
       }
@@ -408,7 +424,12 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
         sanitizeCatalogItemForRole(item, request.authUser?.role),
       );
 
-      applyPrivateCacheHeaders(reply, 30, 60);
+      applyScopedCacheHeaders(
+        reply,
+        request.authUser ? "private" : "public",
+        30,
+        60,
+      );
       reply.header("ETag", etag);
       return reply.code(200).send({
         items,
@@ -453,13 +474,23 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
       );
 
       if (request.headers["if-none-match"] === etag) {
-        applyPrivateCacheHeaders(reply, 300, 600);
+        applyScopedCacheHeaders(
+          reply,
+          request.authUser ? "private" : "public",
+          300,
+          600,
+        );
         reply.header("ETag", etag);
         return reply.code(304).send();
       }
 
       const metadata = getCatalogFiltersMetadata();
-      applyPrivateCacheHeaders(reply, 300, 600);
+      applyScopedCacheHeaders(
+        reply,
+        request.authUser ? "private" : "public",
+        300,
+        600,
+      );
       reply.header("ETag", etag);
       return reply
         .code(200)
