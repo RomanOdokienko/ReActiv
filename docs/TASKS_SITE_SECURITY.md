@@ -49,7 +49,7 @@ A task can be moved to `deferred` if:
 ## Task register
 | ID | Category | Priority | Status | Task | Depends on | Definition of done |
 |---|---|---|---|---|---|---|
-| SEC-00 | Security | P0 | in_progress | Approve access matrix `endpoint -> public/auth/admin` | DEC-05 | Approved matrix for all endpoints plus agreed exceptions |
+| SEC-00 | Security | P0 | in_progress | Approve access matrix `endpoint -> public/auth/admin` | DEC-05 | Approved matrix for all endpoints plus agreed exceptions (`docs/SECURITY_ENDPOINT_ACCESS_MATRIX.md`) |
 | SEC-01 | Security | P0 | blocked | Restrict CORS to trusted origin allowlist | DEC-02, SEC-00 | Unknown origins do not receive ACAO, trusted origins keep working |
 | SEC-02 | Security | P0 | todo | Add CSRF protection for cookie-auth state-changing endpoints | SEC-00 | POST/PUT/PATCH/DELETE without valid CSRF token are rejected |
 | SEC-03 | Security | P0 | todo | Add baseline security headers on frontend/API | SEC-00 | HSTS/CSP/XFO/XCTO/Referrer-Policy/Permissions-Policy are stable |
@@ -67,7 +67,7 @@ A task can be moved to `deferred` if:
 | DEC-02 | Trusted origin allowlist (prod/stage/local) | pending | SEC-01 |
 | DEC-03 | Approved public catalog field set | pending | API-02 |
 | DEC-04 | Target frontend SLO metrics (LCP/TBT/CLS) | pending | PERF-02 |
-| DEC-05 | Confirm whether ADR is required for SEC-00 access model boundaries | pending | SEC-00, SEC-02 |
+| DEC-05 | Confirm whether ADR is required for SEC-00 access model boundaries | done | SEC-00, SEC-02 |
 
 ## Current endpoint zone map (draft for SEC-00)
 ### Public (intentional)
@@ -185,6 +185,8 @@ A task can be moved to `deferred` if:
 | 2026-03-24 | INIT | Created tracker file | Active website security backlog |
 | 2026-03-24 | PLAN-REFINE | Refined plan to real-risk approach | Added dependencies, gates, phased rollout, rollback, and checklists |
 | 2026-03-24 | LANG-EN | Rewrote tracker to English | Removed translit ambiguity for security decisions |
+| 2026-03-24 | SEC-00-DRAFT | Published endpoint access matrix artifact | Added `docs/SECURITY_ENDPOINT_ACCESS_MATRIX.md` with role/token/mode access mapping |
+| 2026-03-24 | DEC-05 | ADR boundary clarified | No ADR required for SEC-00 documentation; ADR required before changing access model boundaries |
 
 ## Tracking rules
 - Order is flexible, but respect `Depends on`.
