@@ -49,7 +49,7 @@ A task can be moved to `deferred` if:
 ## Task register
 | ID | Category | Priority | Status | Task | Depends on | Definition of done |
 |---|---|---|---|---|---|---|
-| SEC-00 | Security | P0 | in_progress | Approve access matrix `endpoint -> public/auth/admin` | DEC-05 | Approved matrix for all endpoints plus agreed exceptions (`docs/SECURITY_ENDPOINT_ACCESS_MATRIX.md`) |
+| SEC-00 | Security | P0 | done | Approve access matrix `endpoint -> public/auth/admin` | DEC-05 | Approved matrix for all endpoints plus agreed exceptions (`docs/SECURITY_ENDPOINT_ACCESS_MATRIX.md`) |
 | SEC-01 | Security | P0 | done | Restrict CORS to trusted origin allowlist | DEC-02, SEC-00 | Unknown origins do not receive ACAO, trusted origins keep working |
 | SEC-02 | Security | P0 | done | Add CSRF protection for cookie-auth state-changing endpoints | SEC-00 | POST/PUT/PATCH/DELETE without valid CSRF token are rejected |
 | SEC-03 | Security | P0 | done | Add baseline security headers on frontend/API | SEC-00 | HSTS/CSP/XFO/XCTO/Referrer-Policy/Permissions-Policy are stable |
@@ -69,7 +69,7 @@ A task can be moved to `deferred` if:
 | DEC-04 | Target frontend SLO metrics (LCP/TBT/CLS) | done (`docs/FRONTEND_PERFORMANCE_SLO.md`) | PERF-02 |
 | DEC-05 | Confirm whether ADR is required for SEC-00 access model boundaries | done | SEC-00, SEC-02 |
 
-## Current endpoint zone map (draft for SEC-00)
+## Current endpoint zone map (reference for SEC-00)
 ### Public (intentional)
 - Landing/share/SEO and health routes.
 - Public catalog read endpoints in open mode.
@@ -158,19 +158,15 @@ A task can be moved to `deferred` if:
 
 ## What we do now (real-risk focus)
 `Now`:
-- SEC-00
-- DEC-03
-- SEC-03 baseline headers
-- SEC-02
+- PERF-02 completion against approved SLO (`DEC-04`) with release-safe checks.
+- SEO-01 preparation/implementation on infra edge (canonical host redirects).
 
 `Next`:
-- API-01 baseline anti-abuse
-- API-02 field minimization rollout (after DEC-03)
+- Delta QA after `PERF-02` and `SEO-01` to confirm no regressions in auth/catalog/share flows.
 
 `Later / based on data`:
-- API-02 full tighten
-- PERF-02 advanced tuning
-- enterprise-level anti-bot mechanisms (only if justified by abuse data)
+- Advanced 3rd-party performance tuning.
+- Enterprise-level anti-bot mechanisms (only if justified by abuse data).
 
 ## Minimal verification checklist per iteration
 1. Auth smoke: login/me/logout, admin access, favorites add/remove.
@@ -212,6 +208,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | PERF-02-P2 | Added runtime toggles for 3rd-party scripts | Added `window.__APP_RUNTIME_CONFIG__` flags for analytics/chat enablement and load timing control |
 | 2026-03-25 | PERF-02-P3 | Added environment and network-aware 3rd-party loading | Enabled analytics/chat by default only on approved production hosts and disabled Jivo autoload on save-data/slow connections |
 | 2026-03-25 | DEC-04 | Approved frontend performance SLO targets | Added `docs/FRONTEND_PERFORMANCE_SLO.md` with LCP/CLS/TBT thresholds and release guardrails |
+| 2026-03-25 | SEC-00-CLOSE | Closed access-matrix governance task | Marked SEC-00 as `done` based on approved endpoint matrix and explicit exception list |
 | 2026-03-25 | QA-01-P1 | Executed local smoke re-audit | Added `docs/SECURITY_QA_REPORT_2026-03-25.md` with outcomes and residual risks |
 | 2026-03-25 | STATUS-CLOSE | Closed implemented tasks after verification | Set `SEC-02`, `SEC-03`, `API-01`, `API-02`, `PERF-01`, `QA-01` to `done` |
 
