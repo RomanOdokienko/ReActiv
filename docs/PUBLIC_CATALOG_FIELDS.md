@@ -18,6 +18,7 @@ It is used as the approval artifact for `DEC-03` and as a guard against accident
 - Public responses should contain only fields required for showcase UX and lead routing.
 - Operational/internal identifiers and owner-contact style data must be masked for public users.
 - Authenticated `admin` and `stock_owner` keep full data access as currently implemented.
+- Public query filters for operational fields are ignored for non-authenticated users.
 
 ## Public masking rules
 ### Catalog item payload
@@ -37,6 +38,16 @@ For non-admin/non-stock-owner responses:
 - `yandexDiskUrl` -> `[]`
 - `daysOnSaleMin` -> `null`
 - `daysOnSaleMax` -> `null`
+
+### Catalog query constraints (public)
+For non-admin/non-stock-owner requests to `GET /api/catalog/items`:
+- `responsiblePerson` is ignored
+- `externalId` is ignored
+- `crmRef` is ignored
+- `websiteUrl` is ignored
+- `yandexDiskUrl` is ignored
+- `daysOnSaleMin` is ignored
+- `daysOnSaleMax` is ignored
 
 ## Rationale (business)
 - Keeps public showcase functional (cards, detail pages, gallery flow, pagination/filters).

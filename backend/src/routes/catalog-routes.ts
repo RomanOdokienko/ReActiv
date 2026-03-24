@@ -203,6 +203,13 @@ function applyPublicQueryCaps(
   return {
     ...query,
     pageSize: Math.min(query.pageSize, PUBLIC_CATALOG_MAX_PAGE_SIZE),
+    responsiblePerson: undefined,
+    externalId: undefined,
+    crmRef: undefined,
+    websiteUrl: undefined,
+    yandexDiskUrl: undefined,
+    daysOnSaleMin: undefined,
+    daysOnSaleMax: undefined,
   };
 }
 
