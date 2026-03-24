@@ -57,7 +57,7 @@ A task can be moved to `deferred` if:
 | API-02 | Data Exposure | P1 | done | Minimize public catalog fields | DEC-03, SEC-00 | Public responses contain only approved field set |
 | PERF-01 | Performance | P1 | done | Enable gzip/br and correct cache headers | infra-check | Responses include content-encoding and sane cache-control |
 | PERF-02 | Performance | P1 | in_progress | Reduce impact of 3rd-party scripts (chat/analytics) | DEC-04 | LCP/TBT/CLS improve without losing critical analytics |
-| SEO-01 | SEO | P2 | blocked | Enforce strict host canonicalization (`www` vs `non-www`) | DEC-01 | Single canonical host + 301/308 redirects |
+| SEO-01 | SEO | P2 | in_progress | Enforce strict host canonicalization (`www` vs `non-www`) | DEC-01 | Single canonical host + 301/308 redirects |
 | QA-01 | Verification | P1 | done | Re-audit after fixes | SEC-01..SEO-01 | "Before/after" report with residual risks |
 
 ## Decisions and dependencies (to approve)
@@ -159,7 +159,7 @@ A task can be moved to `deferred` if:
 ## What we do now (real-risk focus)
 `Now`:
 - PERF-02 completion against approved SLO (`DEC-04`) with release-safe checks.
-- SEO-01 preparation/implementation on infra edge (canonical host redirects).
+- SEO-01 rollout: enable canonical redirect at edge/runtime config and verify redirects.
 
 `Next`:
 - Delta QA after `PERF-02` and `SEO-01` to confirm no regressions in auth/catalog/share flows.
@@ -210,6 +210,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | PERF-02-P4 | Added adaptive Metrika profile for weak networks | On save-data/slow connections, disabled heavy Metrika features (webvisor/clickmap) while keeping baseline analytics |
 | 2026-03-25 | DEC-04 | Approved frontend performance SLO targets | Added `docs/FRONTEND_PERFORMANCE_SLO.md` with LCP/CLS/TBT thresholds and release guardrails |
 | 2026-03-25 | SEC-00-CLOSE | Closed access-matrix governance task | Marked SEC-00 as `done` based on approved endpoint matrix and explicit exception list |
+| 2026-03-25 | SEO-01-P1 | Added safe canonical redirect implementation gate | Added backend `CANONICAL_REDIRECT_*` runtime controls with GET/HEAD redirects from non-canonical host to canonical host |
 | 2026-03-25 | QA-01-P1 | Executed local smoke re-audit | Added `docs/SECURITY_QA_REPORT_2026-03-25.md` with outcomes and residual risks |
 | 2026-03-25 | STATUS-CLOSE | Closed implemented tasks after verification | Set `SEC-02`, `SEC-03`, `API-01`, `API-02`, `PERF-01`, `QA-01` to `done` |
 

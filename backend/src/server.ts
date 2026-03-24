@@ -42,6 +42,7 @@ const DEFAULT_ALLOWED_CORS_ORIGINS = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ];
+const DEFAULT_CANONICAL_REDIRECT_FROM_HOSTS = ["www.reactiv.pro"];
 const DEFAULT_CSP_REPORT_ONLY_POLICY = [
   "default-src 'self' https: data: blob:",
   "base-uri 'self'",
@@ -107,6 +108,39 @@ function normalizeOriginValue(rawOrigin: string): string | null {
   }
 }
 
+function normalizeHostValue(rawHost: string): string | null {
+  const value = rawHost.trim();
+  if (!value) {
+    return null;
+  }
+
+  const firstValue = value.split(",")[0]?.trim();
+  if (!firstValue) {
+    return null;
+  }
+
+  const candidate = firstValue.includes("://") ? firstValue : `https://${firstValue}`;
+  try {
+    return new URL(candidate).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeProtocolValue(rawProtocol: string): "http" | "https" | null {
+  const value = rawProtocol.trim().toLowerCase();
+  if (!value) {
+    return null;
+  }
+
+  const firstValue = value.split(",")[0]?.trim().toLowerCase();
+  if (firstValue === "http" || firstValue === "https") {
+    return firstValue;
+  }
+
+  return null;
+}
+
 function resolveAllowedCorsOrigins(): Set<string> {
   const configuredOrigins = process.env.CORS_ALLOWED_ORIGINS
     ?.split(",")
@@ -122,6 +156,32 @@ function resolveAllowedCorsOrigins(): Set<string> {
     .filter((value): value is string => Boolean(value));
 
   return new Set(normalizedOrigins);
+}
+
+function resolveCanonicalRedirectFromHosts(): Set<string> {
+  const configuredHosts = process.env.CANONICAL_REDIRECT_FROM_HOSTS
+    ?.split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const source = configuredHosts?.length
+    ? configuredHosts
+    : DEFAULT_CANONICAL_REDIRECT_FROM_HOSTS;
+
+  const normalizedHosts = source
+    .map(normalizeHostValue)
+    .filter((value): value is string => Boolean(value));
+
+  return new Set(normalizedHosts);
+}
+
+function resolveCanonicalWebHost(): string | null {
+  const configuredHost = process.env.CANONICAL_WEB_HOST?.trim();
+  if (!configuredHost) {
+    return null;
+  }
+
+  return normalizeHostValue(configuredHost);
 }
 
 function isAllowedCorsOrigin(
@@ -158,6 +218,37 @@ function getFirstHeaderValue(value: string | string[] | undefined): string | nul
 
   const normalized = value.trim();
   return normalized || null;
+}
+
+function resolveRequestHost(request: FastifyRequest): string | null {
+  const forwardedHost = getFirstHeaderValue(request.headers["x-forwarded-host"]);
+  if (forwardedHost) {
+    return normalizeHostValue(forwardedHost);
+  }
+
+  const hostHeader = getFirstHeaderValue(request.headers.host);
+  if (!hostHeader) {
+    return null;
+  }
+
+  return normalizeHostValue(hostHeader);
+}
+
+function resolveRequestProtocol(request: FastifyRequest): "http" | "https" {
+  const forwardedProtocol = getFirstHeaderValue(request.headers["x-forwarded-proto"]);
+  const normalizedForwardedProtocol = forwardedProtocol
+    ? normalizeProtocolValue(forwardedProtocol)
+    : null;
+  if (normalizedForwardedProtocol) {
+    return normalizedForwardedProtocol;
+  }
+
+  const normalizedProtocol = normalizeProtocolValue(request.protocol);
+  if (normalizedProtocol) {
+    return normalizedProtocol;
+  }
+
+  return process.env.NODE_ENV === "production" ? "https" : "http";
 }
 
 function resolveRequestSourceOrigin(
@@ -517,6 +608,9 @@ ensureBootstrapAdmin(app.log);
 
 async function startServer(): Promise<void> {
   const allowedCorsOrigins = resolveAllowedCorsOrigins();
+  const canonicalRedirectEnabled = parseBooleanEnv("CANONICAL_REDIRECT_ENABLED", false);
+  const canonicalWebHost = resolveCanonicalWebHost();
+  const canonicalRedirectFromHosts = resolveCanonicalRedirectFromHosts();
   const cspReportEndpointEnabled = parseBooleanEnv("CSP_REPORT_ENDPOINT_ENABLED", true);
   const cspEnforceEnabled = parseBooleanEnv("CSP_ENFORCE_ENABLED", false);
   const cspReportOnlyPolicy = enrichCspPolicyWithReportUri(
@@ -618,9 +712,46 @@ async function startServer(): Promise<void> {
       cspEnforceEnabled,
       responseCompressionEnabled,
       responseCompressionMinSizeBytes,
+      canonicalRedirectEnabled,
+      canonicalWebHost,
+      canonicalRedirectFromHosts: Array.from(canonicalRedirectFromHosts.values()),
     },
     "security_runtime_config",
   );
+
+  app.addHook("onRequest", async (request, reply) => {
+    if (!canonicalRedirectEnabled || !canonicalWebHost) {
+      return;
+    }
+
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return;
+    }
+
+    const requestPathWithQuery = request.raw.url ?? "/";
+    const requestPath = requestPathWithQuery.split("?")[0] ?? "/";
+    if (requestPath === "/health" || requestPath === "/api" || requestPath.startsWith("/api/")) {
+      return;
+    }
+
+    const requestHost = resolveRequestHost(request);
+    if (!requestHost || !canonicalRedirectFromHosts.has(requestHost) || requestHost === canonicalWebHost) {
+      return;
+    }
+
+    const requestProtocol = resolveRequestProtocol(request);
+    const location = `${requestProtocol}://${canonicalWebHost}${requestPathWithQuery}`;
+    app.log.info(
+      {
+        fromHost: requestHost,
+        toHost: canonicalWebHost,
+        method: request.method,
+        path: requestPath,
+      },
+      "canonical_redirect_applied",
+    );
+    return reply.redirect(location, 308);
+  });
 
   app.addHook("onSend", async (request, reply, payload) => {
     reply.header("X-Content-Type-Options", "nosniff");
