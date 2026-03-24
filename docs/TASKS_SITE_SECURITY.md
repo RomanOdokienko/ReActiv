@@ -207,6 +207,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | PERF-02-P1 | Deferred analytics/chat bootstrap | Switched Yandex Metrika to load on idle after page load and Jivo chat to interaction/timeout-based lazy load |
 | 2026-03-25 | PERF-02-P2 | Added runtime toggles for 3rd-party scripts | Added `window.__APP_RUNTIME_CONFIG__` flags for analytics/chat enablement and load timing control |
 | 2026-03-25 | PERF-02-P3 | Added environment and network-aware 3rd-party loading | Enabled analytics/chat by default only on approved production hosts and disabled Jivo autoload on save-data/slow connections |
+| 2026-03-25 | PERF-02-P4 | Added adaptive Metrika profile for weak networks | On save-data/slow connections, disabled heavy Metrika features (webvisor/clickmap) while keeping baseline analytics |
 | 2026-03-25 | DEC-04 | Approved frontend performance SLO targets | Added `docs/FRONTEND_PERFORMANCE_SLO.md` with LCP/CLS/TBT thresholds and release guardrails |
 | 2026-03-25 | SEC-00-CLOSE | Closed access-matrix governance task | Marked SEC-00 as `done` based on approved endpoint matrix and explicit exception list |
 | 2026-03-25 | QA-01-P1 | Executed local smoke re-audit | Added `docs/SECURITY_QA_REPORT_2026-03-25.md` with outcomes and residual risks |

@@ -55,6 +55,10 @@
           METRIKA_ENABLED: isProductionHost,
           METRIKA_ID: 106991436,
           METRIKA_IDLE_TIMEOUT_MS: 2500,
+          METRIKA_WEBVISOR_ENABLED: true,
+          METRIKA_CLICKMAP_ENABLED: true,
+          METRIKA_DISABLE_HEAVY_ON_SAVE_DATA: true,
+          METRIKA_DISABLE_HEAVY_ON_SLOW_CONNECTION: true,
           JIVO_ENABLED: isProductionHost,
           JIVO_SRC: "https://code.jivo.ru/widget/ZaUQHxLJ11",
           JIVO_AUTOLOAD_TIMEOUT_MS: 12000,
@@ -82,6 +86,10 @@
         var METRIKA_SRC = "https://mc.yandex.ru/metrika/tag.js?id=" + METRIKA_ID;
         var JIVO_SRC = appConfig.JIVO_SRC || "https://code.jivo.ru/widget/ZaUQHxLJ11";
         var METRIKA_IDLE_TIMEOUT_MS = Number(appConfig.METRIKA_IDLE_TIMEOUT_MS || 2500);
+        var METRIKA_WEBVISOR_ENABLED = appConfig.METRIKA_WEBVISOR_ENABLED !== false;
+        var METRIKA_CLICKMAP_ENABLED = appConfig.METRIKA_CLICKMAP_ENABLED !== false;
+        var METRIKA_DISABLE_HEAVY_ON_SAVE_DATA = appConfig.METRIKA_DISABLE_HEAVY_ON_SAVE_DATA !== false;
+        var METRIKA_DISABLE_HEAVY_ON_SLOW_CONNECTION = appConfig.METRIKA_DISABLE_HEAVY_ON_SLOW_CONNECTION !== false;
         var JIVO_AUTOLOAD_TIMEOUT_MS = Number(appConfig.JIVO_AUTOLOAD_TIMEOUT_MS || 12000);
         var JIVO_DISABLE_AUTOLOAD_ON_SAVE_DATA = appConfig.JIVO_DISABLE_AUTOLOAD_ON_SAVE_DATA !== false;
         var JIVO_DISABLE_AUTOLOAD_ON_SLOW_CONNECTION = appConfig.JIVO_DISABLE_AUTOLOAD_ON_SLOW_CONNECTION !== false;
@@ -151,10 +159,15 @@
           initMetrikaQueue();
           addScriptOnce(METRIKA_SRC);
 
+          var disableHeavyMetrikaFeatures =
+            (METRIKA_DISABLE_HEAVY_ON_SAVE_DATA && networkProfile.saveData) ||
+            (METRIKA_DISABLE_HEAVY_ON_SLOW_CONNECTION && networkProfile.isSlow);
+          var enableHeavyMetrikaFeatures = !disableHeavyMetrikaFeatures;
+
           window.ym(METRIKA_ID, "init", {
             ssr: true,
-            webvisor: true,
-            clickmap: true,
+            webvisor: enableHeavyMetrikaFeatures && METRIKA_WEBVISOR_ENABLED,
+            clickmap: enableHeavyMetrikaFeatures && METRIKA_CLICKMAP_ENABLED,
             ecommerce: "dataLayer",
             referrer: document.referrer,
             url: location.href,
