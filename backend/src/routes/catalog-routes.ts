@@ -105,6 +105,12 @@ const PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS = parsePositiveIntEnv(
 const publicCatalogRateLimitBuckets = new Map<string, number[]>();
 let lastPublicCatalogRateLimitCleanupMs = 0;
 
+interface PublicCatalogRateLimitResult {
+  limited: boolean;
+  remaining: number;
+  resetAfterSeconds: number;
+}
+
 function cleanupPublicCatalogRateLimitBuckets(nowMs: number): void {
   if (
     lastPublicCatalogRateLimitCleanupMs > 0 &&
@@ -151,26 +157,39 @@ function ensurePublicCatalogRateLimitCapacity(key: string, nowMs: number): void 
   }
 }
 
-function isPublicCatalogRateLimited(
+function evaluatePublicCatalogRateLimit(
   key: string,
   maxRequests: number,
   nowMs: number,
-): boolean {
+): PublicCatalogRateLimitResult {
   cleanupPublicCatalogRateLimitBuckets(nowMs);
   ensurePublicCatalogRateLimitCapacity(key, nowMs);
 
   const bucket = publicCatalogRateLimitBuckets.get(key) ?? [];
   const threshold = nowMs - PUBLIC_CATALOG_RATE_LIMIT_WINDOW_MS;
   const fresh = bucket.filter((item) => item >= threshold);
+  const oldestTimestamp = fresh[0] ?? nowMs;
+  const resetAfterSeconds = Math.max(
+    1,
+    Math.ceil((oldestTimestamp + PUBLIC_CATALOG_RATE_LIMIT_WINDOW_MS - nowMs) / 1000),
+  );
 
   if (fresh.length >= maxRequests) {
     publicCatalogRateLimitBuckets.set(key, fresh);
-    return true;
+    return {
+      limited: true,
+      remaining: 0,
+      resetAfterSeconds,
+    };
   }
 
   fresh.push(nowMs);
   publicCatalogRateLimitBuckets.set(key, fresh);
-  return false;
+  return {
+    limited: false,
+    remaining: Math.max(0, maxRequests - fresh.length),
+    resetAfterSeconds,
+  };
 }
 
 function rejectIfPublicCatalogRateLimited(
@@ -186,16 +205,16 @@ function rejectIfPublicCatalogRateLimited(
   const nowMs = Date.now();
   const clientIp = request.ip || "unknown";
   const key = `${endpointKey}:${clientIp}`;
-  const isLimited = isPublicCatalogRateLimited(key, maxRequests, nowMs);
-  if (!isLimited) {
+  const rateLimitState = evaluatePublicCatalogRateLimit(key, maxRequests, nowMs);
+  reply.header("X-RateLimit-Limit", String(maxRequests));
+  reply.header("X-RateLimit-Remaining", String(rateLimitState.remaining));
+  reply.header("X-RateLimit-Reset", String(rateLimitState.resetAfterSeconds));
+
+  if (!rateLimitState.limited) {
     return false;
   }
 
-  const retryAfterSeconds = Math.max(
-    1,
-    Math.ceil(PUBLIC_CATALOG_RATE_LIMIT_WINDOW_MS / 1000),
-  );
-  reply.header("Retry-After", String(retryAfterSeconds));
+  reply.header("Retry-After", String(rateLimitState.resetAfterSeconds));
   void reply.code(429).send({ message: "Too many catalog requests" });
   return true;
 }

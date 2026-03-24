@@ -204,6 +204,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | SEC-02-P3 | Added origin/referrer check for mutating auth requests | Added allowlist validation for `Origin`/`Referer` on authenticated state-changing endpoints with rollback flag |
 | 2026-03-25 | API-01-P3 | Hardened rate limiter state management | Added cleanup interval and max-buckets cap to keep in-memory limiter bounded under abuse |
 | 2026-03-25 | API-01-P4 | Added public query complexity caps | Capped `page`, `search` length and filter-list sizes for public catalog requests to reduce abusive heavy queries |
+| 2026-03-25 | API-01-P5 | Added public rate-limit response headers | Public catalog endpoints now return `X-RateLimit-Limit/Remaining/Reset` (+ `Retry-After` on 429) for better control and monitoring |
 | 2026-03-25 | PERF-01-P1 | Scoped cache policy by audience | Public catalog responses now use `public` cache-control; authenticated responses remain `private` |
 | 2026-03-25 | PERF-01-P2 | Added caching for catalog item details | Added ETag + scoped cache-control for `/api/catalog/items/:id` with 304 support |
 | 2026-03-25 | PERF-01-P3 | Enabled app-level response compression | Added built-in gzip/br compression (configurable) for compressible payloads with size threshold and `Vary: Accept-Encoding` |
