@@ -13,6 +13,93 @@ const loginBodySchema = z.object({
   password: z.string().min(1),
 });
 
+const AUTH_LOGIN_RATE_LIMIT_WINDOW_MS = parsePositiveIntEnv(
+  "AUTH_LOGIN_RATE_LIMIT_WINDOW_MS",
+  60_000,
+  5_000,
+  15 * 60_000,
+);
+const AUTH_LOGIN_RATE_LIMIT_MAX_IP_ATTEMPTS = parsePositiveIntEnv(
+  "AUTH_LOGIN_RATE_LIMIT_MAX_IP_ATTEMPTS",
+  40,
+  5,
+  1_000,
+);
+const AUTH_LOGIN_RATE_LIMIT_MAX_IP_LOGIN_ATTEMPTS = parsePositiveIntEnv(
+  "AUTH_LOGIN_RATE_LIMIT_MAX_IP_LOGIN_ATTEMPTS",
+  12,
+  3,
+  500,
+);
+
+const loginFailedAttemptsByIp = new Map<string, number[]>();
+const loginFailedAttemptsByIpLogin = new Map<string, number[]>();
+
+function parsePositiveIntEnv(
+  name: string,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  const normalized = Math.floor(parsed);
+  if (normalized < min) {
+    return fallback;
+  }
+
+  return Math.min(normalized, max);
+}
+
+function getRateLimitBucket(
+  buckets: Map<string, number[]>,
+  key: string,
+  nowMs: number,
+): number[] {
+  const existing = buckets.get(key) ?? [];
+  const threshold = nowMs - AUTH_LOGIN_RATE_LIMIT_WINDOW_MS;
+  const fresh = existing.filter((timestamp) => timestamp >= threshold);
+  buckets.set(key, fresh);
+  return fresh;
+}
+
+function isLoginRateLimited(
+  buckets: Map<string, number[]>,
+  key: string,
+  limit: number,
+  nowMs: number,
+): boolean {
+  const fresh = getRateLimitBucket(buckets, key, nowMs);
+  return fresh.length >= limit;
+}
+
+function recordLoginFailureAttempt(
+  buckets: Map<string, number[]>,
+  key: string,
+  nowMs: number,
+): void {
+  const fresh = getRateLimitBucket(buckets, key, nowMs);
+  fresh.push(nowMs);
+  buckets.set(key, fresh);
+}
+
+function normalizeLoginValue(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function resolveClientIp(request: { ip?: string }): string {
+  const value = request.ip?.trim();
+  return value || "unknown";
+}
+
 function applyNoStoreHeaders(reply: {
   header: (name: string, value: string) => unknown;
 }): void {
@@ -27,11 +114,37 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
     try {
       const payload = loginBodySchema.parse(request.body);
+      const nowMs = Date.now();
+      const ipKey = resolveClientIp(request);
+      const loginKey = normalizeLoginValue(payload.login);
+      const ipLoginKey = `${ipKey}:${loginKey}`;
+
+      if (
+        isLoginRateLimited(
+          loginFailedAttemptsByIp,
+          ipKey,
+          AUTH_LOGIN_RATE_LIMIT_MAX_IP_ATTEMPTS,
+          nowMs,
+        ) ||
+        isLoginRateLimited(
+          loginFailedAttemptsByIpLogin,
+          ipLoginKey,
+          AUTH_LOGIN_RATE_LIMIT_MAX_IP_LOGIN_ATTEMPTS,
+          nowMs,
+        )
+      ) {
+        return reply.code(429).send({ message: "Too many login attempts. Try again later." });
+      }
+
       const loginResult = loginWithPassword(payload.login, payload.password);
 
       if (!loginResult) {
+        recordLoginFailureAttempt(loginFailedAttemptsByIp, ipKey, nowMs);
+        recordLoginFailureAttempt(loginFailedAttemptsByIpLogin, ipLoginKey, nowMs);
         return reply.code(401).send({ message: "Неверный логин или пароль" });
       }
+
+      loginFailedAttemptsByIpLogin.delete(ipLoginKey);
 
       reply.setCookie(getSessionCookieName(), loginResult.sessionToken, {
         path: "/",

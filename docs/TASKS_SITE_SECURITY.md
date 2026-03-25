@@ -55,7 +55,7 @@ A task can be moved to `deferred` if:
 | SEC-03 | Security | P0 | done | Add baseline security headers on frontend/API | SEC-00 | HSTS/CSP/XFO/XCTO/Referrer-Policy/Permissions-Policy are stable |
 | SEC-04 | Security | P0 | in_progress | Harden media endpoints against SSRF/open-proxy abuse | SEC-00 | `/api/media/*` and share image proxy reject disallowed hosts and do not fetch arbitrary remote URLs |
 | SEC-05 | Security | P0 | todo | Enable baseline security headers on frontend host (`reactiv.pro`) | infra | Frontend HTML responses include CSP/HSTS/XFO/XCTO/Referrer-Policy/Permissions-Policy |
-| SEC-06 | Security | P1 | todo | Strengthen anti-automation for auth/activity endpoints | SEC-00 | Explicit protections/monitoring for `/api/auth/login` and `/api/public/activity/events` are verified |
+| SEC-06 | Security | P1 | in_progress | Strengthen anti-automation for auth/activity endpoints | SEC-00 | Explicit protections/monitoring for `/api/auth/login` and `/api/public/activity/events` are verified |
 | API-01 | API Protection | P1 | done | Limit bulk catalog scraping (rate limit, page-size limits, anti-abuse) | SEC-00 | Automated bulk extraction is reduced without breaking showcase UX |
 | API-02 | Data Exposure | P1 | done | Minimize public catalog fields | DEC-03, SEC-00 | Public responses contain only approved field set |
 | PERF-01 | Performance | P1 | done | Enable gzip/br and correct cache headers | infra-check | Responses include content-encoding and sane cache-control |
@@ -163,9 +163,10 @@ A task can be moved to `deferred` if:
 `Now`:
 - SEC-04 (SSRF/open-proxy hardening for media endpoints).
 - SEC-05 planning and rollout on frontend host headers (`reactiv.pro`).
+- SEC-06 anti-automation hardening for auth/activity endpoints.
 
 `Next`:
-- SEC-06 anti-automation hardening for auth/activity endpoints.
+- Delta verification after SEC-04..SEC-06 rollout.
 - Continue SEO/conversion work in `docs/TASKS_SEO_CONVERSION.md`.
 
 `Later / based on data`:
@@ -228,6 +229,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | SECURITY-BLOCK-CLOSE | Closed current security block by agreement | Security tasks for current stage considered complete; next changes require independent audit findings |
 | 2026-03-25 | AUDIT-REOPEN | Re-opened security backlog after independent audit | Added `SEC-04`, `SEC-05`, `SEC-06` as new risk-driven tasks |
 | 2026-03-25 | SEC-04-P1 | Added host allowlist hardening for media remote fetch | Media preview/share proxy now fetches only from approved hosts (`MEDIA_ALLOWED_HOSTS`) |
+| 2026-03-25 | SEC-06-P1 | Added anti-automation controls for auth/activity ingest | Added login brute-force limits and extra per-IP throttling for `/api/public/activity/events` |
 
 ## Tracking rules
 - Order is flexible, but respect `Depends on`.

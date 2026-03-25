@@ -12,12 +12,34 @@ import {
 import { normalizeLogin } from "../services/auth-service";
 
 const ACTIVITY_EVENT_MAX_PAYLOAD_BYTES = 4096;
-const ACTIVITY_RATE_LIMIT_WINDOW_MS = 60_000;
-const ACTIVITY_RATE_LIMIT_MAX_EVENTS = 300;
-const GUEST_ACTIVITY_RATE_LIMIT_MAX_EVENTS = 240;
+const ACTIVITY_RATE_LIMIT_WINDOW_MS = parsePositiveIntEnv(
+  "ACTIVITY_RATE_LIMIT_WINDOW_MS",
+  60_000,
+  5_000,
+  15 * 60_000,
+);
+const ACTIVITY_RATE_LIMIT_MAX_EVENTS = parsePositiveIntEnv(
+  "ACTIVITY_RATE_LIMIT_MAX_EVENTS",
+  300,
+  10,
+  5_000,
+);
+const GUEST_ACTIVITY_RATE_LIMIT_MAX_EVENTS = parsePositiveIntEnv(
+  "GUEST_ACTIVITY_RATE_LIMIT_MAX_EVENTS",
+  240,
+  10,
+  5_000,
+);
+const GUEST_ACTIVITY_RATE_LIMIT_MAX_EVENTS_PER_IP = parsePositiveIntEnv(
+  "GUEST_ACTIVITY_RATE_LIMIT_MAX_EVENTS_PER_IP",
+  180,
+  10,
+  5_000,
+);
 
 const activityRateLimitByUser = new Map<number, number[]>();
 const activityRateLimitByGuestKey = new Map<string, number[]>();
+const activityRateLimitByGuestIp = new Map<string, number[]>();
 const ACTIVITY_VIEWER_LOGINS = new Set(["alexey"]);
 
 const createActivityEventBodySchema = z.object({
@@ -67,6 +89,30 @@ const guestActivitySummaryQuerySchema = z.object({
   from: z.string().trim().min(1).optional(),
   to: z.string().trim().min(1).optional(),
 });
+
+function parsePositiveIntEnv(
+  name: string,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  const raw = process.env[name];
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  const normalized = Math.floor(parsed);
+  if (normalized < min) {
+    return fallback;
+  }
+
+  return Math.min(normalized, max);
+}
 
 function rejectIfNotAdmin(
   request: FastifyRequest,
@@ -127,6 +173,21 @@ function isGuestRateLimited(guestKey: string, nowMs: number): boolean {
   return false;
 }
 
+function isGuestIpRateLimited(guestIpKey: string, nowMs: number): boolean {
+  const bucket = activityRateLimitByGuestIp.get(guestIpKey) ?? [];
+  const threshold = nowMs - ACTIVITY_RATE_LIMIT_WINDOW_MS;
+  const fresh = bucket.filter((item) => item >= threshold);
+
+  if (fresh.length >= GUEST_ACTIVITY_RATE_LIMIT_MAX_EVENTS_PER_IP) {
+    activityRateLimitByGuestIp.set(guestIpKey, fresh);
+    return true;
+  }
+
+  fresh.push(nowMs);
+  activityRateLimitByGuestIp.set(guestIpKey, fresh);
+  return false;
+}
+
 function normalizeOptionalText(value: string | undefined): string | null {
   if (!value) {
     return null;
@@ -159,7 +220,11 @@ export async function registerActivityRoutes(app: FastifyInstance): Promise<void
 
       const ipHash = buildIpHash(request.ip);
       const guestRateLimitKey = `${payload.sessionId}:${ipHash ?? "unknown"}`;
+      const guestIpRateLimitKey = ipHash ?? "unknown";
       const nowMs = Date.now();
+      if (isGuestIpRateLimited(guestIpRateLimitKey, nowMs)) {
+        return reply.code(429).send({ message: "Too many activity events" });
+      }
       if (isGuestRateLimited(guestRateLimitKey, nowMs)) {
         return reply.code(429).send({ message: "Too many activity events" });
       }
