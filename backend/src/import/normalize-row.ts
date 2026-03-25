@@ -12,6 +12,7 @@ import { parseKeyCount } from "./parse-key-count";
 import { parseMileageKm } from "./parse-mileage";
 import { parsePrice } from "./parse-price";
 import { normalizeCatalogModelIdentity } from "./catalog-model-normalization";
+import type { CatalogModelNormalizationResult } from "./catalog-model-normalization";
 
 export interface NormalizedVehicleOfferRow {
   offer_code: string | null;
@@ -46,6 +47,9 @@ export interface NormalizedVehicleOfferRow {
   days_on_sale_present: boolean;
   is_deregistered_present: boolean;
   price_present: boolean;
+  model_raw_input?: string | null;
+  modification_raw_input?: string | null;
+  model_normalization?: CatalogModelNormalizationResult | null;
 }
 
 function getValue(
@@ -145,5 +149,8 @@ export function normalizeVehicleOfferRow(
     days_on_sale_present: Boolean(normalizeString(rawDaysOnSale)),
     is_deregistered_present: hasDeregistrationValue,
     price_present: Boolean(normalizeString(rawPrice)),
+    model_raw_input: model,
+    modification_raw_input: modification,
+    model_normalization: modelNormalization,
   };
 }

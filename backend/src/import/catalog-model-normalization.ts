@@ -25,6 +25,7 @@ export interface CatalogModelNormalizationResult {
   modelFamilyCanonical: string | null;
   modificationNormalized: string | null;
   confidence: number;
+  minConfidenceToApply: number;
   method: "disabled" | "no_match" | "rule";
   matchedBrandRuleId: string | null;
   matchedModelRuleId: string | null;
@@ -239,6 +240,7 @@ export function normalizeCatalogModelIdentity(
       modelFamilyCanonical: null,
       modificationNormalized: input.modification,
       confidence: 0,
+      minConfidenceToApply: CATALOG_MODEL_NORMALIZATION_MIN_CONFIDENCE,
       method: "disabled",
       matchedBrandRuleId: null,
       matchedModelRuleId: null,
@@ -259,6 +261,7 @@ export function normalizeCatalogModelIdentity(
       modelFamilyCanonical: null,
       modificationNormalized: input.modification,
       confidence: 0,
+      minConfidenceToApply: CATALOG_MODEL_NORMALIZATION_MIN_CONFIDENCE,
       method: "no_match",
       matchedBrandRuleId: null,
       matchedModelRuleId: null,
@@ -273,6 +276,7 @@ export function normalizeCatalogModelIdentity(
       modelFamilyCanonical: null,
       modificationNormalized: input.modification,
       confidence: 0,
+      minConfidenceToApply: CATALOG_MODEL_NORMALIZATION_MIN_CONFIDENCE,
       method: "no_match",
       matchedBrandRuleId: null,
       matchedModelRuleId: null,
@@ -287,6 +291,7 @@ export function normalizeCatalogModelIdentity(
       modelFamilyCanonical: null,
       modificationNormalized: input.modification,
       confidence: 0.45,
+      minConfidenceToApply: CATALOG_MODEL_NORMALIZATION_MIN_CONFIDENCE,
       method: "no_match",
       matchedBrandRuleId: brandMatch.ruleId,
       matchedModelRuleId: null,
@@ -321,6 +326,7 @@ export function normalizeCatalogModelIdentity(
       modelFamilyCanonical: modelMatch.family,
       modificationNormalized: mergedModification,
       confidence,
+      minConfidenceToApply: CATALOG_MODEL_NORMALIZATION_MIN_CONFIDENCE,
       method: "rule",
       matchedBrandRuleId: brandMatch.ruleId,
       matchedModelRuleId: modelMatch.ruleId,
@@ -333,6 +339,7 @@ export function normalizeCatalogModelIdentity(
     modelFamilyCanonical: modelMatch.family,
     modificationNormalized: mergedModification,
     confidence,
+    minConfidenceToApply: CATALOG_MODEL_NORMALIZATION_MIN_CONFIDENCE,
     method: "rule",
     matchedBrandRuleId: brandMatch.ruleId,
     matchedModelRuleId: modelMatch.ruleId,

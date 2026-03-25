@@ -23,6 +23,7 @@ MVP platform for importing leasing lots from Excel and publishing them in a unif
   - `reso`
   - `alpha`
 - Tenant-specific header mapping.
+- Pilot catalog normalization review queue for low-confidence model-family matches.
 - Delta stats per batch:
   - `added`
   - `removed`

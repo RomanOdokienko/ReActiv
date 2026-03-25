@@ -156,11 +156,14 @@ export function clearImportedData(tenantId?: string): ClearImportedDataResult {
   const deleteImportErrors = tenantId
     ? db.prepare(`DELETE FROM import_errors WHERE tenant_id = ?`)
     : db.prepare(`DELETE FROM import_errors`);
+  const deleteModelNormalizationReviews = tenantId
+    ? db.prepare(`DELETE FROM catalog_model_normalization_reviews WHERE tenant_id = ?`)
+    : db.prepare(`DELETE FROM catalog_model_normalization_reviews`);
   const deleteImportBatches = tenantId
     ? db.prepare(`DELETE FROM import_batches WHERE tenant_id = ?`)
     : db.prepare(`DELETE FROM import_batches`);
   const resetSequences = db.prepare(
-    `DELETE FROM sqlite_sequence WHERE name IN ('vehicle_offers', 'vehicle_offer_snapshots', 'import_errors')`,
+    `DELETE FROM sqlite_sequence WHERE name IN ('vehicle_offers', 'vehicle_offer_snapshots', 'import_errors', 'catalog_model_normalization_reviews')`,
   );
 
   return db.transaction(() => {
@@ -173,6 +176,11 @@ export function clearImportedData(tenantId?: string): ClearImportedDataResult {
     const importErrorsDeleted = tenantId
       ? deleteImportErrors.run(tenantId).changes
       : deleteImportErrors.run().changes;
+    if (tenantId) {
+      deleteModelNormalizationReviews.run(tenantId);
+    } else {
+      deleteModelNormalizationReviews.run();
+    }
     const importBatchesDeleted = tenantId
       ? deleteImportBatches.run(tenantId).changes
       : deleteImportBatches.run().changes;
