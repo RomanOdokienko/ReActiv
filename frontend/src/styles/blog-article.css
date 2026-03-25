@@ -1,0 +1,238 @@
+.blog-article-page {
+  width: 100%;
+  margin: 0;
+  padding: var(--blog-article-page-padding-y, 32px) 0;
+  background: #fff;
+}
+
+.blog-article {
+  --blog-article-stack-page: 48px;
+  --blog-article-stack-lg: 24px;
+  --blog-article-stack-md: 16px;
+  --blog-article-stack-links: 8px;
+  --blog-article-width: 760px;
+
+  width: min(var(--blog-article-width), 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--blog-article-stack-page);
+  overflow: hidden;
+}
+
+.blog-article__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--blog-article-stack-md);
+}
+
+.blog-article__back-link {
+  color: #0e5ae7;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 16px;
+  text-decoration: none;
+}
+
+.blog-article__back-link:hover {
+  text-decoration: underline;
+}
+
+.blog-article__hero {
+  width: 100%;
+  height: 401px;
+  background: #eee;
+}
+
+.blog-article h1,
+.blog-article h2,
+.blog-article h3 {
+  margin: 0;
+  color: #1e1e1e;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.blog-article h1 {
+  font-size: 40px;
+  line-height: 40px;
+  letter-spacing: -1.2px;
+}
+
+.blog-article h2 {
+  font-size: 34px;
+  line-height: 40px;
+  letter-spacing: -0.84px;
+}
+
+.blog-article h3 {
+  font-size: 24px;
+  line-height: 30px;
+}
+
+.blog-article p {
+  margin: 0;
+  color: #4b4b4b;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 34px;
+}
+
+.blog-article__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--blog-article-stack-lg);
+}
+
+.blog-article__section a,
+.blog-article__links a {
+  color: #0e5ae7;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 34px;
+  text-decoration: none;
+}
+
+.blog-article__section a:hover,
+.blog-article__links a:hover {
+  text-decoration: underline;
+}
+
+.blog-article__links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--blog-article-stack-links);
+}
+
+.blog-article__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--blog-article-stack-page);
+}
+
+.blog-article__step {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--blog-article-stack-lg) / 2);
+}
+
+.blog-article__faq {
+  display: flex;
+  flex-direction: column;
+  gap: var(--blog-article-stack-page);
+}
+
+.blog-article__faq-item {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--blog-article-stack-lg) / 2);
+}
+
+.blog-article__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  padding: 24px;
+  border-radius: 16px;
+  background: #f1f1f1;
+}
+
+.blog-article__note-bar {
+  width: 4px;
+  border-radius: 99px;
+  background: #0e5ae7;
+  align-self: stretch;
+  flex: 0 0 auto;
+}
+
+.blog-article__note p {
+  color: #1e1e1e;
+  font-size: 18px;
+  line-height: 32px;
+}
+
+@media (max-width: 900px) {
+  .blog-article {
+    --blog-article-stack-page: 40px;
+  }
+
+  .blog-article h1 {
+    font-size: 34px;
+    line-height: 38px;
+    letter-spacing: -0.92px;
+  }
+
+  .blog-article h2 {
+    font-size: 28px;
+    line-height: 34px;
+    letter-spacing: -0.64px;
+  }
+
+  .blog-article h3 {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .blog-article p,
+  .blog-article__section a,
+  .blog-article__links a {
+    font-size: 18px;
+    line-height: 30px;
+  }
+
+  .blog-article__hero {
+    height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  .blog-article-page {
+    padding: 24px 0;
+  }
+
+  .blog-article {
+    --blog-article-stack-page: 32px;
+    --blog-article-stack-lg: 20px;
+    --blog-article-stack-md: 12px;
+  }
+
+  .blog-article h1 {
+    font-size: 30px;
+    line-height: 34px;
+    letter-spacing: -0.56px;
+  }
+
+  .blog-article h2 {
+    font-size: 25px;
+    line-height: 30px;
+    letter-spacing: -0.4px;
+  }
+
+  .blog-article h3 {
+    font-size: 20px;
+    line-height: 26px;
+  }
+
+  .blog-article p,
+  .blog-article__section a,
+  .blog-article__links a {
+    font-size: 17px;
+    line-height: 29px;
+  }
+
+  .blog-article__hero {
+    height: 220px;
+  }
+
+  .blog-article__note {
+    padding: 20px;
+  }
+}

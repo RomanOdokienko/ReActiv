@@ -44,6 +44,10 @@
   background: rgba(241, 241, 241, 0.78);
 }
 
+body.blog-article-route .landing-header::before {
+  background: transparent;
+}
+
 .landing-header__brand {
   display: flex;
   flex-direction: column;

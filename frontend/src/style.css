@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap");
 
 :root {
   --bg: #f1f1f1;
@@ -32,6 +32,10 @@ body {
 
 body.auth-page {
   background: #f1f1f1;
+}
+
+body.blog-article-route {
+  background: #fff;
 }
 
 body.showcase-mobile-lock {

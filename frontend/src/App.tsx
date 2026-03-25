@@ -13,6 +13,8 @@ import { AdminActivityPage } from "./pages/AdminActivityPage";
 import { AdminHighlightsPage } from "./pages/AdminHighlightsPage";
 import { AdminOperationsPage } from "./pages/AdminOperationsPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { BlogArticlePage } from "./pages/BlogArticlePage";
+import { BlogPage } from "./pages/BlogPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -36,6 +38,9 @@ const LANDING_SEO_TITLE =
   "Авто после лизинга и изъятые автомобили — витрина лизингового стока Reactiv";
 const LANDING_SEO_DESCRIPTION =
   "Reactiv — платформа, где собраны авто после лизинга, изъятые автомобили и конфискат. Помогает находить машины и технику после лизинга.";
+const BLOG_SEO_TITLE = "Блог команды РеАктив";
+const BLOG_SEO_DESCRIPTION =
+  "Блог команды РеАктив: статьи об авто после лизинга, разборы и рекомендации для рынка.";
 const PUBLIC_TITLE = CATALOG_SEO_TITLE;
 
 function upsertMetaByName(name: string, content: string): void {
@@ -99,6 +104,8 @@ function isPublicLayoutPath(pathname: string): boolean {
   return (
     isPublicCatalogPath(pathname) ||
     pathname === "/landing" ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/") ||
     pathname === "/login" ||
     pathname === HIDDEN_ADMIN_LOGIN_PATH
   );
@@ -119,6 +126,7 @@ function PublicSiteHeader({
 }) {
   const catalogActive = isPublicCatalogPath(pathname);
   const landingActive = pathname === "/landing";
+  const blogActive = pathname === "/blog" || pathname.startsWith("/blog/");
   const loginActive = pathname === "/login";
 
   return (
@@ -168,6 +176,9 @@ function PublicSiteHeader({
           onClick={onCloseMenu}
         >
           О платформе
+        </Link>
+        <Link to="/blog" className={blogActive ? "is-active" : undefined} onClick={onCloseMenu}>
+          Блог
         </Link>
         <Link
           to="/login"
@@ -228,6 +239,7 @@ export function App() {
 
     const pathname = location.pathname;
     const isLandingPath = pathname === "/landing";
+    const isBlogPath = pathname === "/blog" || pathname.startsWith("/blog/");
     const isShowcasePath = pathname === "/" || pathname === "/showcase";
     const isServicePath =
       pathname === "/login" ||
@@ -255,6 +267,9 @@ export function App() {
     } else if (isLandingPath) {
       title = LANDING_SEO_TITLE;
       description = LANDING_SEO_DESCRIPTION;
+    } else if (isBlogPath) {
+      title = BLOG_SEO_TITLE;
+      description = BLOG_SEO_DESCRIPTION;
     } else if (isShowcasePath) {
       title = CATALOG_SEO_TITLE;
       description = CATALOG_SEO_DESCRIPTION;
@@ -366,6 +381,15 @@ export function App() {
   }, [location.pathname]);
 
   useEffect(() => {
+    const isBlogArticlePath = location.pathname.startsWith("/blog/");
+    document.body.classList.toggle("blog-article-route", isBlogArticlePath);
+
+    return () => {
+      document.body.classList.remove("blog-article-route");
+    };
+  }, [location.pathname]);
+
+  useEffect(() => {
     if (!isPublicMenuOpen) {
       document.body.style.overflow = "";
       return;
@@ -443,6 +467,8 @@ export function App() {
             <Routes>
               <Route path="/" element={<ShowcasePage publicMode />} />
               <Route path="/landing" element={<LandingPage />} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/blog/:slug" element={<BlogArticlePage />} />
               <Route path="/showcase" element={<Navigate to="/" replace />} />
               <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
               <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
@@ -589,4 +615,3 @@ export function App() {
     </>
   );
 }
-
