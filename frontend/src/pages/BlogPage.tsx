@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { BLOG_ARTICLES, BLOG_PLACEHOLDER_CARDS } from "../content/blog-articles";
 import "../styles/blog.css";
 
 interface BlogCardItem {
@@ -8,19 +9,15 @@ interface BlogCardItem {
 }
 
 const BLOG_CARDS: BlogCardItem[] = [
-  {
-    title: "Авто после лизинга: стоит ли покупать и чего опасаться",
-    readingTime: "~ 8 минут чтения",
-    href: "/blog/auto-posle-lizinga-stoit-li-pokupat-i-chego-opasatsya",
-  },
-  {
-    title: "Скоро здесь будут статьи",
-    readingTime: "-",
-  },
-  {
-    title: "Скоро здесь будут статьи",
-    readingTime: "-",
-  },
+  ...BLOG_ARTICLES.map((article) => ({
+    title: article.cardTitle,
+    readingTime: article.readingTime,
+    href: `/blog/${article.slug}`,
+  })),
+  ...BLOG_PLACEHOLDER_CARDS.map((card) => ({
+    title: card.title,
+    readingTime: card.readingTime,
+  })),
 ];
 
 function ArrowIcon() {
