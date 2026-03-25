@@ -261,6 +261,8 @@ See details in:
 - `npm --prefix backend run typecheck`
 - `npm --prefix backend run create-user -- --login <login> --password <password> [--name "Display Name"]`
 - `npm --prefix backend run set-user-password -- --login <login> --password <password>`
+- `npm --prefix backend run normalize-catalog-models-inplace -- --limit=200 --dry-run`
+- `npm --prefix backend run normalize-catalog-models-inplace -- --apply [--tenant=gpb,alpha] [--min-confidence=0.75]`
 
 ### Frontend
 - `npm --prefix frontend run dev`
