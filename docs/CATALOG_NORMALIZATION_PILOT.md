@@ -37,8 +37,21 @@ Owner: Codex + project owner
   - set `CATALOG_MODEL_NORMALIZATION_ENABLED=false`.
 
 ## Next iteration
-- Add storage for normalization metadata:
-  - method,
-  - confidence,
-  - rule id,
-  - review queue for low-confidence rows.
+- Add admin/UI workflow for review queue:
+  - list pending low-confidence rows,
+  - mark reviewed,
+  - track acceptance rate by rule.
+
+## Implemented in this iteration
+- Added persistent review queue table:
+  - `catalog_model_normalization_reviews`
+- Queue now receives rows where:
+  - rule-based normalization found candidate model family,
+  - candidate would change model/modification,
+  - normalization was not applied due confidence gate.
+- Stored metadata per review item:
+  - source values (`brand/model/modification`),
+  - candidate normalized values,
+  - `confidence`,
+  - `min_confidence_to_apply`,
+  - matched rule ids.
