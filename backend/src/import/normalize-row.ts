@@ -11,6 +11,7 @@ import { parseInteger } from "./parse-integer";
 import { parseKeyCount } from "./parse-key-count";
 import { parseMileageKm } from "./parse-mileage";
 import { parsePrice } from "./parse-price";
+import { normalizeCatalogModelIdentity } from "./catalog-model-normalization";
 
 export interface NormalizedVehicleOfferRow {
   offer_code: string | null;
@@ -78,6 +79,19 @@ export function normalizeVehicleOfferRow(
   const model = normalizeString(getValue(row, fieldToColumnIndex, "model")) || null;
   const modification =
     normalizeString(getValue(row, fieldToColumnIndex, "modification")) || null;
+  const modelNormalization = normalizeCatalogModelIdentity({
+    brand,
+    model,
+    modification,
+  });
+  const normalizedModel =
+    modelNormalization.applied && modelNormalization.modelFamilyCanonical
+      ? modelNormalization.modelFamilyCanonical
+      : model;
+  const normalizedModification =
+    modelNormalization.applied
+      ? modelNormalization.modificationNormalized
+      : modification;
   const rawYear = getValue(row, fieldToColumnIndex, "year");
   const rawMileage = getValue(row, fieldToColumnIndex, "mileage_km");
   const rawKeyCount = getValue(row, fieldToColumnIndex, "key_count");
@@ -103,8 +117,8 @@ export function normalizeVehicleOfferRow(
     brand_raw: brandMeta.rawNormalized,
     brand_unknown_mapped: brandMeta.unknownMapped,
     brand_composite_tail: brandMeta.compositeTail,
-    model,
-    modification,
+    model: normalizedModel,
+    modification: normalizedModification,
     vehicle_type: vehicleTypeMeta.normalized,
     vehicle_type_raw: vehicleTypeMeta.rawNormalized,
     vehicle_type_unknown_mapped: vehicleTypeMeta.usedFallback,
@@ -125,7 +139,7 @@ export function normalizeVehicleOfferRow(
     external_id: normalizeString(getValue(row, fieldToColumnIndex, "external_id")) || null,
     crm_ref: normalizeString(getValue(row, fieldToColumnIndex, "crm_ref")) || null,
     website_url: normalizeUrl(getValue(row, fieldToColumnIndex, "website_url")),
-    title: buildTitle(brand, model, modification, offerCode),
+    title: buildTitle(brand, normalizedModel, normalizedModification, offerCode),
     year_present: Boolean(normalizeString(rawYear)),
     mileage_km_present: Boolean(normalizeString(rawMileage)),
     days_on_sale_present: Boolean(normalizeString(rawDaysOnSale)),
