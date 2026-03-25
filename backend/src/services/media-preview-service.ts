@@ -31,6 +31,8 @@ const PREVIEW_CACHE_TTL_MS = 10 * 60 * 1000;
 const URL_REACHABILITY_CACHE_TTL_MS = 15 * 60 * 1000;
 const URL_REACHABILITY_TIMEOUT_MS = 4_000;
 const URL_REACHABILITY_CONCURRENCY = 8;
+const MEDIA_FETCH_TIMEOUT_MS = 6_000;
+const MEDIA_FETCH_MAX_REDIRECTS = 3;
 const DEFAULT_MEDIA_ALLOWED_HOST_PATTERNS = [
   "yadi.sk",
   ".yadi.sk",
@@ -226,17 +228,64 @@ function extractDirectImageUrls(rawSource: string): string[] {
 }
 
 async function fetchWithTimeout(url: string, method: "HEAD" | "GET"): Promise<Response> {
-  const abortController = new AbortController();
-  const timeoutId = setTimeout(() => abortController.abort(), URL_REACHABILITY_TIMEOUT_MS);
+  return fetchAllowedMediaRemote(url, {
+    method,
+    timeoutMs: URL_REACHABILITY_TIMEOUT_MS,
+  });
+}
 
-  try {
-    return await fetch(url, {
-      method,
-      signal: abortController.signal,
-    });
-  } finally {
-    clearTimeout(timeoutId);
+function isRedirectStatus(statusCode: number): boolean {
+  return statusCode === 301 || statusCode === 302 || statusCode === 303 || statusCode === 307 || statusCode === 308;
+}
+
+interface AllowedMediaFetchOptions {
+  method?: "HEAD" | "GET";
+  timeoutMs?: number;
+  maxRedirects?: number;
+}
+
+export async function fetchAllowedMediaRemote(
+  inputUrl: string,
+  options: AllowedMediaFetchOptions = {},
+): Promise<Response> {
+  const method = options.method ?? "GET";
+  const timeoutMs = options.timeoutMs ?? MEDIA_FETCH_TIMEOUT_MS;
+  const maxRedirects = options.maxRedirects ?? MEDIA_FETCH_MAX_REDIRECTS;
+
+  let currentUrl = inputUrl;
+
+  for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
+    if (!isAllowedMediaRemoteUrl(currentUrl)) {
+      throw new Error("Disallowed media host");
+    }
+
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
+
+    let response: Response;
+    try {
+      response = await fetch(currentUrl, {
+        method,
+        redirect: "manual",
+        signal: abortController.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!isRedirectStatus(response.status)) {
+      return response;
+    }
+
+    const location = response.headers.get("location");
+    if (!location) {
+      return response;
+    }
+
+    currentUrl = new URL(location, currentUrl).toString();
   }
+
+  throw new Error("Too many redirects");
 }
 
 async function isImageUrlReachable(url: string): Promise<boolean> {

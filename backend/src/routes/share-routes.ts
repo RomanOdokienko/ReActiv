@@ -5,6 +5,7 @@ import {
   searchCatalogItems,
 } from "../repositories/catalog-repository";
 import {
+  fetchAllowedMediaRemote,
   isAllowedMediaRemoteUrl,
   resolvePreviewUrl,
 } from "../services/media-preview-service";
@@ -521,7 +522,9 @@ export async function registerShareRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const imageResponse = await fetch(resolved.previewUrl, { method: "GET" });
+      const imageResponse = await fetchAllowedMediaRemote(resolved.previewUrl, {
+        method: "GET",
+      });
       if (!imageResponse.ok) {
         return reply.redirect(fallbackImageUrl(), 302);
       }

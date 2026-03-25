@@ -231,6 +231,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | SEC-06-P1 | Added anti-automation controls for auth/activity ingest | Added login brute-force limits and extra per-IP throttling for `/api/public/activity/events` |
 | 2026-03-25 | SEC-05-P1 | Added frontend security headers rollout runbook | Added `docs/FRONTEND_SECURITY_HEADERS_ROLLOUT.md` with staged Caddy/Timeweb rollout, verification, and rollback |
 | 2026-03-25 | SEC-06-P2 | Verified anti-automation thresholds with local deterministic probes | Confirmed `429` behavior for login brute-force and guest activity per-IP guard (`docs/SECURITY_QA_REPORT_2026-03-25.md`) |
+| 2026-03-25 | SEC-04-P2 | Added redirect-chain host validation for remote media fetch | Media proxy follows redirects manually and re-validates allowlist on each hop before fetch |
 
 ## Tracking rules
 - Order is flexible, but respect `Depends on`.

@@ -9,6 +9,7 @@ import {
   resolveStoredMediaAbsolutePath,
 } from "../services/local-media-storage";
 import {
+  fetchAllowedMediaRemote,
   isAllowedMediaRemoteUrl,
   resolveGalleryUrls,
   resolvePreviewUrl,
@@ -189,7 +190,9 @@ export async function registerMediaRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const imageResponse = await fetch(resolved.previewUrl, { method: "GET" });
+      const imageResponse = await fetchAllowedMediaRemote(resolved.previewUrl, {
+        method: "GET",
+      });
       if (!imageResponse.ok) {
         return reply.code(404).send({ message: "preview fetch failed" });
       }
