@@ -30,6 +30,14 @@ Scope: local smoke verification for implemented security/perf controls
   - probe result: `201` x10, then `429,429`
   - expected behavior confirmed: IP-level guard blocks burst spam across different guest sessions.
 
+### Media SSRF/open-proxy hardening (SEC-04)
+- Allowlist hardening validated earlier on live endpoint behavior:
+  - external arbitrary URL no longer resolves to preview image (`previewUrl: null` / `404` on preview-image route).
+- Redirect-chain host validation validated locally with deterministic mock:
+  - case A (allowed host -> disallowed host redirect): blocked as expected.
+  - case B (allowed host -> allowed host redirect): passed and returned `200`.
+  - probe output: `SEC04_REDIRECT_CHECK_OK blockedCalls=1 passCalls=2`.
+
 ### Public catalog protection
 - Platform mode switched to `open` for public checks, then restored to original value.
 - `GET /api/catalog/summary` -> `200`, public cache policy present.
@@ -71,5 +79,6 @@ Scope: local smoke verification for implemented security/perf controls
 
 ## Conclusion
 - Implemented controls for `SEC-02`, `SEC-03`, `API-01`, `API-02`, and `PERF-01` passed local smoke checks.
+- `SEC-04` media SSRF/open-proxy hardening is implemented and validated for allowlist + redirect-chain control.
 - `SEC-06` anti-automation controls passed local smoke checks with deterministic threshold probes.
 - Re-audit artifact is complete for `QA-01`.

@@ -53,7 +53,7 @@ A task can be moved to `deferred` if:
 | SEC-01 | Security | P0 | done | Restrict CORS to trusted origin allowlist | DEC-02, SEC-00 | Unknown origins do not receive ACAO, trusted origins keep working |
 | SEC-02 | Security | P0 | done | Add CSRF protection for cookie-auth state-changing endpoints | SEC-00 | POST/PUT/PATCH/DELETE without valid CSRF token are rejected |
 | SEC-03 | Security | P0 | done | Add baseline security headers on frontend/API | SEC-00 | HSTS/CSP/XFO/XCTO/Referrer-Policy/Permissions-Policy are stable |
-| SEC-04 | Security | P0 | in_progress | Harden media endpoints against SSRF/open-proxy abuse | SEC-00 | `/api/media/*` and share image proxy reject disallowed hosts and do not fetch arbitrary remote URLs |
+| SEC-04 | Security | P0 | done | Harden media endpoints against SSRF/open-proxy abuse | SEC-00 | `/api/media/*` and share image proxy reject disallowed hosts and do not fetch arbitrary remote URLs |
 | SEC-05 | Security | P0 | in_progress | Enable baseline security headers on frontend host (`reactiv.pro`) | infra | Frontend HTML responses include CSP/HSTS/XFO/XCTO/Referrer-Policy/Permissions-Policy |
 | SEC-06 | Security | P1 | done | Strengthen anti-automation for auth/activity endpoints | SEC-00 | Explicit protections/monitoring for `/api/auth/login` and `/api/public/activity/events` are verified |
 | API-01 | API Protection | P1 | done | Limit bulk catalog scraping (rate limit, page-size limits, anti-abuse) | SEC-00 | Automated bulk extraction is reduced without breaking showcase UX |
@@ -161,11 +161,10 @@ A task can be moved to `deferred` if:
 
 ## What we do now (real-risk focus)
 `Now`:
-- SEC-04 (SSRF/open-proxy hardening for media endpoints).
 - SEC-05 rollout via hosting config (`reactiv.pro`) using `docs/FRONTEND_SECURITY_HEADERS_ROLLOUT.md`.
 
 `Next`:
-- Delta verification after SEC-04..SEC-05 rollout.
+- Delta verification after SEC-05 rollout.
 - Continue SEO/conversion work in `docs/TASKS_SEO_CONVERSION.md`.
 
 `Later / based on data`:
@@ -232,6 +231,7 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | SEC-05-P1 | Added frontend security headers rollout runbook | Added `docs/FRONTEND_SECURITY_HEADERS_ROLLOUT.md` with staged Caddy/Timeweb rollout, verification, and rollback |
 | 2026-03-25 | SEC-06-P2 | Verified anti-automation thresholds with local deterministic probes | Confirmed `429` behavior for login brute-force and guest activity per-IP guard (`docs/SECURITY_QA_REPORT_2026-03-25.md`) |
 | 2026-03-25 | SEC-04-P2 | Added redirect-chain host validation for remote media fetch | Media proxy follows redirects manually and re-validates allowlist on each hop before fetch |
+| 2026-03-25 | SEC-04-P3 | Verified SSRF hardening and closed SEC-04 | Confirmed live allowlist behavior and deterministic redirect-chain checks (`docs/SECURITY_QA_REPORT_2026-03-25.md`) |
 
 ## Tracking rules
 - Order is flexible, but respect `Depends on`.
