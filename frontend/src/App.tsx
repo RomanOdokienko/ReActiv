@@ -8,11 +8,14 @@ import {
 } from "./api/client";
 import { FeedbackWidget } from "./components/FeedbackWidget";
 import { LegalLinks, PrivacyPolicyLink, TermsLink } from "./components/LegalLinks";
+import { getBlogArticleBySlug } from "./content/blog-articles";
 import { CatalogPage } from "./pages/CatalogPage";
 import { AdminActivityPage } from "./pages/AdminActivityPage";
 import { AdminHighlightsPage } from "./pages/AdminHighlightsPage";
 import { AdminOperationsPage } from "./pages/AdminOperationsPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { BlogArticlePage } from "./pages/BlogArticlePage";
+import { BlogPage } from "./pages/BlogPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -36,7 +39,27 @@ const LANDING_SEO_TITLE =
   "Авто после лизинга и изъятые автомобили — витрина лизингового стока Reactiv";
 const LANDING_SEO_DESCRIPTION =
   "Reactiv — платформа, где собраны авто после лизинга, изъятые автомобили и конфискат. Помогает находить машины и технику после лизинга.";
+const BLOG_SEO_TITLE = "Блог команды РеАктив";
+const BLOG_SEO_DESCRIPTION =
+  "Блог команды РеАктив: статьи об авто после лизинга, разборы и рекомендации для рынка.";
 const PUBLIC_TITLE = CATALOG_SEO_TITLE;
+
+function extractBlogSlug(pathname: string): string | null {
+  if (!pathname.startsWith("/blog/")) {
+    return null;
+  }
+
+  const rawSlug = pathname.slice("/blog/".length).split("/")[0];
+  if (!rawSlug) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(rawSlug);
+  } catch {
+    return rawSlug;
+  }
+}
 
 function upsertMetaByName(name: string, content: string): void {
   if (typeof document === "undefined") {
@@ -99,6 +122,8 @@ function isPublicLayoutPath(pathname: string): boolean {
   return (
     isPublicCatalogPath(pathname) ||
     pathname === "/landing" ||
+    pathname === "/blog" ||
+    pathname.startsWith("/blog/") ||
     pathname === "/login" ||
     pathname === HIDDEN_ADMIN_LOGIN_PATH
   );
@@ -119,6 +144,7 @@ function PublicSiteHeader({
 }) {
   const catalogActive = isPublicCatalogPath(pathname);
   const landingActive = pathname === "/landing";
+  const blogActive = pathname === "/blog" || pathname.startsWith("/blog/");
   const loginActive = pathname === "/login";
 
   return (
@@ -168,6 +194,9 @@ function PublicSiteHeader({
           onClick={onCloseMenu}
         >
           О платформе
+        </Link>
+        <Link to="/blog" className={blogActive ? "is-active" : undefined} onClick={onCloseMenu}>
+          Блог
         </Link>
         <Link
           to="/login"
@@ -228,6 +257,11 @@ export function App() {
 
     const pathname = location.pathname;
     const isLandingPath = pathname === "/landing";
+    const isBlogListPath = pathname === "/blog";
+    const blogSlug = extractBlogSlug(pathname);
+    const blogArticle = blogSlug ? getBlogArticleBySlug(blogSlug) : undefined;
+    const isKnownBlogArticlePath = Boolean(blogArticle);
+    const isUnknownBlogArticlePath = blogSlug !== null && !blogArticle;
     const isShowcasePath = pathname === "/" || pathname === "/showcase";
     const isServicePath =
       pathname === "/login" ||
@@ -238,8 +272,7 @@ export function App() {
       pathname.startsWith("/admin");
     const isItemPage = pathname.startsWith("/showcase/");
 
-    const canonicalPath = pathname === "/showcase" ? "/" : pathname;
-    const canonicalUrl = `${SEO_WEB_BASE_URL}${canonicalPath}`;
+    let canonicalPath = pathname === "/showcase" ? "/" : pathname;
 
     let title = PUBLIC_TITLE;
     let description = CATALOG_SEO_DESCRIPTION;
@@ -248,6 +281,15 @@ export function App() {
     if (isServicePath) {
       title = "ReActiv";
       robots = "noindex, nofollow";
+    } else if (isUnknownBlogArticlePath) {
+      title = BLOG_SEO_TITLE;
+      description = BLOG_SEO_DESCRIPTION;
+      robots = "noindex, nofollow";
+      canonicalPath = "/blog";
+    } else if (isKnownBlogArticlePath && blogArticle) {
+      title = blogArticle.seoTitle;
+      description = blogArticle.seoDescription;
+      canonicalPath = `/blog/${blogArticle.slug}`;
     } else if (isItemPage) {
       title = "Карточка лота — РеАктив";
       description =
@@ -255,10 +297,15 @@ export function App() {
     } else if (isLandingPath) {
       title = LANDING_SEO_TITLE;
       description = LANDING_SEO_DESCRIPTION;
+    } else if (isBlogListPath) {
+      title = BLOG_SEO_TITLE;
+      description = BLOG_SEO_DESCRIPTION;
     } else if (isShowcasePath) {
       title = CATALOG_SEO_TITLE;
       description = CATALOG_SEO_DESCRIPTION;
     }
+
+    const resolvedCanonicalUrl = `${SEO_WEB_BASE_URL}${canonicalPath}`;
 
     document.title = title;
     upsertMetaByName("robots", robots);
@@ -268,8 +315,8 @@ export function App() {
     upsertMetaByName("twitter:description", description);
     upsertMetaByProperty("og:title", title);
     upsertMetaByProperty("og:description", description);
-    upsertMetaByProperty("og:url", canonicalUrl);
-    upsertCanonicalLink(canonicalUrl);
+    upsertMetaByProperty("og:url", resolvedCanonicalUrl);
+    upsertCanonicalLink(resolvedCanonicalUrl);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -366,6 +413,15 @@ export function App() {
   }, [location.pathname]);
 
   useEffect(() => {
+    const isBlogArticlePath = location.pathname.startsWith("/blog/");
+    document.body.classList.toggle("blog-article-route", isBlogArticlePath);
+
+    return () => {
+      document.body.classList.remove("blog-article-route");
+    };
+  }, [location.pathname]);
+
+  useEffect(() => {
     if (!isPublicMenuOpen) {
       document.body.style.overflow = "";
       return;
@@ -443,6 +499,8 @@ export function App() {
             <Routes>
               <Route path="/" element={<ShowcasePage publicMode />} />
               <Route path="/landing" element={<LandingPage />} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/blog/:slug" element={<BlogArticlePage />} />
               <Route path="/showcase" element={<Navigate to="/" replace />} />
               <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
               <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
@@ -589,4 +647,3 @@ export function App() {
     </>
   );
 }
-
