@@ -54,8 +54,9 @@ A task can be moved to `deferred` if:
 | SEC-02 | Security | P0 | done | Add CSRF protection for cookie-auth state-changing endpoints | SEC-00 | POST/PUT/PATCH/DELETE without valid CSRF token are rejected |
 | SEC-03 | Security | P0 | done | Add baseline security headers on frontend/API | SEC-00 | HSTS/CSP/XFO/XCTO/Referrer-Policy/Permissions-Policy are stable |
 | SEC-04 | Security | P0 | done | Harden media endpoints against SSRF/open-proxy abuse | SEC-00 | `/api/media/*` and share image proxy reject disallowed hosts and do not fetch arbitrary remote URLs |
-| SEC-05 | Security | P0 | in_progress | Enable baseline security headers on frontend host (`reactiv.pro`) | infra | Frontend HTML responses include CSP/HSTS/XFO/XCTO/Referrer-Policy/Permissions-Policy |
+| SEC-05 | Security | P0 | deferred | Enable baseline security headers on frontend host (`reactiv.pro`) | infra | Tracked in `docs/TASKS_SECURITY_DEFERRED.md`; rollout resumed after business-gate approval |
 | SEC-06 | Security | P1 | done | Strengthen anti-automation for auth/activity endpoints | SEC-00 | Explicit protections/monitoring for `/api/auth/login` and `/api/public/activity/events` are verified |
+| SEC-07 | Security | P2 | done | Reduce low-value route exposure in public metadata | SEC-00 | `robots.txt` no longer enumerates internal paths; `/.well-known/security.txt` is explicitly published |
 | API-01 | API Protection | P1 | done | Limit bulk catalog scraping (rate limit, page-size limits, anti-abuse) | SEC-00 | Automated bulk extraction is reduced without breaking showcase UX |
 | API-02 | Data Exposure | P1 | done | Minimize public catalog fields | DEC-03, SEC-00 | Public responses contain only approved field set |
 | PERF-01 | Performance | P1 | done | Enable gzip/br and correct cache headers | infra-check | Responses include content-encoding and sane cache-control |
@@ -161,10 +162,10 @@ A task can be moved to `deferred` if:
 
 ## What we do now (real-risk focus)
 `Now`:
-- SEC-05 rollout via hosting config (`reactiv.pro`) using `docs/FRONTEND_SECURITY_HEADERS_ROLLOUT.md`.
+- No active security code tasks in current MVP wave (`SEC-05` deferred by business gate).
 
 `Next`:
-- Delta verification after SEC-05 rollout.
+- Re-open `SEC-05` from `docs/TASKS_SECURITY_DEFERRED.md` after business-gate approval.
 - Continue SEO/conversion work in `docs/TASKS_SEO_CONVERSION.md`.
 
 `Later / based on data`:
@@ -234,6 +235,8 @@ A task can be moved to `deferred` if:
 | 2026-03-25 | SEC-04-P3 | Verified SSRF hardening and closed SEC-04 | Confirmed live allowlist behavior and deterministic redirect-chain checks (`docs/SECURITY_QA_REPORT_2026-03-25.md`) |
 | 2026-03-25 | SEC-05-P2 | Added automated frontend headers verification script | Added `scripts/check-frontend-security-headers.ps1` and linked it from rollout runbook/README |
 | 2026-03-25 | SEC-05-P3 | Captured production baseline before infra rollout | Script check on `reactiv.pro`/`www.reactiv.pro` shows required frontend security headers are currently missing |
+| 2026-03-25 | SEC-05-P4 | Deferred frontend headers rollout by business gate | Moved SEC-05 tracking into `docs/TASKS_SECURITY_DEFERRED.md` until platform confirmation decision |
+| 2026-03-25 | SEC-07-P1 | Reduced route exposure signals in public metadata | Simplified `frontend/public/robots.txt` and added `frontend/public/.well-known/security.txt` |
 
 ## Tracking rules
 - Order is flexible, but respect `Depends on`.

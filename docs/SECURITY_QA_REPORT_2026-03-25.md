@@ -38,6 +38,10 @@ Scope: local smoke verification for implemented security/perf controls
   - case B (allowed host -> allowed host redirect): passed and returned `200`.
   - probe output: `SEC04_REDIRECT_CHECK_OK blockedCalls=1 passCalls=2`.
 
+### Public metadata hygiene (SEC-07)
+- `frontend/public/robots.txt` no longer enumerates internal paths (`/admin`, `/staff-login-reactiv`, etc.).
+- `frontend/public/.well-known/security.txt` is published and included in frontend build output.
+
 ### Public catalog protection
 - Platform mode switched to `open` for public checks, then restored to original value.
 - `GET /api/catalog/summary` -> `200`, public cache policy present.
@@ -81,4 +85,5 @@ Scope: local smoke verification for implemented security/perf controls
 - Implemented controls for `SEC-02`, `SEC-03`, `API-01`, `API-02`, and `PERF-01` passed local smoke checks.
 - `SEC-04` media SSRF/open-proxy hardening is implemented and validated for allowlist + redirect-chain control.
 - `SEC-06` anti-automation controls passed local smoke checks with deterministic threshold probes.
+- `SEC-07` metadata hygiene controls are implemented (`robots.txt` simplification + `security.txt` publication).
 - Re-audit artifact is complete for `QA-01`.

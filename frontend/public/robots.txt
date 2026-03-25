@@ -1,11 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /admin/
-Disallow: /upload
-Disallow: /catalog
-Disallow: /favorites
-Disallow: /login
-Disallow: /staff-login-reactiv
 Disallow: /api/
 
 Sitemap: https://reactiv.pro/sitemap.xml

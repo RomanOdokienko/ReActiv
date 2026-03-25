@@ -1,0 +1,4 @@
+Contact: mailto:romanodokienko@gmail.com
+Expires: 2027-03-25T00:00:00.000Z
+Preferred-Languages: ru, en
+Canonical: https://reactiv.pro/.well-known/security.txt
