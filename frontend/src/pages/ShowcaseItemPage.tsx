@@ -129,9 +129,34 @@ interface DetailSpec {
 
 interface ShowcaseItemPageProps {
   allowFavorites?: boolean;
+  showTenantInfo?: boolean;
 }
 
-export function ShowcaseItemPage({ allowFavorites = false }: ShowcaseItemPageProps) {
+function formatTenantLabel(tenantId: string | null | undefined): string {
+  if (typeof tenantId !== "string") {
+    return "-";
+  }
+
+  const normalizedTenantId = tenantId.trim().toLowerCase();
+  if (normalizedTenantId === "gpb") {
+    return "ГПБ Лизинг";
+  }
+  if (normalizedTenantId === "reso") {
+    return "РЕСО-Лизинг";
+  }
+  if (normalizedTenantId === "alpha") {
+    return "Альфа-Лизинг";
+  }
+  if (normalizedTenantId === "sovcombank") {
+    return "Совкомбанк Лизинг";
+  }
+  return tenantId.trim() || "-";
+}
+
+export function ShowcaseItemPage({
+  allowFavorites = false,
+  showTenantInfo = false,
+}: ShowcaseItemPageProps) {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -682,6 +707,14 @@ export function ShowcaseItemPage({ allowFavorites = false }: ShowcaseItemPagePro
             <aside className="panel detail-side-panel">
               {(() => {
                 const ownershipSpecs: DetailSpec[] = [
+                  ...(showTenantInfo
+                    ? [
+                        {
+                          label: "Лизингодатель",
+                          value: formatTenantLabel(item.tenantId),
+                        },
+                      ]
+                    : []),
                   { label: "Год выпуска", value: formatInteger(item.year) },
                   { label: "Пробег", value: formatInteger(item.mileageKm, "км") },
                   {

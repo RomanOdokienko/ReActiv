@@ -105,6 +105,7 @@ export interface ClearImportsResponse {
 export interface CatalogItem {
   id: number;
   importBatchId: string;
+  tenantId: string;
   offerCode: string;
   status: string;
   brand: string;
@@ -132,6 +133,7 @@ export interface CatalogItem {
 
 export interface CatalogListItem {
   id: number;
+  tenantId?: string;
   offerCode: string;
   status: string;
   brand: string;

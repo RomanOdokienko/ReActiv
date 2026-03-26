@@ -4,6 +4,7 @@ import {
   getLatestSuccessfulImportBatchId,
   updateImportBatchSummary,
 } from "../repositories/import-batch-repository";
+import { insertCatalogModelNormalizationReview } from "../repositories/catalog-model-normalization-review-repository";
 import { insertImportError } from "../repositories/import-error-repository";
 import {
   appendVehicleOfferSnapshots,
@@ -53,6 +54,7 @@ export interface ImportServiceResult {
     updatedRows: number;
     removedRows: number;
     unchangedRows: number;
+    modelNormalizationReviewQueuedRows: number;
   };
   errors: ImportServiceErrorItem[];
 }
@@ -101,7 +103,40 @@ function mapStoredToNormalizedRow(row: StoredVehicleOfferRow): NormalizedVehicle
     days_on_sale_present: row.days_on_sale !== null,
     is_deregistered_present: row.is_deregistered !== null,
     price_present: row.price !== null,
+    model_raw_input: row.model,
+    modification_raw_input: row.modification,
+    model_normalization: null,
   };
+}
+
+function toCaseInsensitiveComparable(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function shouldQueueLowConfidenceModelNormalization(
+  row: NormalizedVehicleOfferRow,
+): boolean {
+  const modelNormalization = row.model_normalization;
+  if (!modelNormalization) {
+    return false;
+  }
+
+  if (modelNormalization.method !== "rule" || modelNormalization.applied) {
+    return false;
+  }
+
+  if (!modelNormalization.modelFamilyCanonical) {
+    return false;
+  }
+
+  const modelWouldChange =
+    toCaseInsensitiveComparable(modelNormalization.modelFamilyCanonical) !==
+    toCaseInsensitiveComparable(row.model_raw_input);
+  const modificationWouldChange =
+    toCaseInsensitiveComparable(modelNormalization.modificationNormalized) !==
+    toCaseInsensitiveComparable(row.modification_raw_input);
+
+  return modelWouldChange || modificationWouldChange;
 }
 
 export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
@@ -126,6 +161,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
   let updatedRows = 0;
   let removedRows = 0;
   let unchangedRows = 0;
+  let modelNormalizationReviewQueuedRows = 0;
   const seenOfferCodes = new Set<string>();
   const seenSovcomBrandWarnings = new Set<string>();
 
@@ -341,6 +377,32 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
         }
       }
 
+      if (shouldQueueLowConfidenceModelNormalization(normalizedRow)) {
+        const modelNormalization = normalizedRow.model_normalization;
+        if (modelNormalization) {
+          insertCatalogModelNormalizationReview({
+            import_batch_id: importBatchId,
+            tenant_id: tenantProfile.id,
+            row_number: rowNumber,
+            offer_code: normalizedRow.offer_code,
+            brand_input: normalizedRow.brand_raw ?? normalizedRow.brand,
+            model_input: normalizedRow.model_raw_input ?? normalizedRow.model,
+            modification_input:
+              normalizedRow.modification_raw_input ?? normalizedRow.modification,
+            brand_canonical: modelNormalization.brandCanonical,
+            model_family_canonical: modelNormalization.modelFamilyCanonical,
+            modification_candidate: modelNormalization.modificationNormalized,
+            confidence: modelNormalization.confidence,
+            min_confidence_to_apply: modelNormalization.minConfidenceToApply,
+            method: modelNormalization.method,
+            matched_brand_rule_id: modelNormalization.matchedBrandRuleId,
+            matched_model_rule_id: modelNormalization.matchedModelRuleId,
+            review_reason: "low_confidence",
+          });
+          modelNormalizationReviewQueuedRows += 1;
+        }
+      }
+
       seenOfferCodes.add(normalizedRow.offer_code);
       rowsToImport.push(normalizedRow);
     });
@@ -403,6 +465,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
         updatedRows,
         removedRows,
         unchangedRows,
+        modelNormalizationReviewQueuedRows,
       },
       errors,
     };
@@ -450,6 +513,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
         updated_rows: updatedRows,
         removed_rows: removedRows,
         unchanged_rows: unchangedRows,
+        model_normalization_review_queued_rows: modelNormalizationReviewQueuedRows,
       },
       "import_completed",
     );

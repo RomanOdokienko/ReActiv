@@ -23,6 +23,7 @@ MVP platform for importing leasing lots from Excel and publishing them in a unif
   - `reso`
   - `alpha`
 - Tenant-specific header mapping.
+- Pilot catalog normalization review queue for low-confidence model-family matches.
 - Delta stats per batch:
   - `added`
   - `removed`
@@ -163,6 +164,8 @@ npm --prefix frontend run dev
 - `PUBLIC_CATALOG_MAX_SEARCH_LENGTH` (optional, default: `120` for public requests)
 - `PUBLIC_CATALOG_MAX_FILTER_VALUES_PER_FIELD` (optional, default: `12` for public requests)
 - `PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS` (optional, default: `240`)
+- `CATALOG_MODEL_NORMALIZATION_ENABLED` (optional, default: `false`; enables pilot model-family normalization for BMW/SHACMAN/KAMAZ during import)
+- `CATALOG_MODEL_NORMALIZATION_MIN_CONFIDENCE` (optional, default: `0.75`; minimum confidence threshold for applying model normalization)
 - `BOOTSTRAP_ADMIN_LOGIN` (optional)
 - `BOOTSTRAP_ADMIN_PASSWORD` (optional)
 
@@ -245,6 +248,7 @@ See details in:
 - `docs/ARCHITECTURE_GUARDRAILS.md`
 - `docs/TASKS_SITE_SECURITY.md` (risk-driven security backlog)
 - `docs/TASKS_SECURITY_DEFERRED.md` (business-gated deferred security tasks)
+- `docs/CATALOG_NORMALIZATION_PILOT.md` (pilot model-family normalization approach)
 - `docs/FRONTEND_SECURITY_HEADERS_ROLLOUT.md` (ops runbook for `SEC-05` on frontend host)
 - `docs/TASKS_SEO_CONVERSION.md` (separate SEO/conversion backlog)
 
@@ -257,6 +261,8 @@ See details in:
 - `npm --prefix backend run typecheck`
 - `npm --prefix backend run create-user -- --login <login> --password <password> [--name "Display Name"]`
 - `npm --prefix backend run set-user-password -- --login <login> --password <password>`
+- `npm --prefix backend run normalize-catalog-models-inplace -- --limit=200 --dry-run`
+- `npm --prefix backend run normalize-catalog-models-inplace -- --apply [--tenant=gpb,alpha] [--min-confidence=0.75]`
 
 ### Frontend
 - `npm --prefix frontend run dev`

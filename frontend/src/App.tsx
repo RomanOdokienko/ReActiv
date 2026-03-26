@@ -615,7 +615,10 @@ export function App() {
             path="/catalog"
             element={isAdmin ? <CatalogPage /> : <Navigate to="/" replace />}
           />
-          <Route path="/showcase/:itemId" element={<ShowcaseItemPage allowFavorites />} />
+          <Route
+            path="/showcase/:itemId"
+            element={<ShowcaseItemPage allowFavorites showTenantInfo={isAdmin} />}
+          />
           <Route
             path="/admin/users"
             element={isAdmin ? <AdminUsersPage /> : <Navigate to="/" replace />}

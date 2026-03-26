@@ -316,6 +316,30 @@ export function initializeSchema(): void {
       FOREIGN KEY (import_batch_id) REFERENCES import_batches(id)
     );
 
+    CREATE TABLE IF NOT EXISTS catalog_model_normalization_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      import_batch_id TEXT NOT NULL,
+      tenant_id TEXT NOT NULL DEFAULT 'gpb',
+      row_number INTEGER NOT NULL,
+      offer_code TEXT NOT NULL,
+      brand_input TEXT,
+      model_input TEXT,
+      modification_input TEXT,
+      brand_canonical TEXT,
+      model_family_canonical TEXT,
+      modification_candidate TEXT,
+      confidence REAL NOT NULL,
+      min_confidence_to_apply REAL NOT NULL,
+      method TEXT NOT NULL,
+      matched_brand_rule_id TEXT,
+      matched_model_rule_id TEXT,
+      review_reason TEXT NOT NULL DEFAULT 'low_confidence',
+      review_status TEXT NOT NULL DEFAULT 'pending',
+      review_note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (import_batch_id) REFERENCES import_batches(id)
+    );
+
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       login TEXT NOT NULL UNIQUE,
@@ -455,6 +479,9 @@ export function initializeSchema(): void {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_import_batches_tenant_created_at ON import_batches(tenant_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_import_errors_tenant_created_at ON import_errors(tenant_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_catalog_model_norm_reviews_batch ON catalog_model_normalization_reviews(import_batch_id);
+    CREATE INDEX IF NOT EXISTS idx_catalog_model_norm_reviews_tenant_status ON catalog_model_normalization_reviews(tenant_id, review_status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_catalog_model_norm_reviews_offer ON catalog_model_normalization_reviews(tenant_id, offer_code, created_at);
   `);
   normalizeVehicleTypeLabels("vehicle_offers");
   normalizeVehicleTypeLabels("vehicle_offer_snapshots");
