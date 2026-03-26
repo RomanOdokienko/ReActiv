@@ -3,9 +3,13 @@ export function normalizeHeader(rawHeader: unknown): string {
 
   return text
     .normalize("NFKC")
-    .trim()
     .toLowerCase()
-    .replaceAll("ё", "е")
-    .replaceAll(":", "")
-    .replace(/\s+/g, " ");
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[ё]/g, "е")
+    .replace(/["'`«»]/g, "")
+    .replace(/[:;,.()[\]{}]/g, " ")
+    .replace(/[/\\|]+/g, " ")
+    .replace(/[-–—]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }

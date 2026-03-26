@@ -7,6 +7,22 @@ export interface ColumnMapResult {
   missingRequiredFields: CanonicalField[];
 }
 
+function hasMultipleWords(value: string): boolean {
+  return value.split(" ").filter(Boolean).length >= 2;
+}
+
+function isHeaderAliasMatch(header: string, alias: string): boolean {
+  if (header === alias) {
+    return true;
+  }
+
+  if (!hasMultipleWords(alias)) {
+    return false;
+  }
+
+  return header.startsWith(`${alias} `) || header.endsWith(` ${alias}`);
+}
+
 export function resolveColumnMap(
   headers: unknown[],
   headerAliases: Record<CanonicalField, string[]> = HEADER_ALIASES,
@@ -17,7 +33,7 @@ export function resolveColumnMap(
   for (const field of REQUIRED_IMPORT_FIELDS) {
     const aliases = headerAliases[field].map((alias) => normalizeHeader(alias));
     const columnIndex = normalizedHeaders.findIndex((header) =>
-      aliases.includes(header),
+      aliases.some((alias) => isHeaderAliasMatch(header, alias)),
     );
 
     if (columnIndex >= 0) {
