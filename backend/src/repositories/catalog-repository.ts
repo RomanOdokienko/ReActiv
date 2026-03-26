@@ -50,6 +50,7 @@ let mainShowcaseMixCache: MainShowcaseMixCache | null = null;
 interface VehicleOfferDbRow {
   id: number;
   import_batch_id: string;
+  tenant_id: string;
   offer_code: string;
   status: string;
   brand: string;
@@ -79,6 +80,7 @@ interface VehicleOfferDbRow {
 export interface CatalogItem {
   id: number;
   importBatchId: string;
+  tenantId: string;
   offerCode: string;
   status: string;
   brand: string;
@@ -107,6 +109,7 @@ export interface CatalogItem {
 
 export interface CatalogListItem {
   id: number;
+  tenantId?: string;
   offerCode: string;
   status: string;
   brand: string;
@@ -160,6 +163,7 @@ function mapDbRow(row: VehicleOfferDbRow): CatalogItem {
   return {
     id: row.id,
     importBatchId: row.import_batch_id,
+    tenantId: row.tenant_id,
     offerCode: row.offer_code,
     status: row.status,
     brand: row.brand,
@@ -192,6 +196,7 @@ function toCatalogListItem(item: CatalogItem): CatalogListItem {
 
   return {
     id: item.id,
+    tenantId: item.tenantId,
     offerCode: item.offerCode,
     status: item.status,
     brand: item.brand,
