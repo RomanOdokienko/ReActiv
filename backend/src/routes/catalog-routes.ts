@@ -101,6 +101,7 @@ const PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS = parsePositiveIntEnv(
   10,
   20_000,
 );
+const CATALOG_RESPONSE_SCHEMA_VERSION = "2026-03-26-tenant-id";
 
 const publicCatalogRateLimitBuckets = new Map<string, number[]>();
 let lastPublicCatalogRateLimitCleanupMs = 0;
@@ -422,6 +423,7 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
       const requestPath = request.raw.url?.split("#")[0] ?? "/api/catalog/items";
       const etag = buildWeakEtag(
         "catalog-items",
+        CATALOG_RESPONSE_SCHEMA_VERSION,
         latestImportBatch?.id ?? "none",
         roleBucket,
         requestPath,
@@ -548,6 +550,7 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
       const roleBucket = request.authUser?.role ?? "public";
       const etag = buildWeakEtag(
         "catalog-item-details",
+        CATALOG_RESPONSE_SCHEMA_VERSION,
         latestImportBatch?.id ?? "none",
         roleBucket,
         parsedId,
