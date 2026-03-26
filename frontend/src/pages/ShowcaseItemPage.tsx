@@ -132,7 +132,11 @@ interface ShowcaseItemPageProps {
   showTenantInfo?: boolean;
 }
 
-function formatTenantLabel(tenantId: string): string {
+function formatTenantLabel(tenantId: string | null | undefined): string {
+  if (typeof tenantId !== "string") {
+    return "-";
+  }
+
   const normalizedTenantId = tenantId.trim().toLowerCase();
   if (normalizedTenantId === "gpb") {
     return "ГПБ Лизинг";
