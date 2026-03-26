@@ -713,6 +713,14 @@ export function ShowcaseItemPage({
                           label: "Лизингодатель",
                           value: formatTenantLabel(item.tenantId),
                         },
+                        {
+                          label: "Ответственный",
+                          value: formatString(item.responsiblePerson),
+                        },
+                        {
+                          label: "Дней в продаже",
+                          value: formatInteger(item.daysOnSale),
+                        },
                       ]
                     : []),
                   { label: "Год выпуска", value: formatInteger(item.year) },
@@ -721,17 +729,6 @@ export function ShowcaseItemPage({
                     label: "Статус брони",
                     value: formatString(item.bookingStatus || "Без статуса"),
                   },
-                  ...(item.responsiblePerson.trim()
-                    ? [
-                        {
-                          label: "Ответственный",
-                          value: formatString(item.responsiblePerson),
-                        },
-                      ]
-                    : []),
-                  ...(item.daysOnSale !== null
-                    ? [{ label: "Дней в продаже", value: formatInteger(item.daysOnSale) }]
-                    : []),
                   { label: "Регион/адрес", value: formatString(item.storageAddress) },
                 ];
 
