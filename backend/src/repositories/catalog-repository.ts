@@ -114,9 +114,11 @@ export interface CatalogListItem {
   status: string;
   brand: string;
   model: string;
+  modification: string;
   title: string;
   year: number | null;
   mileageKm: number | null;
+  daysOnSale: number | null;
   price: number | null;
   bookingStatus: string;
   storageAddress: string;
@@ -201,9 +203,11 @@ function toCatalogListItem(item: CatalogItem): CatalogListItem {
     status: item.status,
     brand: item.brand,
     model: item.model,
+    modification: item.modification,
     title: item.title,
     year: item.year,
     mileageKm: item.mileageKm,
+    daysOnSale: item.daysOnSale,
     price: item.price,
     bookingStatus: item.bookingStatus,
     storageAddress: item.storageAddress,

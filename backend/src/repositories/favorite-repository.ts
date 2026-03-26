@@ -19,9 +19,11 @@ interface FavoriteCatalogItemDbRow {
   status: string;
   brand: string;
   model: string;
+  modification: string;
   title: string;
   year: number | null;
   mileage_km: number | null;
+  days_on_sale: number | null;
   price: number | null;
   booking_status: string;
   storage_address: string;
@@ -55,9 +57,11 @@ function mapFavoriteRowToCatalogListItem(row: FavoriteCatalogItemDbRow): Catalog
     status: row.status,
     brand: row.brand,
     model: row.model,
+    modification: row.modification,
     title: row.title,
     year: row.year,
     mileageKm: row.mileage_km,
+    daysOnSale: row.days_on_sale,
     price: row.price,
     bookingStatus: row.booking_status,
     storageAddress: row.storage_address,
@@ -172,9 +176,11 @@ export function listFavoriteCatalogItems(
           vo.status,
           vo.brand,
           vo.model,
+          vo.modification,
           vo.title,
           vo.year,
           vo.mileage_km,
+          vo.days_on_sale,
           vo.price,
           vo.booking_status,
           vo.storage_address,

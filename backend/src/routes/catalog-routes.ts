@@ -101,7 +101,7 @@ const PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS = parsePositiveIntEnv(
   10,
   20_000,
 );
-const CATALOG_RESPONSE_SCHEMA_VERSION = "2026-03-26-tenant-id";
+const CATALOG_RESPONSE_SCHEMA_VERSION = "2026-03-26-admin-catalog-enrichment";
 
 const publicCatalogRateLimitBuckets = new Map<string, number[]>();
 let lastPublicCatalogRateLimitCleanupMs = 0;

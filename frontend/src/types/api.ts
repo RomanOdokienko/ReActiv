@@ -138,9 +138,11 @@ export interface CatalogListItem {
   status: string;
   brand: string;
   model: string;
+  modification: string;
   title: string;
   year: number | null;
   mileageKm: number | null;
+  daysOnSale: number | null;
   price: number | null;
   bookingStatus: string;
   storageAddress: string;

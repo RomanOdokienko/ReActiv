@@ -28,6 +28,11 @@ function formatNumberValue(value: number | null): string {
   return value.toLocaleString("ru-RU");
 }
 
+function formatTextValue(value: string | null | undefined): string {
+  const normalized = (value ?? "").trim();
+  return normalized ? normalized : "-";
+}
+
 export function CatalogPage() {
   const [filters, setFilters] = useState<CatalogFiltersResponse | null>(null);
   const [itemsResponse, setItemsResponse] = useState<CatalogItemsResponse | null>(
@@ -358,10 +363,13 @@ export function CatalogPage() {
                       <th>Статус</th>
                       <th>Марка</th>
                       <th>Модель</th>
+                      <th>Модификация</th>
                       <th>Год</th>
                       <th>Пробег</th>
+                      <th>Дней в продаже</th>
                       <th>Цена</th>
                       <th>Бронь</th>
+                      <th>Ответственный</th>
                       <th>Место хранения</th>
                     </tr>
                   </thead>
@@ -372,11 +380,14 @@ export function CatalogPage() {
                         <td>{item.status}</td>
                         <td>{item.brand}</td>
                         <td>{item.model}</td>
+                        <td>{formatTextValue(item.modification)}</td>
                         <td>{formatNumberValue(item.year)}</td>
                         <td>{formatNumberValue(item.mileageKm)}</td>
+                        <td>{formatNumberValue(item.daysOnSale)}</td>
                         <td>{formatNumberValue(item.price)}</td>
-                        <td>{item.bookingStatus}</td>
-                        <td>{item.storageAddress}</td>
+                        <td>{formatTextValue(item.bookingStatus)}</td>
+                        <td>{formatTextValue(item.responsiblePerson)}</td>
+                        <td>{formatTextValue(item.storageAddress)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -398,6 +409,10 @@ export function CatalogPage() {
                         <dd className="mobile-card__value">{item.status}</dd>
                       </div>
                       <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Модификация</dt>
+                        <dd className="mobile-card__value">{formatTextValue(item.modification)}</dd>
+                      </div>
+                      <div className="mobile-card__row">
                         <dt className="mobile-card__label">Год</dt>
                         <dd className="mobile-card__value">{formatNumberValue(item.year)}</dd>
                       </div>
@@ -406,16 +421,24 @@ export function CatalogPage() {
                         <dd className="mobile-card__value">{formatNumberValue(item.mileageKm)}</dd>
                       </div>
                       <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Дней в продаже</dt>
+                        <dd className="mobile-card__value">{formatNumberValue(item.daysOnSale)}</dd>
+                      </div>
+                      <div className="mobile-card__row">
                         <dt className="mobile-card__label">Цена</dt>
                         <dd className="mobile-card__value">{formatNumberValue(item.price)}</dd>
                       </div>
                       <div className="mobile-card__row">
                         <dt className="mobile-card__label">Бронь</dt>
-                        <dd className="mobile-card__value">{item.bookingStatus}</dd>
+                        <dd className="mobile-card__value">{formatTextValue(item.bookingStatus)}</dd>
+                      </div>
+                      <div className="mobile-card__row">
+                        <dt className="mobile-card__label">Ответственный</dt>
+                        <dd className="mobile-card__value">{formatTextValue(item.responsiblePerson)}</dd>
                       </div>
                       <div className="mobile-card__row">
                         <dt className="mobile-card__label">Место хранения</dt>
-                        <dd className="mobile-card__value">{item.storageAddress}</dd>
+                        <dd className="mobile-card__value">{formatTextValue(item.storageAddress)}</dd>
                       </div>
                     </dl>
                   </article>
