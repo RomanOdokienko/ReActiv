@@ -659,6 +659,53 @@ async function startServer(): Promise<void> {
     256,
     1_048_576,
   );
+  const gracefulShutdownTimeoutMs = parsePositiveIntEnv(
+    "GRACEFUL_SHUTDOWN_TIMEOUT_MS",
+    15_000,
+    1_000,
+    120_000,
+  );
+  let stopMediaHealthScheduler: (() => void) | null = null;
+  let isShutdownInProgress = false;
+  let forceShutdownTimer: NodeJS.Timeout | null = null;
+
+  async function gracefulShutdown(signal: "SIGTERM" | "SIGINT"): Promise<void> {
+    if (isShutdownInProgress) {
+      return;
+    }
+
+    isShutdownInProgress = true;
+    app.log.info({ signal }, "shutdown_started");
+
+    forceShutdownTimer = setTimeout(() => {
+      app.log.error(
+        { signal, timeout_ms: gracefulShutdownTimeoutMs },
+        "shutdown_force_exit_timeout",
+      );
+      process.exit(1);
+    }, gracefulShutdownTimeoutMs);
+    forceShutdownTimer.unref?.();
+
+    try {
+      if (stopMediaHealthScheduler) {
+        stopMediaHealthScheduler();
+      }
+      await app.close();
+      if (forceShutdownTimer) {
+        clearTimeout(forceShutdownTimer);
+        forceShutdownTimer = null;
+      }
+      app.log.info({ signal }, "shutdown_completed");
+      process.exit(0);
+    } catch (error) {
+      if (forceShutdownTimer) {
+        clearTimeout(forceShutdownTimer);
+        forceShutdownTimer = null;
+      }
+      app.log.error({ error, signal }, "shutdown_failed");
+      process.exit(1);
+    }
+  }
 
   await app.register(cors, {
     origin(origin, cb) {
@@ -888,8 +935,14 @@ async function startServer(): Promise<void> {
 
   try {
     await app.listen({ port, host });
-    startMediaHealthScheduler(app.log);
+    stopMediaHealthScheduler = startMediaHealthScheduler(app.log);
     ensureImportMediaSyncBackgroundWorkers(app.log);
+    process.once("SIGTERM", () => {
+      void gracefulShutdown("SIGTERM");
+    });
+    process.once("SIGINT", () => {
+      void gracefulShutdown("SIGINT");
+    });
     app.log.info({ port, host }, "Server started");
   } catch (error) {
     app.log.error(error, "Failed to start server");

@@ -23,10 +23,17 @@ function getMsUntilNextScheduledRun(): number {
   return Math.max(1_000, nextRunUtcMs - nowUtcMs);
 }
 
-export function startMediaHealthScheduler(logger: FastifyBaseLogger): void {
+export function startMediaHealthScheduler(logger: FastifyBaseLogger): () => void {
   let isRunning = false;
+  let startupTimeout: NodeJS.Timeout | null = null;
+  let dailyInterval: NodeJS.Timeout | null = null;
+  let isStopped = false;
 
   async function run(triggerType: "scheduler" | "startup"): Promise<void> {
+    if (isStopped) {
+      return;
+    }
+
     if (isRunning) {
       logger.info({ triggerType }, "media_health_scheduler_skip_already_running");
       return;
@@ -57,11 +64,27 @@ export function startMediaHealthScheduler(logger: FastifyBaseLogger): void {
     "media_health_scheduler_started",
   );
 
-  setTimeout(() => {
+  startupTimeout = setTimeout(() => {
     void run("scheduler");
 
-    setInterval(() => {
+    dailyInterval = setInterval(() => {
       void run("scheduler");
     }, DAILY_INTERVAL_MS);
   }, msUntilNextRun);
+
+  return () => {
+    isStopped = true;
+
+    if (startupTimeout) {
+      clearTimeout(startupTimeout);
+      startupTimeout = null;
+    }
+
+    if (dailyInterval) {
+      clearInterval(dailyInterval);
+      dailyInterval = null;
+    }
+
+    logger.info("media_health_scheduler_stopped");
+  };
 }
