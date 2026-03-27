@@ -14,6 +14,8 @@
     "sync-alpha-media-via-api": "tsx src/scripts/sync-alpha-media-via-api.ts",
     "extract-avito-media": "tsx src/scripts/extract-avito-media.ts",
     "sync-card-previews": "tsx src/scripts/sync-card-previews.ts",
+    "relink-card-previews": "tsx src/scripts/relink-card-previews.ts",
+    "relink-card-previews:plan": "tsx src/scripts/relink-card-previews.ts --plan",
     "snapshot-media-health": "tsx src/scripts/snapshot-media-health.ts",
     "normalize-catalog-models-inplace": "tsx src/scripts/normalize-catalog-models-inplace.ts"
   },
