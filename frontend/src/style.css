@@ -3468,6 +3468,13 @@ tbody tr:nth-child(even) {
   font-size: 18px;
 }
 
+.detail-admin-note__hint {
+  margin: 0;
+  color: #63758b;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 .detail-admin-note textarea {
   width: 100%;
   min-height: 110px;
@@ -3481,14 +3488,29 @@ tbody tr:nth-child(even) {
 
 .detail-admin-note__actions {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
+.detail-admin-note__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .detail-admin-note__counter {
+  margin-left: auto;
+  padding-top: 8px;
   color: #63758b;
   font-size: 12px;
+}
+
+.detail-admin-note__delete {
+  border-color: rgba(166, 44, 44, 0.35);
+  color: #8f2323;
+  background: rgba(166, 44, 44, 0.08);
 }
 
 .detail-admin-note__status {
@@ -4481,6 +4503,23 @@ tbody tr:nth-child(even) {
   .detail-spec-row {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .detail-admin-note__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .detail-admin-note__buttons {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .detail-admin-note__counter {
+    margin-left: 0;
+    padding-top: 0;
+    text-align: right;
   }
 
   .auth-layout--landing {

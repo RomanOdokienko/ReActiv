@@ -425,9 +425,20 @@ export function ShowcaseItemPage({
   const isFavorite = Boolean(item && favoriteItemIds.has(item.id));
   const savedAdminComment = showTenantInfo && item ? item.adminComment ?? "" : "";
   const isAdminCommentDirty = adminCommentDraft !== savedAdminComment;
+  const normalizedAdminCommentDraft = adminCommentDraft.trim();
+  const hasSavedAdminComment = savedAdminComment.trim().length > 0;
 
   async function handleAdminCommentSave(): Promise<void> {
     if (!showTenantInfo || !item || isAdminCommentSaving) {
+      return;
+    }
+
+    if (!normalizedAdminCommentDraft) {
+      setAdminCommentStatus(
+        hasSavedAdminComment
+          ? "Пустой текст не сохраняется. Для удаления используйте кнопку «Удалить комментарий»."
+          : "Введите текст комментария перед сохранением.",
+      );
       return;
     }
 
@@ -455,6 +466,51 @@ export function ShowcaseItemPage({
         setAdminCommentStatus("Нет прав для сохранения комментария");
       } else {
         setAdminCommentStatus("Не удалось сохранить комментарий");
+      }
+    } finally {
+      setIsAdminCommentSaving(false);
+    }
+  }
+
+  function handleAdminCommentReset(): void {
+    setAdminCommentDraft(savedAdminComment);
+    setAdminCommentStatus("Изменения отменены");
+  }
+
+  async function handleAdminCommentDelete(): Promise<void> {
+    if (!showTenantInfo || !item || isAdminCommentSaving || !hasSavedAdminComment) {
+      return;
+    }
+
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("Удалить внутренний комментарий по этому лоту?")
+    ) {
+      return;
+    }
+
+    setIsAdminCommentSaving(true);
+    setAdminCommentStatus(null);
+
+    try {
+      await updateAdminCatalogItemComment(item.id, "");
+      setAdminCommentDraft("");
+      setItem((current) => {
+        if (!current || current.id !== item.id) {
+          return current;
+        }
+
+        return {
+          ...current,
+          adminComment: "",
+        };
+      });
+      setAdminCommentStatus("Комментарий удален");
+    } catch (caughtError) {
+      if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
+        setAdminCommentStatus("Нет прав для удаления комментария");
+      } else {
+        setAdminCommentStatus("Не удалось удалить комментарий");
       }
     } finally {
       setIsAdminCommentSaving(false);
@@ -873,6 +929,9 @@ export function ShowcaseItemPage({
               {showTenantInfo && (
                 <section className="detail-admin-note">
                   <h3>Внутренний комментарий</h3>
+                  <p className="detail-admin-note__hint">
+                    Поле редактирует сохраненный комментарий. Очистка текста не удаляет его, пока вы явно не нажмете кнопку удаления.
+                  </p>
                   <textarea
                     value={adminCommentDraft}
                     maxLength={5000}
@@ -883,16 +942,38 @@ export function ShowcaseItemPage({
                     }}
                   />
                   <div className="detail-admin-note__actions">
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      disabled={!isAdminCommentDirty || isAdminCommentSaving}
-                      onClick={() => {
-                        void handleAdminCommentSave();
-                      }}
-                    >
-                      {isAdminCommentSaving ? "Сохраняю..." : "Сохранить комментарий"}
-                    </button>
+                    <div className="detail-admin-note__buttons">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={!isAdminCommentDirty || isAdminCommentSaving || !normalizedAdminCommentDraft}
+                        onClick={() => {
+                          void handleAdminCommentSave();
+                        }}
+                      >
+                        {isAdminCommentSaving ? "Сохраняю..." : "Сохранить комментарий"}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={!isAdminCommentDirty || isAdminCommentSaving}
+                        onClick={handleAdminCommentReset}
+                      >
+                        Отменить изменения
+                      </button>
+                      {hasSavedAdminComment && (
+                        <button
+                          type="button"
+                          className="secondary-button detail-admin-note__delete"
+                          disabled={isAdminCommentSaving}
+                          onClick={() => {
+                            void handleAdminCommentDelete();
+                          }}
+                        >
+                          Удалить комментарий
+                        </button>
+                      )}
+                    </div>
                     <span className="detail-admin-note__counter">
                       {adminCommentDraft.length}/5000
                     </span>
