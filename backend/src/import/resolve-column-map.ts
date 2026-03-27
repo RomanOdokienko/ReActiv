@@ -11,32 +11,102 @@ function hasMultipleWords(value: string): boolean {
   return value.split(" ").filter(Boolean).length >= 2;
 }
 
-function isHeaderAliasMatch(header: string, alias: string): boolean {
+function getHeaderAliasMatchScore(header: string, alias: string): number {
   if (header === alias) {
-    return true;
+    return 10_000 + alias.length;
   }
 
   if (!hasMultipleWords(alias)) {
-    return false;
+    return 0;
   }
 
   const normalizedHeader = ` ${header} `;
   const normalizedAlias = ` ${alias} `;
-  return normalizedHeader.includes(normalizedAlias);
+  if (normalizedHeader.includes(normalizedAlias)) {
+    return 5_000 + alias.length;
+  }
+
+  return 0;
+}
+
+function getColumnValueDensity(rows: unknown[][], columnIndex: number, sampleSize = 500): number {
+  const totalRows = Math.min(sampleSize, rows.length);
+  if (totalRows === 0) {
+    return 0;
+  }
+
+  let nonEmptyValues = 0;
+  for (let rowIndex = 0; rowIndex < totalRows; rowIndex += 1) {
+    const rawValue = rows[rowIndex]?.[columnIndex];
+    const normalized = String(rawValue ?? "").trim();
+    if (normalized.length > 0) {
+      nonEmptyValues += 1;
+    }
+  }
+
+  return nonEmptyValues / totalRows;
+}
+
+function pickBestColumnIndex(
+  normalizedHeaders: string[],
+  aliases: string[],
+  rows: unknown[][],
+): number {
+  type Candidate = {
+    columnIndex: number;
+    score: number;
+    density: number;
+  };
+
+  const candidates: Candidate[] = normalizedHeaders
+    .map((header, columnIndex) => {
+      const score = aliases.reduce((maxScore, alias) => {
+        const currentScore = getHeaderAliasMatchScore(header, alias);
+        return currentScore > maxScore ? currentScore : maxScore;
+      }, 0);
+
+      if (score === 0) {
+        return null;
+      }
+
+      return {
+        columnIndex,
+        score,
+        density: getColumnValueDensity(rows, columnIndex),
+      };
+    })
+    .filter((candidate): candidate is Candidate => candidate !== null);
+
+  if (candidates.length === 0) {
+    return -1;
+  }
+
+  candidates.sort((left, right) => {
+    if (left.score !== right.score) {
+      return right.score - left.score;
+    }
+
+    if (left.density !== right.density) {
+      return right.density - left.density;
+    }
+
+    return left.columnIndex - right.columnIndex;
+  });
+
+  return candidates[0].columnIndex;
 }
 
 export function resolveColumnMap(
   headers: unknown[],
   headerAliases: Record<CanonicalField, string[]> = HEADER_ALIASES,
+  rows: unknown[][] = [],
 ): ColumnMapResult {
   const normalizedHeaders = headers.map((header) => normalizeHeader(header));
   const fieldToColumnIndex: Partial<Record<CanonicalField, number>> = {};
 
   for (const field of REQUIRED_IMPORT_FIELDS) {
     const aliases = headerAliases[field].map((alias) => normalizeHeader(alias));
-    const columnIndex = normalizedHeaders.findIndex((header) =>
-      aliases.some((alias) => isHeaderAliasMatch(header, alias)),
-    );
+    const columnIndex = pickBestColumnIndex(normalizedHeaders, aliases, rows);
 
     if (columnIndex >= 0) {
       fieldToColumnIndex[field] = columnIndex;

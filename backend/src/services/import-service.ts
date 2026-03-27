@@ -192,6 +192,7 @@ export function importWorkbook(input: ImportServiceInput): ImportServiceResult {
     const columnMap = resolveColumnMap(
       parsedWorkbook.headers,
       tenantProfile.headerAliases,
+      parsedWorkbook.rows,
     );
 
     if (columnMap.missingRequiredFields.length > 0) {
