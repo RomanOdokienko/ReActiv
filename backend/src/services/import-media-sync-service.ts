@@ -36,6 +36,9 @@ interface ImportMediaSyncRunContext {
 const inMemoryRunningTenants = new Set<string>();
 const PROGRESS_UPDATE_STEP = 25;
 const PROGRESS_UPDATE_INTERVAL_MS = 1_500;
+const DEFAULT_STALE_RUNNING_JOB_TIMEOUT_MS = 5 * 60 * 1000;
+const STALE_RUNNING_JOB_ERROR_MESSAGE =
+  "Задача остановлена из-за перезапуска сервиса. Запустите синхронизацию повторно.";
 
 function parsePositiveIntEnv(name: string, fallback: number): number {
   const raw = process.env[name]?.trim();
@@ -61,6 +64,39 @@ function getAlphaConcurrency(): number {
 
 function getPreviewConcurrency(): number {
   return parsePositiveIntEnv("IMPORT_MEDIA_SYNC_PREVIEW_CONCURRENCY", 4);
+}
+
+function getStaleRunningJobTimeoutMs(): number {
+  return parsePositiveIntEnv(
+    "IMPORT_MEDIA_SYNC_STALE_TIMEOUT_MS",
+    DEFAULT_STALE_RUNNING_JOB_TIMEOUT_MS,
+  );
+}
+
+function shouldFailAsStaleRunningJob(job: ImportMediaSyncJobRecord): boolean {
+  if (job.status !== "running") {
+    return false;
+  }
+
+  const updatedAtMs = Date.parse(job.updated_at);
+  if (!Number.isFinite(updatedAtMs)) {
+    return false;
+  }
+
+  return Date.now() - updatedAtMs > getStaleRunningJobTimeoutMs();
+}
+
+function markJobAsStaleFailed(job: ImportMediaSyncJobRecord): void {
+  finishImportMediaSyncJob({
+    id: job.id,
+    status: "failed",
+    stage: "done",
+    error_message: STALE_RUNNING_JOB_ERROR_MESSAGE,
+    details_json: JSON.stringify({
+      staleDetectedAt: new Date().toISOString(),
+      staleTimeoutMs: getStaleRunningJobTimeoutMs(),
+    }),
+  });
 }
 
 function createProgressReporter(
@@ -120,6 +156,10 @@ async function runMediaEnrichmentForJob(
       logger: context.logger,
       onProgress: (progress) => {
         reportProgress(progress.processed, progress.total);
+        updateImportMediaSyncJobProgress({
+          id: job.id,
+          media_candidates_count: progress.total,
+        });
       },
     });
     reportProgress(result.processedCandidates, result.totalCandidates, true);
@@ -145,6 +185,10 @@ async function runMediaEnrichmentForJob(
       logger: context.logger,
       onProgress: (progress) => {
         reportProgress(progress.processed, progress.total);
+        updateImportMediaSyncJobProgress({
+          id: job.id,
+          media_candidates_count: progress.total,
+        });
       },
     });
     reportProgress(result.processedCandidates, result.totalCandidates, true);
@@ -194,6 +238,10 @@ async function runPreviewSyncForJob(
     logger: context.logger,
     onProgress: (progress) => {
       reportProgress(progress.processed, progress.total);
+      updateImportMediaSyncJobProgress({
+        id: job.id,
+        preview_candidates_count: progress.total,
+      });
     },
   });
   reportProgress(previewResult.processedCandidates, previewResult.totalCandidates, true);
@@ -347,7 +395,17 @@ export function enqueueImportMediaSyncJob(
 export function getLatestImportMediaSyncJobForImportBatch(
   importBatchId: string,
 ): ImportMediaSyncJobRecord | null {
-  return getLatestImportMediaSyncJobByImportBatchId(importBatchId);
+  const job = getLatestImportMediaSyncJobByImportBatchId(importBatchId);
+  if (!job) {
+    return null;
+  }
+
+  if (shouldFailAsStaleRunningJob(job)) {
+    markJobAsStaleFailed(job);
+    return getLatestImportMediaSyncJobByImportBatchId(importBatchId);
+  }
+
+  return job;
 }
 
 export function ensureImportMediaSyncBackgroundWorkers(
