@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
   exportAdminCatalogMinJson,
-  getCatalogFilters,
-  getCatalogItems,
+  getAdminCatalogFilters,
+  getAdminCatalogItems,
 } from "../api/client";
 import {
   BOOLEAN_FILTER_KEYS,
@@ -54,9 +54,13 @@ export function CatalogPage() {
   useEffect(() => {
     async function loadFilters() {
       try {
-        const data = await getCatalogFilters();
+        const data = await getAdminCatalogFilters();
         setFilters(data);
-      } catch {
+      } catch (loadError) {
+        if (loadError instanceof Error && loadError.message === "FORBIDDEN") {
+          setError("Нет прав для просмотра каталога");
+          return;
+        }
         setError("Не удалось загрузить фильтры");
       }
     }
@@ -98,9 +102,13 @@ export function CatalogPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await getCatalogItems(query);
+        const response = await getAdminCatalogItems(query);
         setItemsResponse(response);
-      } catch {
+      } catch (loadError) {
+        if (loadError instanceof Error && loadError.message === "FORBIDDEN") {
+          setError("Нет прав для просмотра каталога");
+          return;
+        }
         setError("Не удалось загрузить каталог");
       } finally {
         setIsLoading(false);

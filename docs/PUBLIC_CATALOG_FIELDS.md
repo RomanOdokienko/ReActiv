@@ -1,6 +1,6 @@
 # Public Catalog Field Set (DEC-03)
 
-Last updated: 2026-03-24
+Last updated: 2026-03-27
 Owner: Codex + project owner
 
 ## Purpose
@@ -13,6 +13,8 @@ It is used as the approval artifact for `DEC-03` and as a guard against accident
   - `GET /api/catalog/items`
   - `GET /api/catalog/items/:id`
   - `GET /api/catalog/filters`
+- Admin backoffice routes are out of this scope:
+  - `GET /api/admin/catalog/*` (auth-admin, unsanitized payload)
 
 ## Policy
 - Public responses should contain only fields required for showcase UX and lead routing.

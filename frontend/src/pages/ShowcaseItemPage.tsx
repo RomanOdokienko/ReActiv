@@ -10,6 +10,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   addFavoriteItem,
   buildTelegramShareUrl,
+  getAdminCatalogItemById,
   getCatalogItemById,
   getFavoriteItemIds,
   getMediaGalleryUrls,
@@ -183,7 +184,9 @@ export function ShowcaseItemPage({
       setError(null);
 
       try {
-        const response = await getCatalogItemById(parsedId);
+        const response = showTenantInfo
+          ? await getAdminCatalogItemById(parsedId)
+          : await getCatalogItemById(parsedId);
         setItem(response);
       } catch (caughtError) {
         void logActivityEvent({
@@ -192,13 +195,19 @@ export function ShowcaseItemPage({
           entityType: "catalog_item",
           entityId: String(parsedId),
           payload: {
-            endpoint: `/catalog/items/${parsedId}`,
+            endpoint: showTenantInfo
+              ? `/admin/catalog/items/${parsedId}`
+              : `/catalog/items/${parsedId}`,
             message:
               caughtError instanceof Error ? caughtError.message : "unknown_error",
           },
         });
 
         if (caughtError instanceof Error) {
+          if (caughtError.message === "FORBIDDEN") {
+            setError("Нет прав для просмотра карточки");
+            return;
+          }
           setError(caughtError.message);
         } else {
           setError("Не удалось загрузить карточку");
@@ -209,7 +218,7 @@ export function ShowcaseItemPage({
     }
 
     void loadItem();
-  }, [itemId]);
+  }, [itemId, location.pathname, showTenantInfo]);
 
   useEffect(() => {
     if (!allowFavorites) {

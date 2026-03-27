@@ -8,6 +8,7 @@ import { initializeSchema } from "./db/schema";
 import { registerAdminUserRoutes } from "./routes/admin-user-routes";
 import { registerAdminAlphaMediaRoutes } from "./routes/admin-alpha-media-routes";
 import { registerAdminCatalogExportRoutes } from "./routes/admin-catalog-export-routes";
+import { registerAdminCatalogRoutes } from "./routes/admin-catalog-routes";
 import { registerAdminHighlightsRoutes } from "./routes/admin-highlights-routes";
 import { registerAdminResoMediaRoutes } from "./routes/admin-reso-media-routes";
 import { registerActivityRoutes } from "./routes/activity-routes";
@@ -877,6 +878,7 @@ async function startServer(): Promise<void> {
   await registerSitemapRoutes(app);
   await registerSiteVerificationRoutes(app);
   await registerAdminUserRoutes(app);
+  await registerAdminCatalogRoutes(app);
   await registerAdminCatalogExportRoutes(app);
   await registerAdminHighlightsRoutes(app);
   await registerAdminResoMediaRoutes(app);

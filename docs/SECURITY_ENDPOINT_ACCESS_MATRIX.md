@@ -1,6 +1,6 @@
 # Security Endpoint Access Matrix (SEC-00)
 
-Last updated: 2026-03-24
+Last updated: 2026-03-27
 Scope: `backend/src/server.ts` and `backend/src/routes/*`
 
 ## Purpose
@@ -44,6 +44,10 @@ Global auth behavior is defined in `backend/src/server.ts`:
 | GET | `/api/catalog/items` | `public` in `open`, otherwise `auth_any` | Open-mode public family |
 | GET | `/api/catalog/items/:id` | `public` in `open`, otherwise `auth_any` | Open-mode public family |
 | GET | `/api/catalog/filters` | `public` in `open`, otherwise `auth_any` | Open-mode public family |
+| GET | `/api/admin/catalog/summary` | `auth_admin` | Admin-only unsanitized catalog summary |
+| GET | `/api/admin/catalog/items` | `auth_admin` | Admin-only unsanitized catalog list |
+| GET | `/api/admin/catalog/items/:id` | `auth_admin` | Admin-only unsanitized catalog detail |
+| GET | `/api/admin/catalog/filters` | `auth_admin` | Admin-only unsanitized filters metadata |
 | GET | `/api/media/card-preview` | `public` in `open`, otherwise `auth_any` | Open-mode public family |
 | GET | `/api/media/preview` | `public` in `open`, otherwise `auth_any` | Open-mode public family |
 | GET | `/api/media/preview-image` | `public` in `open`, otherwise `auth_any` | Open-mode public family |

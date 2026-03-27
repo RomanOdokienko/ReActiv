@@ -833,6 +833,36 @@ export async function getCatalogItems(
   }
 }
 
+export async function getAdminCatalogItems(
+  query: CatalogItemsQuery,
+  options: CatalogRequestOptions = {},
+): Promise<CatalogItemsResponse> {
+  const params = buildCatalogQueryParams(query);
+
+  try {
+    const response = await fetch(buildUrl(`/admin/catalog/items?${params.toString()}`), {
+      credentials: "include",
+      signal: options.signal,
+    });
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить позиции каталога");
+    }
+
+    return (await response.json()) as CatalogItemsResponse;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
+    }
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
 export async function exportAdminCatalogMinJson(
   query: CatalogItemsQuery,
 ): Promise<void> {
@@ -873,6 +903,28 @@ export async function getCatalogSummary(): Promise<CatalogSummaryResponse> {
     const response = await fetch(buildUrl("/catalog/summary"), {
       credentials: "include",
     });
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить сводку витрины");
+    }
+
+    return (await response.json()) as CatalogSummaryResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getAdminCatalogSummary(): Promise<CatalogSummaryResponse> {
+  try {
+    const response = await fetch(buildUrl("/admin/catalog/summary"), {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
     if (!response.ok) {
       throw new Error("Не удалось загрузить сводку витрины");
     }
@@ -957,12 +1009,60 @@ export async function getCatalogFilters(): Promise<CatalogFiltersResponse> {
   }
 }
 
+export async function getAdminCatalogFilters(): Promise<CatalogFiltersResponse> {
+  try {
+    const response = await fetch(buildUrl("/admin/catalog/filters"), {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить фильтры");
+    }
+    return (await response.json()) as CatalogFiltersResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
 export async function getCatalogItemById(id: number): Promise<CatalogItem> {
   try {
     const response = await fetch(buildUrl(`/catalog/items/${id}`), {
       credentials: "include",
     });
 
+    if (response.status === 404) {
+      throw new Error("Карточка не найдена");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить карточку");
+    }
+
+    return (await response.json()) as CatalogItem;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getAdminCatalogItemById(id: number): Promise<CatalogItem> {
+  try {
+    const response = await fetch(buildUrl(`/admin/catalog/items/${id}`), {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
     if (response.status === 404) {
       throw new Error("Карточка не найдена");
     }
