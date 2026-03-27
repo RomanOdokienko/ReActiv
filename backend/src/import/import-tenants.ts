@@ -31,6 +31,25 @@ const RESO_HEADER_OVERRIDES: Partial<HeaderAliases> = {
   has_encumbrance: ["Арест"],
 };
 
+const GPB_HEADER_ADDITIONS: Partial<HeaderAliases> = {
+  responsible_person: [
+    "Ответственный за ТС",
+    "Ответсвенный за ТС",
+    "Ответственный",
+    "Ответсвенный",
+    "ФИО ответственного",
+    "Ответственный менеджер",
+  ],
+  days_on_sale: [
+    "Количество дней реализации",
+    "Количество дней реализации (дн.)",
+    "Количество дней реализации (дн)",
+    "Количество дней в реализации",
+    "Дней в продаже",
+    "Срок экспозиции (дн.)",
+  ],
+};
+
 const ALFA_HEADER_ADDITIONS: Partial<HeaderAliases> = {
   offer_code: ["VIN / Зав.№", "VIN/Зав.№", "VIN", "VIN-код", "Зав.№"],
   status: ["Статус лота", "Состояние"],
@@ -139,7 +158,7 @@ export function createImportTenantProfiles(
     gpb: {
       id: "gpb",
       label: "ГПБ Лизинг",
-      headerAliases: baseAliases,
+      headerAliases: extendAliases(baseAliases, GPB_HEADER_ADDITIONS),
       offerCodeNormalizer: normalizeOfferCode,
     },
     reso: {

@@ -7,7 +7,13 @@ export function parseInteger(rawValue: unknown): number | null {
   }
 
   if (!/^-?\d+$/.test(normalized)) {
-    return null;
+    const numericGroups = normalized.match(/-?\d+/g) ?? [];
+    if (numericGroups.length !== 1) {
+      return null;
+    }
+
+    const fallbackParsed = Number.parseInt(numericGroups[0], 10);
+    return Number.isNaN(fallbackParsed) ? null : fallbackParsed;
   }
 
   const parsed = Number.parseInt(normalized, 10);

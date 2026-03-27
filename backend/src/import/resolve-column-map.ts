@@ -20,7 +20,9 @@ function isHeaderAliasMatch(header: string, alias: string): boolean {
     return false;
   }
 
-  return header.startsWith(`${alias} `) || header.endsWith(` ${alias}`);
+  const normalizedHeader = ` ${header} `;
+  const normalizedAlias = ` ${alias} `;
+  return normalizedHeader.includes(normalizedAlias);
 }
 
 export function resolveColumnMap(
