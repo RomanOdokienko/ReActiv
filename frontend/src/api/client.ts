@@ -1082,6 +1082,7 @@ export async function getAdminCatalogItemById(id: number): Promise<CatalogItem> 
 
 export interface UpdateAdminCatalogItemCommentResponse {
   adminComment: string;
+  adminComments: string[];
 }
 
 export async function updateAdminCatalogItemComment(

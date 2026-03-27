@@ -152,6 +152,53 @@ function ensureHasPhotoColumn(
   }
 }
 
+function ensureOfferAdminCommentEntriesLegacyNoteColumn(): void {
+  const columns = db
+    .prepare(`PRAGMA table_info(offer_admin_comment_entries)`)
+    .all() as Array<{ name: string }>;
+
+  if (columns.length === 0) {
+    return;
+  }
+
+  const hasLegacyNoteColumn = columns.some(
+    (column) => column.name === "legacy_note_id",
+  );
+  if (!hasLegacyNoteColumn) {
+    db.exec(`ALTER TABLE offer_admin_comment_entries ADD COLUMN legacy_note_id INTEGER;`);
+  }
+
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_offer_admin_comment_entries_legacy_note_id
+    ON offer_admin_comment_entries(legacy_note_id)
+    WHERE legacy_note_id IS NOT NULL;
+  `);
+}
+
+function migrateLegacyOfferAdminNotesToCommentEntries(): void {
+  db.prepare(
+    `
+      INSERT OR IGNORE INTO offer_admin_comment_entries (
+        tenant_id,
+        offer_code,
+        comment_text,
+        created_by_user_id,
+        created_at,
+        legacy_note_id
+      )
+      SELECT
+        notes.tenant_id,
+        notes.offer_code,
+        notes.comment_text,
+        notes.updated_by_user_id,
+        COALESCE(NULLIF(notes.updated_at, ''), notes.created_at, CURRENT_TIMESTAMP),
+        notes.id
+      FROM offer_admin_notes notes
+      WHERE TRIM(COALESCE(notes.comment_text, '')) != ''
+    `,
+  ).run();
+}
+
 function getHasPhotoSqlExpression(): string {
   return `
     CASE
@@ -385,6 +432,17 @@ export function initializeSchema(): void {
       UNIQUE(tenant_id, offer_code)
     );
 
+    CREATE TABLE IF NOT EXISTS offer_admin_comment_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id TEXT NOT NULL,
+      offer_code TEXT NOT NULL,
+      comment_text TEXT NOT NULL DEFAULT '',
+      created_by_user_id INTEGER,
+      legacy_note_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
     CREATE TABLE IF NOT EXISTS user_activity_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -468,6 +526,8 @@ export function initializeSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_user_favorites_user_offer ON user_favorites(user_id, tenant_id, offer_code);
     CREATE INDEX IF NOT EXISTS idx_offer_admin_notes_identity ON offer_admin_notes(tenant_id, offer_code);
     CREATE INDEX IF NOT EXISTS idx_offer_admin_notes_updated_at ON offer_admin_notes(updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_offer_admin_comment_entries_identity_created_at ON offer_admin_comment_entries(tenant_id, offer_code, created_at DESC, id DESC);
+    CREATE INDEX IF NOT EXISTS idx_offer_admin_comment_entries_created_by_user_id ON offer_admin_comment_entries(created_by_user_id);
     CREATE INDEX IF NOT EXISTS idx_activity_user_id_created_at ON user_activity_events(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_event_type_created_at ON user_activity_events(event_type, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_session_id_created_at ON user_activity_events(session_id, created_at);
@@ -490,6 +550,8 @@ export function initializeSchema(): void {
   ensureTenantColumn("vehicle_offer_snapshots");
   ensureCardPreviewPathColumn("vehicle_offers");
   ensureCardPreviewPathColumn("vehicle_offer_snapshots");
+  ensureOfferAdminCommentEntriesLegacyNoteColumn();
+  migrateLegacyOfferAdminNotesToCommentEntries();
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_import_batches_tenant_created_at ON import_batches(tenant_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_import_errors_tenant_created_at ON import_errors(tenant_id, created_at);

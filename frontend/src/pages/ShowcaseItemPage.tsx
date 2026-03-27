@@ -190,6 +190,26 @@ function formatTenantLabel(tenantId: string | null | undefined): string {
   return tenantId.trim() || "-";
 }
 
+function normalizeAdminComments(
+  comments: string[] | null | undefined,
+  legacyComment?: string | null,
+): string[] {
+  if (Array.isArray(comments)) {
+    const normalizedFromArray = comments
+      .map((comment) => comment.replace(/\r\n/g, "\n").trim())
+      .filter((comment) => comment.length > 0);
+    if (normalizedFromArray.length > 0) {
+      return normalizedFromArray;
+    }
+  }
+
+  const normalizedLegacyComment =
+    typeof legacyComment === "string"
+      ? legacyComment.replace(/\r\n/g, "\n").trim()
+      : "";
+  return normalizedLegacyComment ? [normalizedLegacyComment] : [];
+}
+
 export function ShowcaseItemPage({
   allowFavorites = false,
   showTenantInfo = false,
@@ -423,9 +443,12 @@ export function ShowcaseItemPage({
     (location.state as { fromShowcase?: boolean } | null)?.fromShowcase,
   );
   const isFavorite = Boolean(item && favoriteItemIds.has(item.id));
-  const savedAdminComment = showTenantInfo && item ? item.adminComment ?? "" : "";
+  const savedAdminComments =
+    showTenantInfo && item
+      ? normalizeAdminComments(item.adminComments, item.adminComment)
+      : [];
   const normalizedAdminCommentDraft = adminCommentDraft.trim();
-  const hasSavedAdminComment = savedAdminComment.trim().length > 0;
+  const hasSavedAdminComments = savedAdminComments.length > 0;
 
   async function handleAdminCommentSave(): Promise<void> {
     if (!showTenantInfo || !item || isAdminCommentSaving) {
@@ -434,8 +457,8 @@ export function ShowcaseItemPage({
 
     if (!normalizedAdminCommentDraft) {
       setAdminCommentStatus(
-        hasSavedAdminComment
-          ? "Пустой текст не сохраняется. Для удаления используйте кнопку «Удалить комментарий»."
+        hasSavedAdminComments
+          ? "Пустой текст не сохраняется. Для удаления используйте кнопку «Удалить комментарии»."
           : "Введите текст комментария перед сохранением.",
       );
       return;
@@ -446,7 +469,10 @@ export function ShowcaseItemPage({
 
     try {
       const response = await updateAdminCatalogItemComment(item.id, adminCommentDraft);
-      const normalizedComment = response.adminComment ?? "";
+      const normalizedComments = normalizeAdminComments(
+        response.adminComments,
+        response.adminComment,
+      );
 
       setAdminCommentDraft("");
       setItem((current) => {
@@ -456,10 +482,11 @@ export function ShowcaseItemPage({
 
         return {
           ...current,
-          adminComment: normalizedComment,
+          adminComment: normalizedComments[0] ?? "",
+          adminComments: normalizedComments,
         };
       });
-      setAdminCommentStatus("Комментарий сохранен");
+      setAdminCommentStatus("Комментарий добавлен");
     } catch (caughtError) {
       if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
         setAdminCommentStatus("Нет прав для сохранения комментария");
@@ -472,13 +499,13 @@ export function ShowcaseItemPage({
   }
 
   async function handleAdminCommentDelete(): Promise<void> {
-    if (!showTenantInfo || !item || isAdminCommentSaving || !hasSavedAdminComment) {
+    if (!showTenantInfo || !item || isAdminCommentSaving || !hasSavedAdminComments) {
       return;
     }
 
     if (
       typeof window !== "undefined" &&
-      !window.confirm("Удалить внутренний комментарий по этому лоту?")
+      !window.confirm("Удалить все внутренние комментарии по этому лоту?")
     ) {
       return;
     }
@@ -497,9 +524,10 @@ export function ShowcaseItemPage({
         return {
           ...current,
           adminComment: "",
+          adminComments: [],
         };
       });
-      setAdminCommentStatus("Комментарий удален");
+      setAdminCommentStatus("Комментарии удалены");
     } catch (caughtError) {
       if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
         setAdminCommentStatus("Нет прав для удаления комментария");
@@ -944,7 +972,7 @@ export function ShowcaseItemPage({
                       >
                         {isAdminCommentSaving ? "Сохраняю..." : "Сохранить комментарий"}
                       </button>
-                      {hasSavedAdminComment && (
+                      {hasSavedAdminComments && (
                         <button
                           type="button"
                           className="secondary-button detail-admin-note__delete"
@@ -953,7 +981,7 @@ export function ShowcaseItemPage({
                             void handleAdminCommentDelete();
                           }}
                         >
-                          Удалить комментарий
+                          Удалить комментарии
                         </button>
                       )}
                     </div>
@@ -965,11 +993,18 @@ export function ShowcaseItemPage({
                     <p className="detail-admin-note__status">{adminCommentStatus}</p>
                   )}
                   <div className="detail-admin-note__saved">
-                    <p className="detail-admin-note__saved-label">Сохраненный комментарий:</p>
-                    {hasSavedAdminComment ? (
-                      <p className="detail-admin-note__saved-text">
-                        {renderTextWithLinks(savedAdminComment)}
-                      </p>
+                    <p className="detail-admin-note__saved-label">Сохраненные комментарии:</p>
+                    {hasSavedAdminComments ? (
+                      <ol className="detail-admin-note__saved-list">
+                        {savedAdminComments.map((comment, index) => (
+                          <li
+                            key={`saved-admin-comment-${index}-${comment.slice(0, 32)}`}
+                            className="detail-admin-note__saved-item"
+                          >
+                            {renderTextWithLinks(comment)}
+                          </li>
+                        ))}
+                      </ol>
                     ) : (
                       <p className="detail-admin-note__saved-empty">
                         Комментарий пока не добавлен.

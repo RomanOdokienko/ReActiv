@@ -130,6 +130,7 @@ export interface CatalogItem {
   title: string;
   createdAt: string;
   adminComment?: string;
+  adminComments?: string[];
 }
 
 export interface CatalogListItem {

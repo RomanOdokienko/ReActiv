@@ -1,84 +1,91 @@
 import { db } from "../db/connection";
 
-interface OfferAdminNoteDbRow {
+interface OfferAdminCommentDbRow {
   comment_text: string;
 }
 
-interface UpsertOfferAdminNoteInput {
+interface AppendOfferAdminCommentInput {
   tenantId: string;
   offerCode: string;
   commentText: string;
-  updatedByUserId: number | null;
+  createdByUserId: number | null;
 }
 
 function normalizeCommentText(rawValue: string): string {
   return rawValue.replace(/\r\n/g, "\n").trim();
 }
 
-export function findOfferAdminComment(
+export function findOfferAdminComments(
   tenantId: string,
   offerCode: string,
-): string | null {
-  const row = db
+): string[] {
+  const rows = db
     .prepare(
       `
         SELECT comment_text
-        FROM offer_admin_notes
+        FROM offer_admin_comment_entries
         WHERE tenant_id = ?
           AND offer_code = ?
-        LIMIT 1
+        ORDER BY created_at DESC, id DESC
       `,
     )
-    .get(tenantId, offerCode) as OfferAdminNoteDbRow | undefined;
+    .all(tenantId, offerCode) as OfferAdminCommentDbRow[];
 
-  if (!row) {
-    return null;
-  }
-
-  const normalized = normalizeCommentText(row.comment_text ?? "");
-  return normalized || null;
+  return rows
+    .map((row) => normalizeCommentText(row.comment_text ?? ""))
+    .filter((value) => value.length > 0);
 }
 
-export function upsertOfferAdminComment(
-  input: UpsertOfferAdminNoteInput,
-): string {
+export function appendOfferAdminComment(
+  input: AppendOfferAdminCommentInput,
+): string[] {
   const normalizedComment = normalizeCommentText(input.commentText);
-
   if (!normalizedComment) {
+    return findOfferAdminComments(input.tenantId, input.offerCode);
+  }
+
+  db.prepare(
+    `
+      INSERT INTO offer_admin_comment_entries (
+        tenant_id,
+        offer_code,
+        comment_text,
+        created_by_user_id
+      ) VALUES (
+        @tenant_id,
+        @offer_code,
+        @comment_text,
+        @created_by_user_id
+      )
+    `,
+  ).run({
+    tenant_id: input.tenantId,
+    offer_code: input.offerCode,
+    comment_text: normalizedComment,
+    created_by_user_id: input.createdByUserId,
+  });
+
+  return findOfferAdminComments(input.tenantId, input.offerCode);
+}
+
+export function clearOfferAdminComments(tenantId: string, offerCode: string): void {
+  const clearComments = db.transaction(() => {
+    db.prepare(
+      `
+        DELETE FROM offer_admin_comment_entries
+        WHERE tenant_id = ?
+          AND offer_code = ?
+      `,
+    ).run(tenantId, offerCode);
+
     db.prepare(
       `
         DELETE FROM offer_admin_notes
         WHERE tenant_id = ?
           AND offer_code = ?
       `,
-    ).run(input.tenantId, input.offerCode);
-    return "";
-  }
-
-  db.prepare(
-    `
-      INSERT INTO offer_admin_notes (
-        tenant_id,
-        offer_code,
-        comment_text,
-        updated_by_user_id
-      ) VALUES (
-        @tenant_id,
-        @offer_code,
-        @comment_text,
-        @updated_by_user_id
-      )
-      ON CONFLICT(tenant_id, offer_code) DO UPDATE SET
-        comment_text = excluded.comment_text,
-        updated_by_user_id = excluded.updated_by_user_id,
-        updated_at = CURRENT_TIMESTAMP
-    `,
-  ).run({
-    tenant_id: input.tenantId,
-    offer_code: input.offerCode,
-    comment_text: normalizedComment,
-    updated_by_user_id: input.updatedByUserId,
+    ).run(tenantId, offerCode);
   });
 
-  return normalizedComment;
+  clearComments();
 }

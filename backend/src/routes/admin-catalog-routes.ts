@@ -3,8 +3,9 @@ import { z, ZodError } from "zod";
 import { parseCatalogQuery } from "../catalog/catalog-query";
 import { getLatestSuccessfulImportBatch } from "../repositories/import-batch-repository";
 import {
-  findOfferAdminComment,
-  upsertOfferAdminComment,
+  appendOfferAdminComment,
+  clearOfferAdminComments,
+  findOfferAdminComments,
 } from "../repositories/offer-admin-note-repository";
 import {
   findCatalogItemById,
@@ -116,10 +117,11 @@ export async function registerAdminCatalogRoutes(
         return reply.code(404).send({ message: "Catalog item not found" });
       }
 
-      const adminComment = findOfferAdminComment(item.tenantId, item.offerCode) ?? "";
+      const adminComments = findOfferAdminComments(item.tenantId, item.offerCode);
       return reply.code(200).send({
         ...item,
-        adminComment,
+        adminComment: adminComments[0] ?? "",
+        adminComments,
       });
     } catch {
       return reply.code(500).send({ message: "Failed to fetch catalog item" });
@@ -145,14 +147,26 @@ export async function registerAdminCatalogRoutes(
         return reply.code(404).send({ message: "Catalog item not found" });
       }
 
-      const adminComment = upsertOfferAdminComment({
+      const normalizedComment = payload.comment.trim();
+      if (!normalizedComment) {
+        clearOfferAdminComments(item.tenantId, item.offerCode);
+        return reply.code(200).send({
+          adminComment: "",
+          adminComments: [],
+        });
+      }
+
+      const adminComments = appendOfferAdminComment({
         tenantId: item.tenantId,
         offerCode: item.offerCode,
         commentText: payload.comment,
-        updatedByUserId: request.authUser?.id ?? null,
+        createdByUserId: request.authUser?.id ?? null,
       });
 
-      return reply.code(200).send({ adminComment });
+      return reply.code(200).send({
+        adminComment: adminComments[0] ?? "",
+        adminComments,
+      });
     } catch (error) {
       if (error instanceof ZodError) {
         return reply.code(400).send({
