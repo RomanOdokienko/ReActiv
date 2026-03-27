@@ -3468,13 +3468,6 @@ tbody tr:nth-child(even) {
   font-size: 18px;
 }
 
-.detail-admin-note__hint {
-  margin: 0;
-  color: #63758b;
-  font-size: 13px;
-  line-height: 1.35;
-}
-
 .detail-admin-note textarea {
   width: 100%;
   min-height: 110px;
@@ -3520,7 +3513,7 @@ tbody tr:nth-child(even) {
   font-weight: 600;
 }
 
-.detail-admin-note__preview {
+.detail-admin-note__saved {
   display: grid;
   gap: 4px;
   padding: 8px 10px;
@@ -3529,14 +3522,15 @@ tbody tr:nth-child(even) {
   background: #ffffff;
 }
 
-.detail-admin-note__preview-label {
+.detail-admin-note__saved-label {
   margin: 0;
   color: #63758b;
   font-size: 12px;
   font-weight: 600;
 }
 
-.detail-admin-note__preview-text {
+.detail-admin-note__saved-text,
+.detail-admin-note__saved-empty {
   margin: 0;
   color: #1d2e44;
   font-size: 14px;
@@ -3544,7 +3538,11 @@ tbody tr:nth-child(even) {
   word-break: break-word;
 }
 
-.detail-admin-note__preview-text a {
+.detail-admin-note__saved-empty {
+  color: #63758b;
+}
+
+.detail-admin-note__saved-text a {
   color: #1c5eac;
 }
 

@@ -260,14 +260,14 @@ export function ShowcaseItemPage({
   }, [itemId, location.pathname, showTenantInfo]);
 
   useEffect(() => {
-    if (!showTenantInfo || !item) {
+    if (!showTenantInfo) {
       setAdminCommentDraft("");
       setAdminCommentStatus(null);
       setIsAdminCommentSaving(false);
       return;
     }
 
-    setAdminCommentDraft(item.adminComment ?? "");
+    setAdminCommentDraft("");
     setAdminCommentStatus(null);
     setIsAdminCommentSaving(false);
   }, [showTenantInfo, item?.id]);
@@ -424,7 +424,6 @@ export function ShowcaseItemPage({
   );
   const isFavorite = Boolean(item && favoriteItemIds.has(item.id));
   const savedAdminComment = showTenantInfo && item ? item.adminComment ?? "" : "";
-  const isAdminCommentDirty = adminCommentDraft !== savedAdminComment;
   const normalizedAdminCommentDraft = adminCommentDraft.trim();
   const hasSavedAdminComment = savedAdminComment.trim().length > 0;
 
@@ -449,7 +448,7 @@ export function ShowcaseItemPage({
       const response = await updateAdminCatalogItemComment(item.id, adminCommentDraft);
       const normalizedComment = response.adminComment ?? "";
 
-      setAdminCommentDraft(normalizedComment);
+      setAdminCommentDraft("");
       setItem((current) => {
         if (!current || current.id !== item.id) {
           return current;
@@ -470,11 +469,6 @@ export function ShowcaseItemPage({
     } finally {
       setIsAdminCommentSaving(false);
     }
-  }
-
-  function handleAdminCommentReset(): void {
-    setAdminCommentDraft(savedAdminComment);
-    setAdminCommentStatus("Изменения отменены");
   }
 
   async function handleAdminCommentDelete(): Promise<void> {
@@ -929,13 +923,10 @@ export function ShowcaseItemPage({
               {showTenantInfo && (
                 <section className="detail-admin-note">
                   <h3>Внутренний комментарий</h3>
-                  <p className="detail-admin-note__hint">
-                    Поле редактирует сохраненный комментарий. Очистка текста не удаляет его, пока вы явно не нажмете кнопку удаления.
-                  </p>
                   <textarea
                     value={adminCommentDraft}
                     maxLength={5000}
-                    placeholder="Добавьте комментарий для команды. Можно вставлять ссылки."
+                    placeholder="Введите комментарий. Можно вставлять ссылки."
                     onChange={(event) => {
                       setAdminCommentDraft(event.target.value);
                       setAdminCommentStatus(null);
@@ -946,20 +937,12 @@ export function ShowcaseItemPage({
                       <button
                         type="button"
                         className="secondary-button"
-                        disabled={!isAdminCommentDirty || isAdminCommentSaving || !normalizedAdminCommentDraft}
+                        disabled={isAdminCommentSaving || !normalizedAdminCommentDraft}
                         onClick={() => {
                           void handleAdminCommentSave();
                         }}
                       >
                         {isAdminCommentSaving ? "Сохраняю..." : "Сохранить комментарий"}
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={!isAdminCommentDirty || isAdminCommentSaving}
-                        onClick={handleAdminCommentReset}
-                      >
-                        Отменить изменения
                       </button>
                       {hasSavedAdminComment && (
                         <button
@@ -981,14 +964,18 @@ export function ShowcaseItemPage({
                   {adminCommentStatus && (
                     <p className="detail-admin-note__status">{adminCommentStatus}</p>
                   )}
-                  {adminCommentDraft.trim().length > 0 && (
-                    <div className="detail-admin-note__preview">
-                      <p className="detail-admin-note__preview-label">Превью:</p>
-                      <p className="detail-admin-note__preview-text">
-                        {renderTextWithLinks(adminCommentDraft)}
+                  <div className="detail-admin-note__saved">
+                    <p className="detail-admin-note__saved-label">Сохраненный комментарий:</p>
+                    {hasSavedAdminComment ? (
+                      <p className="detail-admin-note__saved-text">
+                        {renderTextWithLinks(savedAdminComment)}
                       </p>
-                    </div>
-                  )}
+                    ) : (
+                      <p className="detail-admin-note__saved-empty">
+                        Комментарий пока не добавлен.
+                      </p>
+                    )}
+                  </div>
                 </section>
               )}
 
