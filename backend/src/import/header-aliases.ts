@@ -13,7 +13,12 @@ export const HEADER_ALIASES: Record<CanonicalField, string[]> = {
   pts_type: ["птс/эптс", "птс эптс"],
   has_encumbrance: ["наличие обременения"],
   is_deregistered: ["снят с учета"],
-  responsible_person: ["ответсвенный за тс", "ответственный за тс"],
+  responsible_person: [
+    "ответсвенный за тс",
+    "ответственный за тс",
+    "ответсвенный за tc",
+    "ответственный за tc",
+  ],
   storage_address: ["андрес места хранения", "адрес места хранения"],
   days_on_sale: ["количество дней реализации"],
   price: ["стоимость"],

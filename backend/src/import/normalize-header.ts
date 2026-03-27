@@ -6,10 +6,7 @@ export function normalizeHeader(rawHeader: unknown): string {
     .toLowerCase()
     .replace(/[\u200B-\u200D\uFEFF]/g, "")
     .replace(/[ё]/g, "е")
-    .replace(/["'`«»]/g, "")
-    .replace(/[:;,.()[\]{}]/g, " ")
-    .replace(/[/\\|]+/g, " ")
-    .replace(/[-–—]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
