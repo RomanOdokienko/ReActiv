@@ -373,6 +373,18 @@ export function initializeSchema(): void {
       UNIQUE(user_id, tenant_id, offer_code)
     );
 
+    CREATE TABLE IF NOT EXISTS offer_admin_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id TEXT NOT NULL,
+      offer_code TEXT NOT NULL,
+      comment_text TEXT NOT NULL DEFAULT '',
+      updated_by_user_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+      UNIQUE(tenant_id, offer_code)
+    );
+
     CREATE TABLE IF NOT EXISTS user_activity_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -454,6 +466,8 @@ export function initializeSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
     CREATE INDEX IF NOT EXISTS idx_user_favorites_user_created_at ON user_favorites(user_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_user_favorites_user_offer ON user_favorites(user_id, tenant_id, offer_code);
+    CREATE INDEX IF NOT EXISTS idx_offer_admin_notes_identity ON offer_admin_notes(tenant_id, offer_code);
+    CREATE INDEX IF NOT EXISTS idx_offer_admin_notes_updated_at ON offer_admin_notes(updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_activity_user_id_created_at ON user_activity_events(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_event_type_created_at ON user_activity_events(event_type, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_session_id_created_at ON user_activity_events(session_id, created_at);

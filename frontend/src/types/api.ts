@@ -129,6 +129,7 @@ export interface CatalogItem {
   websiteUrl: string;
   title: string;
   createdAt: string;
+  adminComment?: string;
 }
 
 export interface CatalogListItem {

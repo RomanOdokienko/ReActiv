@@ -1,7 +1,11 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { parseCatalogQuery } from "../catalog/catalog-query";
 import { getLatestSuccessfulImportBatch } from "../repositories/import-batch-repository";
+import {
+  findOfferAdminComment,
+  upsertOfferAdminComment,
+} from "../repositories/offer-admin-note-repository";
 import {
   findCatalogItemById,
   getCatalogFiltersMetadata,
@@ -21,6 +25,10 @@ function rejectIfNotAdmin(
   void reply.code(403).send({ message: "Forbidden" });
   return true;
 }
+
+const updateCatalogItemCommentBodySchema = z.object({
+  comment: z.string().max(5000),
+});
 
 export async function registerAdminCatalogRoutes(
   app: FastifyInstance,
@@ -108,9 +116,52 @@ export async function registerAdminCatalogRoutes(
         return reply.code(404).send({ message: "Catalog item not found" });
       }
 
-      return reply.code(200).send(item);
+      const adminComment = findOfferAdminComment(item.tenantId, item.offerCode) ?? "";
+      return reply.code(200).send({
+        ...item,
+        adminComment,
+      });
     } catch {
       return reply.code(500).send({ message: "Failed to fetch catalog item" });
+    }
+  });
+
+  app.patch("/api/admin/catalog/items/:id/comment", async (request, reply) => {
+    if (rejectIfNotAdmin(request, reply)) {
+      return;
+    }
+
+    const { id } = request.params as { id: string };
+    const parsedId = Number(id);
+
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      return reply.code(400).send({ message: "Invalid catalog item id" });
+    }
+
+    try {
+      const payload = updateCatalogItemCommentBodySchema.parse(request.body);
+      const item = findCatalogItemById(parsedId);
+      if (!item) {
+        return reply.code(404).send({ message: "Catalog item not found" });
+      }
+
+      const adminComment = upsertOfferAdminComment({
+        tenantId: item.tenantId,
+        offerCode: item.offerCode,
+        commentText: payload.comment,
+        updatedByUserId: request.authUser?.id ?? null,
+      });
+
+      return reply.code(200).send({ adminComment });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return reply.code(400).send({
+          message: "Invalid request body",
+          errors: error.flatten(),
+        });
+      }
+
+      return reply.code(500).send({ message: "Failed to update catalog item comment" });
     }
   });
 }

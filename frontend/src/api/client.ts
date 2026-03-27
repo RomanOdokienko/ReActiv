@@ -1080,6 +1080,43 @@ export async function getAdminCatalogItemById(id: number): Promise<CatalogItem> 
   }
 }
 
+export interface UpdateAdminCatalogItemCommentResponse {
+  adminComment: string;
+}
+
+export async function updateAdminCatalogItemComment(
+  id: number,
+  comment: string,
+): Promise<UpdateAdminCatalogItemCommentResponse> {
+  try {
+    const response = await fetch(buildUrl(`/admin/catalog/items/${id}/comment`), {
+      method: "PATCH",
+      credentials: "include",
+      headers: withCsrfHeaders({
+        "Content-Type": "application/json",
+      }),
+      body: JSON.stringify({ comment }),
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+    if (response.status === 404) {
+      throw new Error("Карточка не найдена");
+    }
+    if (!response.ok) {
+      throw new Error("Не удалось сохранить комментарий");
+    }
+
+    return (await response.json()) as UpdateAdminCatalogItemCommentResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
 export async function getFavoriteItemIds(): Promise<FavoriteItemIdsResponse> {
   try {
     const response = await fetch(buildUrl("/favorites/ids"), {

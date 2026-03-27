@@ -47,6 +47,7 @@ Global auth behavior is defined in `backend/src/server.ts`:
 | GET | `/api/admin/catalog/summary` | `auth_admin` | Admin-only unsanitized catalog summary |
 | GET | `/api/admin/catalog/items` | `auth_admin` | Admin-only unsanitized catalog list |
 | GET | `/api/admin/catalog/items/:id` | `auth_admin` | Admin-only unsanitized catalog detail |
+| PATCH | `/api/admin/catalog/items/:id/comment` | `auth_admin` | Admin-only lot comment upsert |
 | GET | `/api/admin/catalog/filters` | `auth_admin` | Admin-only unsanitized filters metadata |
 | GET | `/api/media/card-preview` | `public` in `open`, otherwise `auth_any` | Open-mode public family |
 | GET | `/api/media/preview` | `public` in `open`, otherwise `auth_any` | Open-mode public family |

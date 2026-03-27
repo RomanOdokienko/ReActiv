@@ -4,6 +4,7 @@
   useState,
   type ImgHTMLAttributes,
   type MouseEvent,
+  type ReactNode,
   type SyntheticEvent,
 } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
@@ -17,6 +18,7 @@ import {
   getMediaPreviewImageUrl,
   logActivityEvent,
   removeFavoriteItem,
+  updateAdminCatalogItemComment,
 } from "../api/client";
 import type { CatalogItem } from "../types/api";
 
@@ -123,6 +125,40 @@ function formatInteger(value: number | null, suffix = ""): string {
   return suffix ? `${formatted} ${suffix}` : formatted;
 }
 
+function renderTextWithLinks(value: string): ReactNode {
+  const lines = value.split(/\r?\n/);
+
+  return lines.map((line, lineIndex) => {
+    const segments = line.split(/(https?:\/\/[^\s]+)/gi);
+
+    return (
+      <span key={`line-${lineIndex}`}>
+        {segments.map((segment, segmentIndex) => {
+          if (/^https?:\/\//i.test(segment)) {
+            return (
+              <a
+                key={`line-${lineIndex}-segment-${segmentIndex}`}
+                href={segment}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {segment}
+              </a>
+            );
+          }
+
+          return (
+            <span key={`line-${lineIndex}-segment-${segmentIndex}`}>
+              {segment}
+            </span>
+          );
+        })}
+        {lineIndex < lines.length - 1 ? <br /> : null}
+      </span>
+    );
+  });
+}
+
 interface DetailSpec {
   label: string;
   value: string;
@@ -170,6 +206,9 @@ export function ShowcaseItemPage({
   const [error, setError] = useState<string | null>(null);
   const [favoriteItemIds, setFavoriteItemIds] = useState<Set<number>>(new Set());
   const [isFavoritePending, setIsFavoritePending] = useState(false);
+  const [adminCommentDraft, setAdminCommentDraft] = useState("");
+  const [adminCommentStatus, setAdminCommentStatus] = useState<string | null>(null);
+  const [isAdminCommentSaving, setIsAdminCommentSaving] = useState(false);
 
   useEffect(() => {
     async function loadItem() {
@@ -219,6 +258,19 @@ export function ShowcaseItemPage({
 
     void loadItem();
   }, [itemId, location.pathname, showTenantInfo]);
+
+  useEffect(() => {
+    if (!showTenantInfo || !item) {
+      setAdminCommentDraft("");
+      setAdminCommentStatus(null);
+      setIsAdminCommentSaving(false);
+      return;
+    }
+
+    setAdminCommentDraft(item.adminComment ?? "");
+    setAdminCommentStatus(null);
+    setIsAdminCommentSaving(false);
+  }, [showTenantInfo, item?.id]);
 
   useEffect(() => {
     if (!allowFavorites) {
@@ -371,6 +423,43 @@ export function ShowcaseItemPage({
     (location.state as { fromShowcase?: boolean } | null)?.fromShowcase,
   );
   const isFavorite = Boolean(item && favoriteItemIds.has(item.id));
+  const savedAdminComment = showTenantInfo && item ? item.adminComment ?? "" : "";
+  const isAdminCommentDirty = adminCommentDraft !== savedAdminComment;
+
+  async function handleAdminCommentSave(): Promise<void> {
+    if (!showTenantInfo || !item || isAdminCommentSaving) {
+      return;
+    }
+
+    setIsAdminCommentSaving(true);
+    setAdminCommentStatus(null);
+
+    try {
+      const response = await updateAdminCatalogItemComment(item.id, adminCommentDraft);
+      const normalizedComment = response.adminComment ?? "";
+
+      setAdminCommentDraft(normalizedComment);
+      setItem((current) => {
+        if (!current || current.id !== item.id) {
+          return current;
+        }
+
+        return {
+          ...current,
+          adminComment: normalizedComment,
+        };
+      });
+      setAdminCommentStatus("Комментарий сохранен");
+    } catch (caughtError) {
+      if (caughtError instanceof Error && caughtError.message === "FORBIDDEN") {
+        setAdminCommentStatus("Нет прав для сохранения комментария");
+      } else {
+        setAdminCommentStatus("Не удалось сохранить комментарий");
+      }
+    } finally {
+      setIsAdminCommentSaving(false);
+    }
+  }
 
   async function handleFavoriteToggle(
     event: MouseEvent<HTMLButtonElement>,
@@ -780,6 +869,47 @@ export function ShowcaseItemPage({
                   </>
                 );
               })()}
+
+              {showTenantInfo && (
+                <section className="detail-admin-note">
+                  <h3>Внутренний комментарий</h3>
+                  <textarea
+                    value={adminCommentDraft}
+                    maxLength={5000}
+                    placeholder="Добавьте комментарий для команды. Можно вставлять ссылки."
+                    onChange={(event) => {
+                      setAdminCommentDraft(event.target.value);
+                      setAdminCommentStatus(null);
+                    }}
+                  />
+                  <div className="detail-admin-note__actions">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={!isAdminCommentDirty || isAdminCommentSaving}
+                      onClick={() => {
+                        void handleAdminCommentSave();
+                      }}
+                    >
+                      {isAdminCommentSaving ? "Сохраняю..." : "Сохранить комментарий"}
+                    </button>
+                    <span className="detail-admin-note__counter">
+                      {adminCommentDraft.length}/5000
+                    </span>
+                  </div>
+                  {adminCommentStatus && (
+                    <p className="detail-admin-note__status">{adminCommentStatus}</p>
+                  )}
+                  {adminCommentDraft.trim().length > 0 && (
+                    <div className="detail-admin-note__preview">
+                      <p className="detail-admin-note__preview-label">Превью:</p>
+                      <p className="detail-admin-note__preview-text">
+                        {renderTextWithLinks(adminCommentDraft)}
+                      </p>
+                    </div>
+                  )}
+                </section>
+              )}
 
               {item.websiteUrl && (
                 <a
