@@ -1,35 +1,16 @@
-import fs from "node:fs/promises";
-import sharp from "sharp";
 import { initializeSchema } from "../db/schema";
-import {
-  buildCardPreviewRelativePath,
-  ensureMediaStorageRoot,
-  ensureStoredMediaParentDirectory,
-  storedMediaFileExists,
-} from "../services/local-media-storage";
-import { resolvePreviewUrl } from "../services/media-preview-service";
-import {
-  listVehicleOfferMediaCandidatesByTenant,
-  updateVehicleOfferCardPreviewPathsByOfferCode,
-  type VehicleOfferMediaCandidate,
-} from "../repositories/vehicle-offer-repository";
+import { ensureMediaStorageRoot } from "../services/local-media-storage";
+import { syncCardPreviewsForTenant } from "../services/card-preview-sync-service";
 
 const KNOWN_TENANTS = ["gpb", "reso", "alpha", "sovcombank"] as const;
 const DEFAULT_LIMIT = 500;
 const DEFAULT_CONCURRENCY = 4;
-const THUMBNAIL_WIDTH = 640;
-const THUMBNAIL_HEIGHT = 480;
-const FETCH_TIMEOUT_MS = 20_000;
 
 interface SyncOptions {
   tenantIds: string[];
   limit: number;
   concurrency: number;
   force: boolean;
-}
-
-interface PreviewSyncCandidate extends VehicleOfferMediaCandidate {
-  previewSourceUrl: string | null;
 }
 
 function parseOptions(argv: string[]): SyncOptions {
@@ -78,167 +59,44 @@ function parseOptions(argv: string[]): SyncOptions {
   return options;
 }
 
-function buildCandidates(options: SyncOptions): PreviewSyncCandidate[] {
-  const candidates: PreviewSyncCandidate[] = [];
-
-  options.tenantIds.forEach((tenantId) => {
-    const rows = listVehicleOfferMediaCandidatesByTenant(tenantId);
-    rows.forEach((row) => {
-      if (!options.force && row.cardPreviewPath && storedMediaFileExists(row.cardPreviewPath)) {
-        return;
-      }
-
-      const previewSourceUrl = row.yandexDiskUrl?.trim() ?? null;
-      if (!previewSourceUrl) {
-        return;
-      }
-
-      candidates.push({
-        ...row,
-        previewSourceUrl,
-      });
-    });
-  });
-
-  return candidates.slice(0, options.limit);
-}
-
-async function fetchBuffer(url: string): Promise<Buffer> {
-  const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      signal: abortController.signal,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Fetch failed with status ${response.status}`);
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function createThumbnailBuffer(inputBuffer: Buffer): Promise<Buffer> {
-  return sharp(inputBuffer)
-    .rotate()
-    .resize(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, {
-      fit: "cover",
-      position: "entropy",
-      withoutEnlargement: false,
-    })
-    .jpeg({
-      quality: 72,
-      mozjpeg: true,
-      progressive: true,
-    })
-    .toBuffer();
-}
-
-async function processCandidate(candidate: PreviewSyncCandidate): Promise<{
-  tenantId: string;
-  offerCode: string;
-  relativePath: string;
-} | null> {
-  try {
-    const resolved = await resolvePreviewUrl(candidate.previewSourceUrl ?? "");
-    if (!resolved.previewUrl) {
-      console.log("card_preview_skip_no_preview", {
-        tenantId: candidate.tenantId,
-        offerCode: candidate.offerCode,
-      });
-      return null;
-    }
-
-    const originalBuffer = await fetchBuffer(resolved.previewUrl);
-    const thumbnailBuffer = await createThumbnailBuffer(originalBuffer);
-    const relativePath = buildCardPreviewRelativePath(
-      candidate.tenantId,
-      candidate.offerCode,
-    );
-    const absolutePath = ensureStoredMediaParentDirectory(relativePath);
-    await fs.writeFile(absolutePath, thumbnailBuffer);
-
-    return {
-      tenantId: candidate.tenantId,
-      offerCode: candidate.offerCode,
-      relativePath,
-    };
-  } catch (error) {
-    console.log("card_preview_sync_failed", {
-      tenantId: candidate.tenantId,
-      offerCode: candidate.offerCode,
-      error: error instanceof Error ? error.message : "unknown_error",
-    });
-    return null;
-  }
-}
-
 async function main(): Promise<void> {
   initializeSchema();
   ensureMediaStorageRoot();
 
   const options = parseOptions(process.argv.slice(2));
-  const candidates = buildCandidates(options);
+  let candidatesTotal = 0;
+  let updatedRowsTotal = 0;
+  const tenantsUpdated = new Set<string>();
 
-  const updatesByTenant = new Map<string, Array<{ offerCode: string; cardPreviewPath: string }>>();
-  let processed = 0;
+  for (const tenantId of options.tenantIds) {
+    const result = await syncCardPreviewsForTenant({
+      tenantId,
+      limit: options.limit,
+      concurrency: options.concurrency,
+      force: options.force,
+      onProgress: (progress) => {
+        if (progress.processed % 25 === 0 || progress.processed === progress.total) {
+          console.log("card_preview_sync_progress", {
+            tenantId,
+            processed: progress.processed,
+            total: progress.total,
+          });
+        }
+      },
+    });
 
-  let currentIndex = 0;
-  async function worker(): Promise<void> {
-    while (currentIndex < candidates.length) {
-      const candidate = candidates[currentIndex];
-      currentIndex += 1;
-
-      const result = await processCandidate(candidate);
-      processed += 1;
-
-      if (processed % 25 === 0 || processed === candidates.length) {
-        console.log("card_preview_sync_progress", {
-          processed,
-          total: candidates.length,
-        });
-      }
-
-      if (!result) {
-        continue;
-      }
-
-      if (!updatesByTenant.has(result.tenantId)) {
-        updatesByTenant.set(result.tenantId, []);
-      }
-
-      updatesByTenant.get(result.tenantId)?.push({
-        offerCode: result.offerCode,
-        cardPreviewPath: result.relativePath,
-      });
+    candidatesTotal += result.totalCandidates;
+    updatedRowsTotal += result.updatedRows;
+    if (result.updatedRows > 0) {
+      tenantsUpdated.add(result.tenantId);
     }
   }
 
-  await Promise.all(
-    Array.from({ length: Math.min(options.concurrency, Math.max(candidates.length, 1)) }, () =>
-      worker(),
-    ),
-  );
-
-  let updatedRowsTotal = 0;
-  updatesByTenant.forEach((updates, tenantId) => {
-    updatedRowsTotal += updateVehicleOfferCardPreviewPathsByOfferCode(
-      tenantId,
-      updates,
-    );
-  });
-
   console.log("card_preview_sync_result", {
     tenantIds: options.tenantIds,
-    candidatesTotal: candidates.length,
+    candidatesTotal,
     updatedRowsTotal,
-    tenantsUpdated: Array.from(updatesByTenant.keys()),
+    tenantsUpdated: Array.from(tenantsUpdated.values()),
     force: options.force,
   });
 }

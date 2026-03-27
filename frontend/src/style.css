@@ -954,6 +954,41 @@ a {
   gap: 14px;
 }
 
+.media-sync-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.media-sync-progress {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #e5edf7;
+  overflow: hidden;
+  border: 1px solid #d5dfec;
+}
+
+.media-sync-progress__fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #1d7ee5, #0f4c81);
+  transition: width 180ms ease;
+}
+
+.media-sync-progress__meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.media-sync-summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.media-sync-panel__error {
+  margin: 0;
+}
+
 .summary-head {
   display: flex;
   gap: 10px;

@@ -156,6 +156,9 @@ export function clearImportedData(tenantId?: string): ClearImportedDataResult {
   const deleteImportErrors = tenantId
     ? db.prepare(`DELETE FROM import_errors WHERE tenant_id = ?`)
     : db.prepare(`DELETE FROM import_errors`);
+  const deleteImportMediaSyncJobs = tenantId
+    ? db.prepare(`DELETE FROM import_media_sync_jobs WHERE tenant_id = ?`)
+    : db.prepare(`DELETE FROM import_media_sync_jobs`);
   const deleteModelNormalizationReviews = tenantId
     ? db.prepare(`DELETE FROM catalog_model_normalization_reviews WHERE tenant_id = ?`)
     : db.prepare(`DELETE FROM catalog_model_normalization_reviews`);
@@ -176,6 +179,11 @@ export function clearImportedData(tenantId?: string): ClearImportedDataResult {
     const importErrorsDeleted = tenantId
       ? deleteImportErrors.run(tenantId).changes
       : deleteImportErrors.run().changes;
+    if (tenantId) {
+      deleteImportMediaSyncJobs.run(tenantId);
+    } else {
+      deleteImportMediaSyncJobs.run();
+    }
     if (tenantId) {
       deleteModelNormalizationReviews.run(tenantId);
     } else {

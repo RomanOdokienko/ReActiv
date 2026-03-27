@@ -25,6 +25,7 @@ import { getPlatformMode } from "./repositories/platform-settings-repository";
 import { authenticateRequest, getCsrfHeaderName, hasValidCsrfToken } from "./services/auth-service";
 import { ensureBootstrapAdmin } from "./startup/bootstrap-admin";
 import { startMediaHealthScheduler } from "./services/media-health-scheduler";
+import { ensureImportMediaSyncBackgroundWorkers } from "./services/import-media-sync-service";
 
 const DEFAULT_TRUST_PROXY_HOPS = process.env.NODE_ENV === "production" ? 1 : 0;
 
@@ -888,6 +889,7 @@ async function startServer(): Promise<void> {
   try {
     await app.listen({ port, host });
     startMediaHealthScheduler(app.log);
+    ensureImportMediaSyncBackgroundWorkers(app.log);
     app.log.info({ port, host }, "Server started");
   } catch (error) {
     app.log.error(error, "Failed to start server");

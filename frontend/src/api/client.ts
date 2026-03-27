@@ -14,6 +14,7 @@ import type {
   GuestActivitySummaryResponse,
   ImportBatchesResponse,
   ImportBatchDetailsResponse,
+  ImportMediaSyncJob,
   CatalogFiltersResponse,
   CatalogItemsResponse,
   CatalogSummaryResponse,
@@ -682,6 +683,61 @@ export async function clearImports(
     }
 
     return (await response.json()) as ClearImportsResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getImportMediaSyncJob(
+  importBatchId: string,
+): Promise<ImportMediaSyncJob | null> {
+  try {
+    const response = await fetch(buildUrl(`/imports/${importBatchId}/media-sync`), {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (response.status === 404) {
+      throw new Error("IMPORT_NOT_FOUND");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить статус медиа-синхронизации");
+    }
+
+    const payload = (await response.json()) as { job?: ImportMediaSyncJob | null };
+    return payload.job ?? null;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function runImportMediaSyncJob(
+  importBatchId: string,
+): Promise<ImportMediaSyncJob> {
+  try {
+    const response = await fetch(buildUrl(`/imports/${importBatchId}/media-sync/run`), {
+      method: "POST",
+      credentials: "include",
+      headers: withCsrfHeaders(),
+    });
+
+    if (response.status === 404) {
+      throw new Error("IMPORT_NOT_FOUND");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось запустить медиа-синхронизацию");
+    }
+
+    const payload = (await response.json()) as { job: ImportMediaSyncJob };
+    return payload.job;
   } catch (error) {
     if (error instanceof TypeError) {
       throw backendUnavailableError();

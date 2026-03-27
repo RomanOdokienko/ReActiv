@@ -3,13 +3,16 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import {
   clearImports,
+  getImportMediaSyncJob,
   getImportBatchDetails,
   getImportBatches,
+  runImportMediaSyncJob,
   uploadImport,
 } from "../api/client";
 import type {
   ImportBatchDetailsResponse,
   ImportBatchListItem,
+  ImportMediaSyncJob,
   ImportResponse,
   ImportTenantId,
 } from "../types/api";
@@ -59,6 +62,56 @@ function getStatusLabel(status: ImportResponse["status"]): string {
     return "Завершен с предупреждениями";
   }
   return "Ошибка";
+}
+
+function isMediaSyncJobActive(status: ImportMediaSyncJob["status"]): boolean {
+  return status === "queued" || status === "running";
+}
+
+function getMediaSyncStatusLabel(status: ImportMediaSyncJob["status"]): string {
+  switch (status) {
+    case "queued":
+      return "В очереди";
+    case "running":
+      return "Выполняется";
+    case "completed":
+      return "Завершено";
+    case "completed_with_errors":
+      return "Завершено с предупреждениями";
+    case "failed":
+      return "Ошибка";
+    default:
+      return status;
+  }
+}
+
+function getMediaSyncStatusTone(
+  status: ImportMediaSyncJob["status"],
+): "good" | "warn" | "bad" {
+  if (status === "completed") {
+    return "good";
+  }
+
+  if (status === "completed_with_errors" || status === "queued" || status === "running") {
+    return "warn";
+  }
+
+  return "bad";
+}
+
+function getMediaSyncStageLabel(stage: ImportMediaSyncJob["stage"]): string {
+  switch (stage) {
+    case "queued":
+      return "Ожидает запуска";
+    case "media_enrichment":
+      return "Подтягиваем фото из источников";
+    case "preview_sync":
+      return "Генерируем превью карточек";
+    case "done":
+      return "Завершено";
+    default:
+      return stage;
+  }
 }
 
 function mapBatchDetailsToImportResponse(
@@ -198,11 +251,14 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [tenantId, setTenantId] = useState<ImportTenantId>("gpb");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isStartingMediaSync, setIsStartingMediaSync] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResponse | null>(null);
   const [history, setHistory] = useState<ImportBatchListItem[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [mediaSyncJob, setMediaSyncJob] = useState<ImportMediaSyncJob | null>(null);
+  const [mediaSyncError, setMediaSyncError] = useState<string | null>(null);
   const criticalErrors = result
     ? result.errors.filter((item) => isCriticalImportError(item))
     : [];
@@ -211,6 +267,17 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     : [];
   const criticalSummary = buildWarningSummary(criticalErrors);
   const warningSummary = buildWarningSummary(warningErrors);
+  const activeImportBatchId = result?.importBatchId ?? null;
+  const mediaSyncProcessed = mediaSyncJob?.processed_count ?? 0;
+  const mediaSyncTotal = mediaSyncJob?.total_count ?? 0;
+  const mediaSyncProgressPercent =
+    mediaSyncTotal > 0
+      ? Math.max(0, Math.min(100, Math.round((mediaSyncProcessed / mediaSyncTotal) * 100)))
+      : mediaSyncJob
+        ? isMediaSyncJobActive(mediaSyncJob.status)
+          ? 0
+          : 100
+        : 0;
 
   async function loadHistory() {
     try {
@@ -221,6 +288,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
       if (!latestImportId) {
         setResult(null);
+        setMediaSyncJob(null);
         return;
       }
 
@@ -234,6 +302,56 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   useEffect(() => {
     void loadHistory();
   }, [tenantId]);
+
+  useEffect(() => {
+    if (!activeImportBatchId) {
+      setMediaSyncJob(null);
+      setMediaSyncError(null);
+      return;
+    }
+
+    let isCancelled = false;
+    let intervalId: number | null = null;
+
+    const fetchJob = async () => {
+      try {
+        const job = await getImportMediaSyncJob(activeImportBatchId);
+        if (isCancelled) {
+          return;
+        }
+
+        setMediaSyncError(null);
+        setMediaSyncJob(job);
+
+        if (job && !isMediaSyncJobActive(job.status) && intervalId !== null) {
+          window.clearInterval(intervalId);
+          intervalId = null;
+        }
+      } catch (caughtError) {
+        if (isCancelled) {
+          return;
+        }
+
+        setMediaSyncError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Не удалось загрузить статус обновления фото",
+        );
+      }
+    };
+
+    void fetchJob();
+    intervalId = window.setInterval(() => {
+      void fetchJob();
+    }, 2500);
+
+    return () => {
+      isCancelled = true;
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [activeImportBatchId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -302,6 +420,29 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     }
   }
 
+  async function handleRunMediaSync(): Promise<void> {
+    if (!activeImportBatchId) {
+      return;
+    }
+
+    setIsStartingMediaSync(true);
+    setMediaSyncError(null);
+
+    try {
+      const job = await runImportMediaSyncJob(activeImportBatchId);
+      setMediaSyncJob(job);
+      setSuccess("Фоновое обновление фото и превью запущено.");
+    } catch (caughtError) {
+      setMediaSyncError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Не удалось запустить обновление фото",
+      );
+    } finally {
+      setIsStartingMediaSync(false);
+    }
+  }
+
   return (
     <section>
       <h1>Загрузите excel-файл с лотами</h1>
@@ -347,6 +488,79 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
+      {mediaSyncError && <p className="error">{mediaSyncError}</p>}
+
+      {activeImportBatchId && (
+        <div className="panel media-sync-panel">
+          <div className="summary-head">
+            <h2>Фото и превью</h2>
+            <span
+              className={`status-pill ${
+                mediaSyncJob ? getMediaSyncStatusTone(mediaSyncJob.status) : "warn"
+              }`}
+            >
+              {mediaSyncJob ? getMediaSyncStatusLabel(mediaSyncJob.status) : "Нет задачи"}
+            </span>
+          </div>
+
+          {mediaSyncJob ? (
+            <>
+              <p className="summary-note">{getMediaSyncStageLabel(mediaSyncJob.stage)}</p>
+              <div className="media-sync-progress">
+                <div
+                  className="media-sync-progress__fill"
+                  style={{ width: `${mediaSyncProgressPercent}%` }}
+                />
+              </div>
+              <p className="media-sync-progress__meta">
+                {mediaSyncProcessed} / {mediaSyncTotal} ({mediaSyncProgressPercent}%)
+              </p>
+
+              <div className="summary-grid media-sync-summary-grid">
+                <div className="summary-item">
+                  <span>Кандидатов на фото</span>
+                  <strong>{mediaSyncJob.media_candidates_count}</strong>
+                </div>
+                <div className="summary-item">
+                  <span>Обновлено источников фото</span>
+                  <strong>{mediaSyncJob.media_updated_rows}</strong>
+                </div>
+                <div className="summary-item">
+                  <span>Кандидатов на превью</span>
+                  <strong>{mediaSyncJob.preview_candidates_count}</strong>
+                </div>
+                <div className="summary-item">
+                  <span>Сгенерировано превью</span>
+                  <strong>{mediaSyncJob.preview_updated_rows}</strong>
+                </div>
+              </div>
+
+              {mediaSyncJob.error_message && (
+                <p className="error media-sync-panel__error">{mediaSyncJob.error_message}</p>
+              )}
+            </>
+          ) : (
+            <p className="summary-note">
+              После импорта можно запустить синхронизацию фото и генерацию превью.
+            </p>
+          )}
+
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={isStartingMediaSync || Boolean(mediaSyncJob && isMediaSyncJobActive(mediaSyncJob.status))}
+            onClick={() => {
+              void handleRunMediaSync();
+            }}
+          >
+            {isStartingMediaSync
+              ? "Запуск..."
+              : mediaSyncJob && isMediaSyncJobActive(mediaSyncJob.status)
+                ? "Задача выполняется"
+                : "Запустить обновление фото и превью"}
+          </button>
+        </div>
+      )}
 
       {result && (
         <div className="panel import-summary">

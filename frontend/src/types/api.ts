@@ -49,6 +49,7 @@ export interface ImportResponse {
   importBatchId: string;
   tenantId: ImportTenantId;
   status: "completed" | "completed_with_errors" | "failed";
+  mediaSyncJobId?: string | null;
   summary: {
     totalRows: number;
     importedRows: number;
@@ -131,6 +132,40 @@ export interface CatalogItem {
   createdAt: string;
   adminComment?: string;
   adminComments?: string[];
+}
+
+export type ImportMediaSyncJobStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "completed_with_errors"
+  | "failed";
+
+export type ImportMediaSyncJobStage =
+  | "queued"
+  | "media_enrichment"
+  | "preview_sync"
+  | "done";
+
+export interface ImportMediaSyncJob {
+  id: string;
+  import_batch_id: string;
+  tenant_id: ImportTenantId;
+  trigger_type: string;
+  status: ImportMediaSyncJobStatus;
+  stage: ImportMediaSyncJobStage;
+  processed_count: number;
+  total_count: number;
+  media_candidates_count: number;
+  media_updated_rows: number;
+  preview_candidates_count: number;
+  preview_updated_rows: number;
+  error_message: string | null;
+  details_json: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  updated_at: string;
 }
 
 export interface CatalogListItem {

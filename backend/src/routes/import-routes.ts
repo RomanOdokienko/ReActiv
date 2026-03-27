@@ -7,6 +7,10 @@ import {
 import { parseImportTenantId } from "../import/import-tenants";
 import { getImportErrorsByBatchId } from "../repositories/import-error-repository";
 import { importWorkbook } from "../services/import-service";
+import {
+  enqueueImportMediaSyncJob,
+  getLatestImportMediaSyncJobForImportBatch,
+} from "../services/import-media-sync-service";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
@@ -110,7 +114,22 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
         tenantId,
         logger: app.log,
       });
-      return reply.code(200).send(result);
+
+      let mediaSyncJobId: string | null = null;
+      if (result.summary.importedRows > 0) {
+        const mediaSyncJob = enqueueImportMediaSyncJob({
+          importBatchId: result.importBatchId,
+          tenantId: result.tenantId,
+          triggerType: "post_import",
+          logger: app.log,
+        });
+        mediaSyncJobId = mediaSyncJob.id;
+      }
+
+      return reply.code(200).send({
+        ...result,
+        mediaSyncJobId,
+      });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Import failed";
@@ -188,5 +207,46 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
       importBatch,
       errors,
     });
+  });
+
+  app.get("/api/imports/:id/media-sync", async (request, reply) => {
+    if (rejectIfNoImportAccess(request, reply)) {
+      return;
+    }
+
+    const params = request.params as { id: string };
+    const importBatch = getImportBatchById(params.id);
+    if (!importBatch) {
+      return reply.code(404).send({ message: "Import batch not found" });
+    }
+
+    const job = getLatestImportMediaSyncJobForImportBatch(params.id);
+    return reply.code(200).send({ job });
+  });
+
+  app.post("/api/imports/:id/media-sync/run", async (request, reply) => {
+    if (rejectIfNoImportAccess(request, reply)) {
+      return;
+    }
+
+    const params = request.params as { id: string };
+    const importBatch = getImportBatchById(params.id);
+    if (!importBatch) {
+      return reply.code(404).send({ message: "Import batch not found" });
+    }
+
+    const tenantId = parseImportTenantId(importBatch.tenant_id);
+    if (!tenantId) {
+      return reply.code(400).send({ message: "Invalid tenant in import batch" });
+    }
+
+    const job = enqueueImportMediaSyncJob({
+      importBatchId: importBatch.id,
+      tenantId,
+      triggerType: "manual_api",
+      logger: app.log,
+    });
+
+    return reply.code(200).send({ job });
   });
 }

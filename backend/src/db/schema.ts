@@ -515,6 +515,28 @@ export function initializeSchema(): void {
       finished_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS import_media_sync_jobs (
+      id TEXT PRIMARY KEY,
+      import_batch_id TEXT NOT NULL,
+      tenant_id TEXT NOT NULL,
+      trigger_type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued',
+      stage TEXT NOT NULL DEFAULT 'queued',
+      processed_count INTEGER NOT NULL DEFAULT 0,
+      total_count INTEGER NOT NULL DEFAULT 0,
+      media_candidates_count INTEGER NOT NULL DEFAULT 0,
+      media_updated_rows INTEGER NOT NULL DEFAULT 0,
+      preview_candidates_count INTEGER NOT NULL DEFAULT 0,
+      preview_updated_rows INTEGER NOT NULL DEFAULT 0,
+      error_message TEXT,
+      details_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      started_at TEXT,
+      finished_at TEXT,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (import_batch_id) REFERENCES import_batches(id)
+    );
+
     INSERT OR IGNORE INTO platform_settings (key, value)
     VALUES ('platform_mode', 'closed');
 
@@ -537,6 +559,8 @@ export function initializeSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_media_health_daily_metric_date ON media_health_daily(metric_date);
     CREATE INDEX IF NOT EXISTS idx_media_health_job_runs_started_at ON media_health_job_runs(started_at);
     CREATE INDEX IF NOT EXISTS idx_media_health_job_runs_metric_date ON media_health_job_runs(metric_date);
+    CREATE INDEX IF NOT EXISTS idx_import_media_sync_jobs_tenant_status_created ON import_media_sync_jobs(tenant_id, status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_import_media_sync_jobs_import_batch_created ON import_media_sync_jobs(import_batch_id, created_at);
   `);
 
   db.exec(createVehicleOffersTableSql("vehicle_offers"));

@@ -27,6 +27,7 @@ export interface ResoMediaEnrichmentInput {
   limit?: number;
   concurrency?: number;
   onlyMissingMedia?: boolean;
+  onProgress?: (progress: { processed: number; total: number }) => void;
 }
 
 export interface ResoMediaEnrichmentResult {
@@ -144,21 +145,20 @@ export async function enrichResoMediaForTenant(
   const mediaByVinCache = new Map<string, string[]>();
 
   await runConcurrently(candidates, concurrency, async (candidate) => {
-    processedCandidates += 1;
-
     const offerCode = candidate.offerCode.trim();
-    if (!VIN_REGEX.test(offerCode)) {
-      return;
-    }
-
-    validVinCount += 1;
-
-    if (onlyMissingMedia && candidate.yandexDiskUrl?.trim()) {
-      skippedWithExistingMediaCount += 1;
-      return;
-    }
 
     try {
+      if (!VIN_REGEX.test(offerCode)) {
+        return;
+      }
+
+      validVinCount += 1;
+
+      if (onlyMissingMedia && candidate.yandexDiskUrl?.trim()) {
+        skippedWithExistingMediaCount += 1;
+        return;
+      }
+
       const vin = offerCode.toUpperCase();
       const mediaUrls =
         mediaByVinCache.get(vin) ??
@@ -186,6 +186,12 @@ export async function enrichResoMediaForTenant(
         },
         "reso_media_enrichment_fetch_failed",
       );
+    } finally {
+      processedCandidates += 1;
+      input.onProgress?.({
+        processed: processedCandidates,
+        total: candidates.length,
+      });
     }
   });
 
