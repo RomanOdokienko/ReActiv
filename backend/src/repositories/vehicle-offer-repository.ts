@@ -42,6 +42,11 @@ export interface VehicleOfferMediaCandidateWithWebsite extends VehicleOfferMedia
   websiteUrl: string | null;
 }
 
+interface ExistingOfferPreviewPathDbRow {
+  offer_code: string;
+  card_preview_path: string;
+}
+
 export function listDistinctBrands(excludedTenantId?: string): string[] {
   const rows = excludedTenantId
     ? (db
@@ -126,6 +131,7 @@ function insertVehicleOfferIntoTable(
   importBatchId: string,
   row: NormalizedVehicleOfferRow,
   tenantId: string,
+  cardPreviewPath = "",
 ): void {
   db.prepare(
     `
@@ -210,29 +216,77 @@ function insertVehicleOfferIntoTable(
     crm_ref: toDbText(row.crm_ref),
     website_url: toDbText(row.website_url),
     title: toDbText(row.title),
-    card_preview_path: "",
-    has_photo: computeHasPhotoFlag(row.yandex_disk_url, ""),
+    card_preview_path: cardPreviewPath,
+    has_photo: computeHasPhotoFlag(row.yandex_disk_url, cardPreviewPath),
   });
+}
+
+function listExistingPreviewPathsByOfferCode(tenantId: string): Map<string, string> {
+  const rows = db
+    .prepare(
+      `
+        SELECT offer_code, card_preview_path
+        FROM vehicle_offers
+        WHERE tenant_id = ?
+          AND TRIM(COALESCE(offer_code, '')) != ''
+          AND TRIM(COALESCE(card_preview_path, '')) != ''
+      `,
+    )
+    .all(tenantId) as ExistingOfferPreviewPathDbRow[];
+
+  const previewPathsByOfferCode = new Map<string, string>();
+  rows.forEach((row) => {
+    const offerCode = row.offer_code.trim();
+    const previewPath = row.card_preview_path.trim();
+    if (!offerCode || !previewPath) {
+      return;
+    }
+
+    previewPathsByOfferCode.set(offerCode, previewPath);
+  });
+
+  return previewPathsByOfferCode;
+}
+
+function resolvePreservedCardPreviewPath(
+  row: NormalizedVehicleOfferRow,
+  previewPathsByOfferCode: Map<string, string>,
+): string {
+  const offerCode = row.offer_code?.trim() ?? "";
+  if (!offerCode) {
+    return "";
+  }
+
+  return previewPathsByOfferCode.get(offerCode) ?? "";
 }
 
 export function insertVehicleOffer(
   importBatchId: string,
   row: NormalizedVehicleOfferRow,
   tenantId: string,
+  cardPreviewPath = "",
 ): void {
-  insertVehicleOfferIntoTable("vehicle_offers", importBatchId, row, tenantId);
+  insertVehicleOfferIntoTable(
+    "vehicle_offers",
+    importBatchId,
+    row,
+    tenantId,
+    cardPreviewPath,
+  );
 }
 
 export function insertVehicleOfferSnapshot(
   importBatchId: string,
   row: NormalizedVehicleOfferRow,
   tenantId: string,
+  cardPreviewPath = "",
 ): void {
   insertVehicleOfferIntoTable(
     "vehicle_offer_snapshots",
     importBatchId,
     row,
     tenantId,
+    cardPreviewPath,
   );
 }
 
@@ -346,11 +400,17 @@ export function replaceCurrentVehicleOffers(
   tenantId: string,
 ): void {
   const deleteCurrentOffers = db.prepare(`DELETE FROM vehicle_offers WHERE tenant_id = ?`);
+  const previewPathsByOfferCode = listExistingPreviewPathsByOfferCode(tenantId);
 
   db.transaction(() => {
     deleteCurrentOffers.run(tenantId);
     rows.forEach((row) => {
-      insertVehicleOffer(importBatchId, row, tenantId);
+      insertVehicleOffer(
+        importBatchId,
+        row,
+        tenantId,
+        resolvePreservedCardPreviewPath(row, previewPathsByOfferCode),
+      );
     });
   })();
 }
@@ -360,9 +420,16 @@ export function appendVehicleOfferSnapshots(
   rows: NormalizedVehicleOfferRow[],
   tenantId: string,
 ): void {
+  const previewPathsByOfferCode = listExistingPreviewPathsByOfferCode(tenantId);
+
   db.transaction(() => {
     rows.forEach((row) => {
-      insertVehicleOfferSnapshot(importBatchId, row, tenantId);
+      insertVehicleOfferSnapshot(
+        importBatchId,
+        row,
+        tenantId,
+        resolvePreservedCardPreviewPath(row, previewPathsByOfferCode),
+      );
     });
   })();
 }
