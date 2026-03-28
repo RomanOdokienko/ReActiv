@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import {
   getCurrentUser,
@@ -42,7 +42,14 @@ const LANDING_SEO_DESCRIPTION =
 const BLOG_SEO_TITLE = "Блог команды РеАктив";
 const BLOG_SEO_DESCRIPTION =
   "Блог команды РеАктив: статьи об авто после лизинга, разборы и рекомендации для рынка.";
+const PARTNERS_SEO_TITLE = "Партнёрам — РеАктив";
+const PARTNERS_SEO_DESCRIPTION =
+  "Лендинг для партнёров РеАктив: как решаем проблему замороженного стока и ускоряем реализацию.";
 const PUBLIC_TITLE = CATALOG_SEO_TITLE;
+const PartnersPage = lazy(async () => {
+  const module = await import("./pages/PartnersPage");
+  return { default: module.PartnersPage };
+});
 
 function extractBlogSlug(pathname: string): string | null {
   if (!pathname.startsWith("/blog/")) {
@@ -122,6 +129,8 @@ function isPublicLayoutPath(pathname: string): boolean {
   return (
     isPublicCatalogPath(pathname) ||
     pathname === "/landing" ||
+    pathname === "/partners" ||
+    pathname.startsWith("/partners/") ||
     pathname === "/blog" ||
     pathname.startsWith("/blog/") ||
     pathname === "/login" ||
@@ -144,6 +153,7 @@ function PublicSiteHeader({
 }) {
   const catalogActive = isPublicCatalogPath(pathname);
   const landingActive = pathname === "/landing";
+  const partnersActive = pathname === "/partners" || pathname.startsWith("/partners/");
   const blogActive = pathname === "/blog" || pathname.startsWith("/blog/");
   const loginActive = pathname === "/login";
 
@@ -194,6 +204,13 @@ function PublicSiteHeader({
           onClick={onCloseMenu}
         >
           О платформе
+        </Link>
+        <Link
+          to="/partners"
+          className={partnersActive ? "is-active" : undefined}
+          onClick={onCloseMenu}
+        >
+          Партнёрам
         </Link>
         <Link to="/blog" className={blogActive ? "is-active" : undefined} onClick={onCloseMenu}>
           Блог
@@ -257,6 +274,7 @@ export function App() {
 
     const pathname = location.pathname;
     const isLandingPath = pathname === "/landing";
+    const isPartnersPath = pathname === "/partners" || pathname.startsWith("/partners/");
     const isBlogListPath = pathname === "/blog";
     const blogSlug = extractBlogSlug(pathname);
     const blogArticle = blogSlug ? getBlogArticleBySlug(blogSlug) : undefined;
@@ -297,6 +315,9 @@ export function App() {
     } else if (isLandingPath) {
       title = LANDING_SEO_TITLE;
       description = LANDING_SEO_DESCRIPTION;
+    } else if (isPartnersPath) {
+      title = PARTNERS_SEO_TITLE;
+      description = PARTNERS_SEO_DESCRIPTION;
     } else if (isBlogListPath) {
       title = BLOG_SEO_TITLE;
       description = BLOG_SEO_DESCRIPTION;
@@ -414,10 +435,13 @@ export function App() {
 
   useEffect(() => {
     const isBlogArticlePath = location.pathname.startsWith("/blog/");
+    const isPartnersPath = location.pathname === "/partners" || location.pathname.startsWith("/partners/");
     document.body.classList.toggle("blog-article-route", isBlogArticlePath);
+    document.body.classList.toggle("partners-route", isPartnersPath);
 
     return () => {
       document.body.classList.remove("blog-article-route");
+      document.body.classList.remove("partners-route");
     };
   }, [location.pathname]);
 
@@ -499,6 +523,20 @@ export function App() {
             <Routes>
               <Route path="/" element={<ShowcasePage publicMode />} />
               <Route path="/landing" element={<LandingPage />} />
+              <Route
+                path="/partners"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="app-loading-screen" aria-live="polite" aria-label="Loading page">
+                        <div className="app-loading-screen__spinner" aria-hidden="true" />
+                      </div>
+                    }
+                  >
+                    <PartnersPage />
+                  </Suspense>
+                }
+              />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogArticlePage />} />
               <Route path="/showcase" element={<Navigate to="/" replace />} />
