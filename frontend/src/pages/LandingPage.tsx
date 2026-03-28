@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   getCatalogItems,
@@ -9,7 +9,7 @@ import type { CatalogListItem } from "../types/api";
 import "../styles/landing.css";
 
 const PREPOSITION_NBSP_PATTERN =
-  /(^|[\s([{'"В«вЂћ-])(Р°|Р±РµР·|РІ|РІРѕ|РґР»СЏ|РґРѕ|Р·Р°|Рё|РёР·|Рє|РєРѕ|РЅР°|РЅР°Рґ|РЅРµ|РЅРё|Рѕ|РѕР±|РѕР±Рѕ|РѕС‚|РїРѕ|РїРѕРґ|РїСЂРё|РїСЂРѕ|СЃ|СЃРѕ|Сѓ)\s+/giu;
+  /(^|[\s([{'"«„-])(а|без|в|во|для|до|за|и|из|к|ко|на|над|не|ни|о|об|обо|от|по|под|при|про|с|со|у)\s+/giu;
 
 interface LandingCatalogState {
   featuredItems: CatalogListItem[];
@@ -44,64 +44,64 @@ interface FeaturedBrandTarget {
 
 const BENEFIT_CARDS: BenefitCard[] = [
   {
-    title: "Р¦РµРЅР° РЅРёР¶Рµ РІС‚РѕСЂРёС‡РЅРѕРіРѕ СЂС‹РЅРєР°",
-    text: "РђРІС‚РѕРјРѕР±РёР»Рё РїРѕСЃР»Рµ Р»РёР·РёРЅРіР° С‡Р°СЃС‚Рѕ РїСЂРѕРґР°СЋС‚СЃСЏ РґРµС€РµРІР»Рµ Р°РЅР°Р»РѕРіРёС‡РЅС‹С… РїСЂРµРґР»РѕР¶РµРЅРёР№ РЅР° РІС‚РѕСЂРёС‡РЅРѕРј СЂС‹РЅРєРµ.",
+    title: "Цена ниже вторичного рынка",
+    text: "Автомобили после лизинга часто продаются дешевле аналогичных предложений на вторичном рынке.",
     iconSrc: "/brands/benefit-1.svg",
   },
   {
-    title: "РџРѕРЅСЏС‚РЅР°СЏ РёСЃС‚РѕСЂРёСЏ СЌРєСЃРїР»СѓР°С‚Р°С†РёРё",
-    text: "Р‘РѕР»СЊС€РёРЅСЃС‚РІРѕ Р°РІС‚РѕРјРѕР±РёР»РµР№ РѕР±СЃР»СѓР¶РёРІР°Р»РѕСЃСЊ Сѓ РѕС„РёС†РёР°Р»СЊРЅС‹С… РґРёР»РµСЂРѕРІ.",
+    title: "Понятная история эксплуатации",
+    text: "Большинство автомобилей обслуживалось у официальных дилеров.",
     iconSrc: "/brands/benefit-2.svg",
   },
   {
-    title: "Р РµРіСѓР»СЏСЂРЅС‹Р№ РїРѕС‚РѕРє РЅРѕРІС‹С… Р°РІС‚РѕРјРѕР±РёР»РµР№",
-    text: "Р›РёР·РёРЅРіРѕРІС‹Рµ РєРѕРјРїР°РЅРёРё СЂРµРіСѓР»СЏСЂРЅРѕ СЂРµР°Р»РёР·СѓСЋС‚ Р°РІС‚РѕРјРѕР±РёР»Рё РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ РґРѕРіРѕРІРѕСЂРѕРІ.",
+    title: "Регулярный поток новых автомобилей",
+    text: "Лизинговые компании регулярно реализуют автомобили после завершения договоров.",
     iconSrc: "/brands/benefit-3.svg",
   },
   {
-    title: "Р”РѕСЃС‚СѓРї Рє РёР·СЉСЏС‚С‹Рј Р°РІС‚РѕРјРѕР±РёР»СЏРј",
-    text: "РќР° РїР»Р°С‚С„РѕСЂРјРµ РјРѕР¶РЅРѕ РЅР°Р№С‚Рё РёР·СЉСЏС‚С‹Рµ Р°РІС‚РѕРјРѕР±РёР»Рё Рё РєРѕРЅС„РёСЃРєР°С‚.",
+    title: "Доступ к изъятым автомобилям",
+    text: "На платформе можно найти изъятые автомобили и конфискат.",
     iconSrc: "/brands/benefit-4.svg",
   },
 ];
 
 const PROCESS_STEPS = [
-  "Р›РёР·РёРЅРіРѕРІС‹Рµ РєРѕРјРїР°РЅРёРё СЂР°Р·РјРµС‰Р°СЋС‚ Р°РІС‚РѕРјРѕР±РёР»Рё РїРѕСЃР»Рµ Р»РёР·РёРЅРіР°",
-  "Reactiv СЃРѕР±РёСЂР°РµС‚ РїСЂРµРґР»РѕР¶РµРЅРёСЏ РІ РµРґРёРЅС‹Р№ РєР°С‚Р°Р»РѕРі",
-  "Р‘СЂРѕРєРµСЂС‹, Р°РіРµРЅС‚С‹ Рё РґРёР»РµСЂС‹ РЅР°С…РѕРґСЏС‚ Р°РІС‚РѕРјРѕР±РёР»Рё",
-  "РџРѕСЃР»Рµ Р·Р°РїСЂРѕСЃР° РѕС‚РєСЂС‹РІР°СЋС‚СЃСЏ РєРѕРЅС‚Р°РєС‚С‹ РІР»Р°РґРµР»СЊС†Р° Р»РѕС‚Р°",
+  "Лизинговые компании размещают автомобили после лизинга",
+  "Reactiv собирает предложения в единый каталог",
+  "Брокеры, агенты и дилеры находят автомобили",
+  "После запроса открываются контакты владельца лота",
 ];
 
 const AUDIENCE_CARDS: AudienceCard[] = [
   {
-    title: "РђРІС‚РѕРјРѕР±РёР»СЊРЅС‹Рµ Р±СЂРѕРєРµСЂС‹ Рё Р°РіРµРЅС‚С‹",
-    text: "РџРѕРёСЃРє Р°РІС‚РѕРјРѕР±РёР»РµР№ РїРѕСЃР»Рµ Р»РёР·РёРЅРіР° Рё РёР·СЉСЏС‚С‹С… Р°РІС‚Рѕ РґР»СЏ РєР»РёРµРЅС‚РѕРІ.",
+    title: "Автомобильные брокеры и агенты",
+    text: "Поиск автомобилей после лизинга и изъятых авто для клиентов.",
   },
   {
-    title: "РђРІС‚РѕРґРёР»РµСЂС‹",
-    text: "Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Р№ РёСЃС‚РѕС‡РЅРёРє Р°РІС‚РѕРјРѕР±РёР»РµР№ РґР»СЏ Р°РІС‚РѕСЃР°Р»РѕРЅРѕРІ.",
+    title: "Автодилеры",
+    text: "Дополнительный источник автомобилей для автосалонов.",
   },
   {
-    title: "РўР°РєСЃРѕРїР°СЂРєРё",
-    text: "Р—Р°РєСѓРїРєР° Р°РІС‚РѕРјРѕР±РёР»РµР№ СЃ РїСЂРѕР±РµРіРѕРј РґР»СЏ Р°РІС‚РѕРїР°СЂРєРѕРІ.",
+    title: "Таксопарки",
+    text: "Закупка автомобилей с пробегом для автопарков.",
   },
 ];
 
 const FAQ_ITEMS: FaqItem[] = [
   {
-    question: "Р§С‚Рѕ Р·РЅР°С‡РёС‚ Р°РІС‚РѕРјРѕР±РёР»СЊ РїРѕСЃР»Рµ Р»РёР·РёРЅРіР°",
+    question: "Что значит автомобиль после лизинга",
     answer:
-      "РђРІС‚РѕРјРѕР±РёР»СЊ РїРѕСЃР»Рµ Р»РёР·РёРЅРіР° - СЌС‚Рѕ РјР°С€РёРЅР°, РєРѕС‚РѕСЂР°СЏ РёСЃРїРѕР»СЊР·РѕРІР°Р»Р°СЃСЊ РїРѕ РґРѕРіРѕРІРѕСЂСѓ Р»РёР·РёРЅРіР° Рё РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ РґРѕРіРѕРІРѕСЂР° РїСЂРѕРґР°РµС‚СЃСЏ Р»РёР·РёРЅРіРѕРІРѕР№ РєРѕРјРїР°РЅРёРµР№.",
+      "Автомобиль после лизинга - это машина, которая использовалась по договору лизинга и после завершения договора продается лизинговой компанией.",
   },
   {
-    question: "Р“РґРµ РїСЂРѕРґР°СЋС‚СЃСЏ РёР·СЉСЏС‚С‹Рµ Р°РІС‚РѕРјРѕР±РёР»Рё",
+    question: "Где продаются изъятые автомобили",
     answer:
-      "РР·СЉСЏС‚С‹Рµ Р°РІС‚РѕРјРѕР±РёР»Рё РѕР±С‹С‡РЅРѕ СЂРµР°Р»РёР·СѓСЋС‚СЃСЏ С‡РµСЂРµР· РїР»РѕС‰Р°РґРєРё Р»РёР·РёРЅРіРѕРІС‹С… РєРѕРјРїР°РЅРёР№ РёР»Рё С‡РµСЂРµР· Р°РіСЂРµРіР°С‚РѕСЂС‹.",
+      "Изъятые автомобили обычно реализуются через площадки лизинговых компаний или через агрегаторы.",
   },
   {
-    question: "РњРѕР¶РЅРѕ Р»Рё РєСѓРїРёС‚СЊ Р°РІС‚Рѕ РїРѕСЃР»Рµ Р»РёР·РёРЅРіР° РґРµС€РµРІР»Рµ СЂС‹РЅРєР°",
+    question: "Можно ли купить авто после лизинга дешевле рынка",
     answer:
-      "Р”Р°, Р°РІС‚РѕРјРѕР±РёР»Рё РїРѕСЃР»Рµ Р»РёР·РёРЅРіР° РёРЅРѕРіРґР° РїСЂРѕРґР°СЋС‚СЃСЏ РґРµС€РµРІР»Рµ Р°РЅР°Р»РѕРіРёС‡РЅС‹С… РїСЂРµРґР»РѕР¶РµРЅРёР№ РЅР° РІС‚РѕСЂРёС‡РЅРѕРј СЂС‹РЅРєРµ.",
+      "Да, автомобили после лизинга иногда продаются дешевле аналогичных предложений на вторичном рынке.",
   },
 ];
 
@@ -109,22 +109,19 @@ const HERO_IMAGE_URL = "/landing-hero.jpg";
 const BRANDS_ARROW_ICON_URL = "/brands/arrow-up-right.svg";
 const ABOUT_CHECKMARK_ICON_URL = "/brands/checkmark-icon.svg";
 const ABOUT_LEASING_TYPES = [
-  "Р°РІС‚РѕРјРѕР±РёР»Рё РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ Р»РёР·РёРЅРіР°",
-  "РёР·СЉСЏС‚С‹Рµ Р°РІС‚РѕРјРѕР±РёР»Рё",
-  "РєРѕРЅС„РёСЃРєР°С‚ Р»РёР·РёРЅРіРѕРІС‹С… РєРѕРјРїР°РЅРёР№",
-  "РєРѕСЂРїРѕСЂР°С‚РёРІРЅС‹Рµ Р°РІС‚РѕРјРѕР±РёР»Рё СЃ РїСЂРѕР±РµРіРѕРј",
+  "автомобили после завершения лизинга",
+  "изъятые автомобили",
+  "конфискат лизинговых компаний",
+  "корпоративные автомобили с пробегом",
 ];
-const POPULAR_PASSENGER_BRANDS: PopularBrand[] = [
+const POPULAR_BRANDS: PopularBrand[] = [
   { name: "Mercedes", query: "Mercedes-Benz", logoSrc: "/brands/mersedes.png" },
   { name: "BMW", query: "BMW", logoSrc: "/brands/bmw.png" },
+  { name: "SITRAK", query: "SITRAK", logoSrc: "/brands/sitrak.png" },
+  { name: "Shacman", query: "Shacman", logoSrc: "/brands/shacman.png" },
   { name: "Lexus", query: "Lexus", logoSrc: "/brands/lexus.png" },
   { name: "Li", query: "Li", logoSrc: "/brands/li.png" },
   { name: "Haval", query: "Haval", logoSrc: "/brands/haval.png" },
-];
-
-const POPULAR_TRUCK_BRANDS: PopularBrand[] = [
-  { name: "SITRAK", query: "SITRAK", logoSrc: "/brands/sitrak.png" },
-  { name: "Shacman", query: "Shacman", logoSrc: "/brands/shacman.png" },
 ];
 
 const FEATURED_BRAND_TARGETS: FeaturedBrandTarget[] = [
@@ -142,23 +139,23 @@ const previewLivenessCache = new Map<string, boolean>();
 
 function formatPrice(value: number | null): string {
   if (value === null) {
-    return "Р¦РµРЅР° РїРѕ Р·Р°РїСЂРѕСЃСѓ";
+    return "Цена по запросу";
   }
 
-  return `${value.toLocaleString("ru-RU")} в‚Ѕ`;
+  return `${value.toLocaleString("ru-RU")} ₽`;
 }
 
 function formatMileage(value: number | null): string {
   if (value === null) {
-    return "РџСЂРѕР±РµРі СѓС‚РѕС‡РЅСЏРµС‚СЃСЏ";
+    return "Пробег уточняется";
   }
 
-  return `${value.toLocaleString("ru-RU")} РєРј`;
+  return `${value.toLocaleString("ru-RU")} км`;
 }
 
 function formatYear(value: number | null): string {
   if (value === null) {
-    return "Р“РѕРґ РЅРµ СѓРєР°Р·Р°РЅ";
+    return "Год не указан";
   }
 
   return String(value);
@@ -243,10 +240,10 @@ function ProductCard({ item }: { item: CatalogListItem }) {
         {item.bookingStatus ? <span className="landing-status-pill">{item.bookingStatus}</span> : null}
         <h3>{item.title || `${item.brand} ${item.model}`}</h3>
         <p className="landing-product-card__meta">
-          {formatYear(item.year)} В· {formatMileage(item.mileageKm)}
+          {formatYear(item.year)} · {formatMileage(item.mileageKm)}
         </p>
         <p className="landing-product-card__meta">
-          {item.storageAddress || item.responsiblePerson || "Р›РѕРєР°С†РёСЏ СѓС‚РѕС‡РЅСЏРµС‚СЃСЏ"}
+          {item.storageAddress || item.responsiblePerson || "Локация уточняется"}
         </p>
         <div className="landing-product-card__footer">
           <strong>{formatPrice(item.price)}</strong>
@@ -290,7 +287,7 @@ export function LandingPage() {
         }
 
         const nextError =
-          caughtError instanceof Error ? caughtError.message : "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РґР°РЅРЅС‹Рµ Р»РµРЅРґРёРЅРіР°";
+          caughtError instanceof Error ? caughtError.message : "Не удалось загрузить данные лендинга";
         setError(nextError);
 
         void logActivityEvent({
@@ -345,32 +342,32 @@ export function LandingPage() {
         <div className="landing-hero">
           <div className="landing-hero__copy">
             <div className="landing-hero__intro">
-              <h1>РђРІС‚Рѕ РїРѕСЃР»Рµ Р»РёР·РёРЅРіР° вЂ” РєР°С‚Р°Р»РѕРі РёР·СЉСЏС‚С‹С… Рё Р»РёР·РёРЅРіРѕРІС‹С… Р°РІС‚РѕРјРѕР±РёР»РµР№</h1>
+              <h1>Авто после лизинга — каталог изъятых и лизинговых автомобилей</h1>
               <p>
-                РџР»Р°С‚С„РѕСЂРјР° Reactiv СЃРѕР±РёСЂР°РµС‚ Р°РІС‚РѕРјРѕР±РёР»Рё РїРѕСЃР»Рµ Р»РёР·РёРЅРіР° СЃРѕ РІСЃРµР№ Р РѕСЃСЃРёРё. Р’ РєР°С‚Р°Р»РѕРіРµ
-                РґРѕСЃС‚СѓРїРЅС‹ РёР·СЉСЏС‚С‹Рµ Р°РІС‚РѕРјРѕР±РёР»Рё, РєРѕРЅС„РёСЃРєР°С‚ Рё РјР°С€РёРЅС‹ РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ Р»РёР·РёРЅРіРѕРІС‹С…
-                РґРѕРіРѕРІРѕСЂРѕРІ РѕС‚ Р»РёР·РёРЅРіРѕРІС‹С… РєРѕРјРїР°РЅРёР№.
+                Платформа Reactiv собирает автомобили после лизинга со всей России. В каталоге
+                доступны изъятые автомобили, конфискат и машины после завершения лизинговых
+                договоров от лизинговых компаний.
               </p>
             </div>
 
             <div className="landing-hero__actions">
               <Link className="landing-primary-button" to="/">
-                РЎРјРѕС‚СЂРµС‚СЊ РєР°С‚Р°Р»РѕРі Р°РІС‚РѕРјРѕР±РёР»РµР№
+                Смотреть каталог автомобилей
               </Link>
             </div>
           </div>
 
           <div className="landing-hero__media">
-            <img src={HERO_IMAGE_URL} alt="РђРІС‚РѕРјРѕР±РёР»СЊ РїРѕСЃР»Рµ Р»РёР·РёРЅРіР°" />
+            <img src={HERO_IMAGE_URL} alt="Автомобиль после лизинга" />
           </div>
         </div>
 
         <section className="landing-section">
           <div className="landing-section__heading">
-            <h2>Популярные марки легковых автомобилей после лизинга</h2>
+            <h2>Популярные марки автомобилей после лизинга</h2>
           </div>
           <div className="landing-brand-grid">
-            {POPULAR_PASSENGER_BRANDS.map((brand) => (
+            {POPULAR_BRANDS.map((brand) => (
               <Link
                 key={brand.name}
                 className="landing-brand-card"
@@ -395,46 +392,18 @@ export function LandingPage() {
 
         <section className="landing-section">
           <div className="landing-section__heading">
-            <h2>Популярные марки грузовых автомобилей после лизинга</h2>
-          </div>
-          <div className="landing-brand-grid">
-            {POPULAR_TRUCK_BRANDS.map((brand) => (
-              <Link
-                key={brand.name}
-                className="landing-brand-card"
-                to={`/?brand=${encodeURIComponent(brand.query)}`}
-              >
-                <div className="landing-brand-card__top">
-                  <div className="landing-brand-card__logo-wrap">
-                    <BrandLogo brand={brand.name} src={brand.logoSrc} />
-                  </div>
-                  <img
-                    className="landing-brand-card__arrow"
-                    src={BRANDS_ARROW_ICON_URL}
-                    alt=""
-                    aria-hidden="true"
-                  />
-                </div>
-                <strong>{brand.name}</strong>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="landing-section">
-          <div className="landing-section__heading">
-            <h2>РђРІС‚Рѕ РїРѕСЃР»Рµ Р»РёР·РёРЅРіР° РІ РїСЂРѕРґР°Р¶Рµ</h2>
+            <h2>Авто после лизинга в продаже</h2>
             <Link className="landing-inline-link" to="/">
-              РЎРјРѕС‚СЂРµС‚СЊ РІСЃСЋ РІРёС‚СЂРёРЅСѓ
+              Смотреть всю витрину
             </Link>
           </div>
 
           {error ? (
             <div className="landing-api-fallback" role="status">
-              <strong>РљР°С‚Р°Р»РѕРі РІСЂРµРјРµРЅРЅРѕ РЅРµРґРѕСЃС‚СѓРїРµРЅ</strong>
+              <strong>Каталог временно недоступен</strong>
               <p>{error}</p>
               <Link className="landing-primary-button" to="/">
-                РџРµСЂРµР№С‚Рё РІ РІРёС‚СЂРёРЅСѓ
+                Перейти в витрину
               </Link>
             </div>
           ) : (
@@ -444,8 +413,8 @@ export function LandingPage() {
               ))}
               {!isLoading && catalogState.featuredItems.length === 0 && (
                 <div className="landing-api-fallback" role="status">
-                  <strong>Р›РѕС‚С‹ СЃРєРѕСЂРѕ РїРѕСЏРІСЏС‚СЃСЏ</strong>
-                  <p>РљР°Рє С‚РѕР»СЊРєРѕ РєР°С‚Р°Р»РѕРі РІРµСЂРЅРµС‚ РґР°РЅРЅС‹Рµ, Р·РґРµСЃСЊ РѕС‚РѕР±СЂР°Р·СЏС‚СЃСЏ Р°РєС‚СѓР°Р»СЊРЅС‹Рµ Р°РІС‚РѕРјРѕР±РёР»Рё.</p>
+                  <strong>Лоты скоро появятся</strong>
+                  <p>Как только каталог вернет данные, здесь отобразятся актуальные автомобили.</p>
                 </div>
               )}
             </div>
@@ -455,24 +424,24 @@ export function LandingPage() {
         <section id="about" className="landing-section">
           <div className="landing-explainer">
             <div className="landing-explainer__headline">
-              <h2>Р§С‚Рѕ С‚Р°РєРѕРµ Р°РІС‚РѕРјРѕР±РёР»Рё РїРѕСЃР»Рµ Р»РёР·РёРЅРіР°</h2>
+              <h2>Что такое автомобили после лизинга</h2>
               <div className="landing-explainer__stats">
                 <article className="landing-explainer-stat">
                   <strong>7000+</strong>
-                  <span>РµРґРёРЅРёС† С‚РµС…РЅРёРєРё</span>
+                  <span>единиц техники</span>
                 </article>
                 <article className="landing-explainer-stat">
                   <strong>500+</strong>
-                  <span>Р·Р°СЏРІРѕРє РѕР±СЂР°Р±РѕС‚Р°РЅРѕ</span>
+                  <span>заявок обработано</span>
                 </article>
               </div>
             </div>
 
             <div className="landing-explainer__content">
               <p className="landing-explainer__text">
-                РђРІС‚РѕРјРѕР±РёР»Рё РїРѕСЃР»Рµ Р»РёР·РёРЅРіР° - СЌС‚Рѕ РјР°С€РёРЅС‹, РєРѕС‚РѕСЂС‹Рµ РёСЃРїРѕР»СЊР·РѕРІР°Р»РёСЃСЊ РєРѕРјРїР°РЅРёСЏРјРё РїРѕ РґРѕРіРѕРІРѕСЂСѓ
-                Р»РёР·РёРЅРіР° Рё РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ РґРѕРіРѕРІРѕСЂР° РёР»Рё РµРіРѕ РїСЂРµРєСЂР°С‰РµРЅРёСЏ РІС‹СЃС‚Р°РІР»СЏСЋС‚СЃСЏ РЅР° РїСЂРѕРґР°Р¶Сѓ. Р’
-                РїСЂРѕРґР°Р¶Рµ РјРѕР¶РЅРѕ РІСЃС‚СЂРµС‚РёС‚СЊ РЅРµСЃРєРѕР»СЊРєРѕ С‚РёРїРѕРІ С‚Р°РєРёС… Р°РІС‚РѕРјРѕР±РёР»РµР№:
+                Автомобили после лизинга - это машины, которые использовались компаниями по договору
+                лизинга и после завершения договора или его прекращения выставляются на продажу. В
+                продаже можно встретить несколько типов таких автомобилей:
               </p>
               <ul className="landing-check-list">
                 {ABOUT_LEASING_TYPES.map((item) => (
@@ -483,12 +452,12 @@ export function LandingPage() {
                 ))}
               </ul>
               <p className="landing-explainer__text">
-                РўР°РєРёРµ РјР°С€РёРЅС‹ С‡Р°СЃС‚Рѕ СЂРµР°Р»РёР·СѓСЋС‚СЃСЏ С‡РµСЂРµР· РїР»РѕС‰Р°РґРєРё РїСЂРѕРґР°Р¶Рё Р»РёР·РёРЅРіРѕРІС‹С… Р°РІС‚РѕРјРѕР±РёР»РµР№.
-                РџР»Р°С‚С„РѕСЂРјР° Reactiv Р°РіСЂРµРіРёСЂСѓРµС‚ РїСЂРµРґР»РѕР¶РµРЅРёСЏ Р»РёР·РёРЅРіРѕРІС‹С… РєРѕРјРїР°РЅРёР№ Рё С„РѕСЂРјРёСЂСѓРµС‚ РµРґРёРЅС‹Р№
-                РєР°С‚Р°Р»РѕРі Р°РІС‚РѕРјРѕР±РёР»РµР№ РїРѕСЃР»Рµ Р»РёР·РёРЅРіР°.
+                Такие машины часто реализуются через площадки продажи лизинговых автомобилей.
+                Платформа Reactiv агрегирует предложения лизинговых компаний и формирует единый
+                каталог автомобилей после лизинга.
               </p>
               <Link className="landing-primary-button landing-explainer__button" to="/">
-                РЎРјРѕС‚СЂРµС‚СЊ РєР°С‚Р°Р»РѕРі Р°РІС‚РѕРјРѕР±РёР»РµР№
+                Смотреть каталог автомобилей
               </Link>
             </div>
           </div>
@@ -496,7 +465,7 @@ export function LandingPage() {
 
         <section className="landing-section landing-section--benefits">
           <div className="landing-section__heading">
-            <h2>РџРѕС‡РµРјСѓ РїРѕРєСѓРїР°СЋС‚ Р°РІС‚Рѕ РїРѕСЃР»Рµ Р»РёР·РёРЅРіР°</h2>
+            <h2>Почему покупают авто после лизинга</h2>
           </div>
           <div className="landing-benefits-grid">
             {BENEFIT_CARDS.map((item) => (
@@ -516,7 +485,7 @@ export function LandingPage() {
 
         <section className="landing-section">
           <div className="landing-section__heading">
-            <h2>РљР°Рє СЂР°Р±РѕС‚Р°РµС‚ РїР»Р°С‚С„РѕСЂРјР° Reactiv</h2>
+            <h2>Как работает платформа Reactiv</h2>
           </div>
           <div className="landing-process-grid">
             {PROCESS_STEPS.map((item, index) => (
@@ -531,7 +500,7 @@ export function LandingPage() {
         <section className="landing-section landing-section--audience">
           <div className="landing-audience">
             <div className="landing-audience__title">
-              <h2>РљРѕРјСѓ РїРѕРґС…РѕРґРёС‚ РїР»Р°С‚С„РѕСЂРјР°</h2>
+              <h2>Кому подходит платформа</h2>
             </div>
 
             <div className="landing-audience__cards">
@@ -547,7 +516,7 @@ export function LandingPage() {
 
         <section id="faq" className="landing-section landing-section--faq">
           <div className="landing-section__heading">
-            <h2>Р§Р°СЃС‚Рѕ Р·Р°РґР°РІР°РµРјС‹Рµ РІРѕРїСЂРѕСЃС‹</h2>
+            <h2>Часто задаваемые вопросы</h2>
           </div>
           <div className="landing-faq-list">
             {FAQ_ITEMS.map((item) => (
@@ -562,11 +531,11 @@ export function LandingPage() {
         <section className="landing-section landing-section--banner">
           <div className="landing-catalog-banner">
             <div>
-              <h2>РЎРјРѕС‚СЂРµС‚СЊ Р°РІС‚РѕРјРѕР±РёР»Рё РїРѕСЃР»Рµ Р»РёР·РёРЅРіР°</h2>
-              <p>РџРµСЂРµР№РґРёС‚Рµ РІ РєР°С‚Р°Р»РѕРі Рё РЅР°Р№РґРёС‚Рµ Р°РІС‚РѕРјРѕР±РёР»СЊ</p>
+              <h2>Смотреть автомобили после лизинга</h2>
+              <p>Перейдите в каталог и найдите автомобиль</p>
             </div>
             <Link className="landing-catalog-banner__button" to="/">
-              РџРµСЂРµР№С‚Рё
+              Перейти
             </Link>
           </div>
         </section>
