@@ -9,19 +9,7 @@ import {
 import { FeedbackWidget } from "./components/FeedbackWidget";
 import { LegalLinks, PrivacyPolicyLink, TermsLink } from "./components/LegalLinks";
 import { getBlogArticleBySlug } from "./content/blog-articles";
-import { CatalogPage } from "./pages/CatalogPage";
-import { AdminActivityPage } from "./pages/AdminActivityPage";
-import { AdminHighlightsPage } from "./pages/AdminHighlightsPage";
-import { AdminOperationsPage } from "./pages/AdminOperationsPage";
-import { AdminUsersPage } from "./pages/AdminUsersPage";
-import { BlogArticlePage } from "./pages/BlogArticlePage";
-import { BlogPage } from "./pages/BlogPage";
-import { FavoritesPage } from "./pages/FavoritesPage";
-import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
-import { ShowcaseItemPage } from "./pages/ShowcaseItemPage";
-import { ShowcasePage } from "./pages/ShowcasePage";
-import { UploadPage } from "./pages/UploadPage";
 import type { AuthUser, PlatformMode } from "./types/api";
 
 type AuthState = "checking" | "authorized" | "unauthorized";
@@ -46,9 +34,57 @@ const PARTNERS_SEO_TITLE = "Партнёрам — РеАктив";
 const PARTNERS_SEO_DESCRIPTION =
   "Лендинг для партнёров РеАктив: как решаем проблему замороженного стока и ускоряем реализацию.";
 const PUBLIC_TITLE = CATALOG_SEO_TITLE;
+const AdminActivityPage = lazy(async () => {
+  const module = await import("./pages/AdminActivityPage");
+  return { default: module.AdminActivityPage };
+});
+const AdminHighlightsPage = lazy(async () => {
+  const module = await import("./pages/AdminHighlightsPage");
+  return { default: module.AdminHighlightsPage };
+});
+const AdminOperationsPage = lazy(async () => {
+  const module = await import("./pages/AdminOperationsPage");
+  return { default: module.AdminOperationsPage };
+});
+const AdminUsersPage = lazy(async () => {
+  const module = await import("./pages/AdminUsersPage");
+  return { default: module.AdminUsersPage };
+});
+const BlogArticlePage = lazy(async () => {
+  const module = await import("./pages/BlogArticlePage");
+  return { default: module.BlogArticlePage };
+});
+const BlogPage = lazy(async () => {
+  const module = await import("./pages/BlogPage");
+  return { default: module.BlogPage };
+});
+const CatalogPage = lazy(async () => {
+  const module = await import("./pages/CatalogPage");
+  return { default: module.CatalogPage };
+});
+const FavoritesPage = lazy(async () => {
+  const module = await import("./pages/FavoritesPage");
+  return { default: module.FavoritesPage };
+});
+const LandingPage = lazy(async () => {
+  const module = await import("./pages/LandingPage");
+  return { default: module.LandingPage };
+});
 const PartnersPage = lazy(async () => {
   const module = await import("./pages/PartnersPage");
   return { default: module.PartnersPage };
+});
+const ShowcaseItemPage = lazy(async () => {
+  const module = await import("./pages/ShowcaseItemPage");
+  return { default: module.ShowcaseItemPage };
+});
+const ShowcasePage = lazy(async () => {
+  const module = await import("./pages/ShowcasePage");
+  return { default: module.ShowcasePage };
+});
+const UploadPage = lazy(async () => {
+  const module = await import("./pages/UploadPage");
+  return { default: module.UploadPage };
 });
 
 function extractBlogSlug(pathname: string): string | null {
@@ -245,6 +281,14 @@ function PublicSiteFooter() {
         </div>
       </div>
     </footer>
+  );
+}
+
+function RouteLoadingScreen() {
+  return (
+    <div className="app-loading-screen" aria-live="polite" aria-label="Loading page">
+      <div className="app-loading-screen__spinner" aria-hidden="true" />
+    </div>
   );
 }
 
@@ -520,31 +564,20 @@ export function App() {
               />
             )}
 
-            <Routes>
-              <Route path="/" element={<ShowcasePage publicMode />} />
-              <Route path="/landing" element={<LandingPage />} />
-              <Route
-                path="/partners"
-                element={
-                  <Suspense
-                    fallback={
-                      <div className="app-loading-screen" aria-live="polite" aria-label="Loading page">
-                        <div className="app-loading-screen__spinner" aria-hidden="true" />
-                      </div>
-                    }
-                  >
-                    <PartnersPage />
-                  </Suspense>
-                }
-              />
-              <Route path="/blog" element={<BlogPage />} />
-              <Route path="/blog/:slug" element={<BlogArticlePage />} />
-              <Route path="/showcase" element={<Navigate to="/" replace />} />
-              <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
-              <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
-              <Route path="/login" element={loginElement} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <Suspense fallback={<RouteLoadingScreen />}>
+              <Routes>
+                <Route path="/" element={<ShowcasePage publicMode />} />
+                <Route path="/landing" element={<LandingPage />} />
+                <Route path="/partners" element={<PartnersPage />} />
+                <Route path="/blog" element={<BlogPage />} />
+                <Route path="/blog/:slug" element={<BlogArticlePage />} />
+                <Route path="/showcase" element={<Navigate to="/" replace />} />
+                <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
+                <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
+                <Route path="/login" element={loginElement} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
             {showPublicLayout ? <PublicSiteFooter /> : <PublicLegalFooter />}
           </div>
           <FeedbackWidget />
@@ -629,60 +662,62 @@ export function App() {
             </button>
           </div>
         </div>
-        <Routes>
-          <Route
-            path="/"
-            element={canAccessUpload ? <Navigate to="/upload" replace /> : <ShowcasePage />}
-          />
-          <Route
-            path="/showcase"
-            element={<ShowcasePage canFilterByTenant={isAdmin} />}
-          />
-          <Route path="/favorites" element={<FavoritesPage />} />
-          <Route
-            path="/upload"
-            element={
-              canAccessUpload ? (
-                <UploadPage canAccessCatalog={canAccessCatalog} />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
-          />
-          <Route
-            path="/catalog"
-            element={isAdmin ? <CatalogPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/showcase/:itemId"
-            element={<ShowcaseItemPage allowFavorites showTenantInfo={isAdmin} />}
-          />
-          <Route
-            path="/admin/users"
-            element={isAdmin ? <AdminUsersPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/admin/highlights"
-            element={isAdmin ? <AdminHighlightsPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/admin/operations"
-            element={isAdmin ? <AdminOperationsPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/admin/activity"
-            element={canViewActivity ? <AdminActivityPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/login"
-            element={<Navigate to={defaultAuthorizedPath} replace />}
-          />
-          <Route
-            path={HIDDEN_ADMIN_LOGIN_PATH}
-            element={<Navigate to={defaultAuthorizedPath} replace />}
-          />
-          <Route path="*" element={<Navigate to={defaultAuthorizedPath} replace />} />
-        </Routes>
+        <Suspense fallback={<RouteLoadingScreen />}>
+          <Routes>
+            <Route
+              path="/"
+              element={canAccessUpload ? <Navigate to="/upload" replace /> : <ShowcasePage />}
+            />
+            <Route
+              path="/showcase"
+              element={<ShowcasePage canFilterByTenant={isAdmin} />}
+            />
+            <Route path="/favorites" element={<FavoritesPage />} />
+            <Route
+              path="/upload"
+              element={
+                canAccessUpload ? (
+                  <UploadPage canAccessCatalog={canAccessCatalog} />
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
+            />
+            <Route
+              path="/catalog"
+              element={isAdmin ? <CatalogPage /> : <Navigate to="/" replace />}
+            />
+            <Route
+              path="/showcase/:itemId"
+              element={<ShowcaseItemPage allowFavorites showTenantInfo={isAdmin} />}
+            />
+            <Route
+              path="/admin/users"
+              element={isAdmin ? <AdminUsersPage /> : <Navigate to="/" replace />}
+            />
+            <Route
+              path="/admin/highlights"
+              element={isAdmin ? <AdminHighlightsPage /> : <Navigate to="/" replace />}
+            />
+            <Route
+              path="/admin/operations"
+              element={isAdmin ? <AdminOperationsPage /> : <Navigate to="/" replace />}
+            />
+            <Route
+              path="/admin/activity"
+              element={canViewActivity ? <AdminActivityPage /> : <Navigate to="/" replace />}
+            />
+            <Route
+              path="/login"
+              element={<Navigate to={defaultAuthorizedPath} replace />}
+            />
+            <Route
+              path={HIDDEN_ADMIN_LOGIN_PATH}
+              element={<Navigate to={defaultAuthorizedPath} replace />}
+            />
+            <Route path="*" element={<Navigate to={defaultAuthorizedPath} replace />} />
+          </Routes>
+        </Suspense>
       </div>
       <FeedbackWidget />
     </>
