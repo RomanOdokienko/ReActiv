@@ -47,21 +47,23 @@
       (function () {
         var PRODUCTION_HOSTS = ["reactiv.pro", "www.reactiv.pro"];
         var currentHost = String(window.location && window.location.hostname ? window.location.hostname : "").toLowerCase();
+        var currentPathname = String(window.location && window.location.pathname ? window.location.pathname : "/").toLowerCase();
         var isProductionHost = PRODUCTION_HOSTS.indexOf(currentHost) !== -1;
+        var isPartnersPath = currentPathname === "/partners" || currentPathname.indexOf("/partners/") === 0;
 
         window.__APP_RUNTIME_CONFIG__ = {
           PRODUCTION_HOSTS: PRODUCTION_HOSTS,
           PROD_ONLY_THIRD_PARTY: true,
           METRIKA_ENABLED: isProductionHost,
           METRIKA_ID: 106991436,
-          METRIKA_IDLE_TIMEOUT_MS: 2500,
-          METRIKA_WEBVISOR_ENABLED: true,
-          METRIKA_CLICKMAP_ENABLED: true,
+          METRIKA_IDLE_TIMEOUT_MS: isPartnersPath ? 7000 : 2500,
+          METRIKA_WEBVISOR_ENABLED: !isPartnersPath,
+          METRIKA_CLICKMAP_ENABLED: !isPartnersPath,
           METRIKA_DISABLE_HEAVY_ON_SAVE_DATA: true,
           METRIKA_DISABLE_HEAVY_ON_SLOW_CONNECTION: true,
-          JIVO_ENABLED: isProductionHost,
+          JIVO_ENABLED: isProductionHost && !isPartnersPath,
           JIVO_SRC: "https://code.jivo.ru/widget/ZaUQHxLJ11",
-          JIVO_AUTOLOAD_TIMEOUT_MS: 12000,
+          JIVO_AUTOLOAD_TIMEOUT_MS: isPartnersPath ? 0 : 12000,
           JIVO_DISABLE_AUTOLOAD_ON_SAVE_DATA: true,
           JIVO_DISABLE_AUTOLOAD_ON_SLOW_CONNECTION: true,
         };

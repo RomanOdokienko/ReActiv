@@ -1,35 +1,3 @@
-@font-face {
-  font-family: "Google Sans";
-  src: url("/fonts/google-sans/GoogleSans-Regular.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Google Sans";
-  src: url("/fonts/google-sans/GoogleSans-Medium.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Google Sans";
-  src: url("/fonts/google-sans/GoogleSans-SemiBold.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Google Sans";
-  src: url("/fonts/google-sans/GoogleSans-Bold.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-}
-
 .partners-page {
   margin: -22px calc(50% - 50vw) 0;
   background: #fff;
@@ -47,6 +15,15 @@
 .partners-page__bleed {
   position: relative;
   isolation: isolate;
+}
+
+.partners-change,
+.partners-type,
+.partners-why,
+.partners-process,
+.partners-cta {
+  content-visibility: auto;
+  contain-intrinsic-size: 1000px;
 }
 
 .partners-page__bleed::before {
@@ -92,7 +69,7 @@
   max-width: 900px;
   margin: 0;
   color: #00142d;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 60px;
   font-weight: 700;
   line-height: 60px;
@@ -394,7 +371,7 @@
 .partners-coverage__badge-title {
   margin: 0;
   color: #fff;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 20px;
   font-weight: 700;
   line-height: 28px;
@@ -422,7 +399,7 @@
 .partners-problem h2 {
   margin: 0;
   color: #00142d;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 40px;
   font-weight: 700;
   line-height: 40px;
@@ -545,7 +522,7 @@
 .partners-change__heading h2 {
   margin: 0;
   color: #00142d;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 60px;
   font-weight: 700;
   line-height: 60px;
@@ -728,7 +705,7 @@
     calc(20 + (235 * var(--partners-type-bg-progress))),
     calc(45 + (210 * var(--partners-type-bg-progress)))
   );
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 40px;
   font-weight: 700;
   line-height: 40px;
@@ -766,7 +743,7 @@
 .partners-type-chip p {
   margin: 0;
   color: #fff;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 24px;
   font-weight: 700;
   line-height: 28px;
@@ -816,7 +793,7 @@
 .partners-why__heading h2 {
   margin: 0;
   color: #00142d;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 40px;
   font-weight: 700;
   line-height: 40px;
@@ -887,7 +864,7 @@
 .partners-why-card h3 {
   margin: 0 0 4px;
   color: #00142d;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 19px;
   font-weight: 700;
   line-height: 28px;
@@ -930,7 +907,7 @@
 .partners-process__heading h2 {
   margin: 0;
   color: #00142d;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 40px;
   font-weight: 700;
   line-height: 40px;
@@ -989,7 +966,7 @@
   border-radius: 30px;
   background: #0e5ae7;
   color: #fff;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 20px;
   font-weight: 700;
   line-height: 28px;
@@ -1007,7 +984,7 @@
 .partners-process-step__content h3 {
   margin: 0;
   color: #00142d;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 20px;
   font-weight: 700;
   line-height: 28px;
@@ -1072,7 +1049,7 @@
   width: 100%;
   color: #00142d;
   text-align: center;
-  font-family: "Google Sans", "Product Sans", "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-family: "Inter", "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
   font-size: 60px;
   font-weight: 700;
   line-height: 60px;
@@ -1719,3 +1696,4 @@
     animation: none;
   }
 }
+

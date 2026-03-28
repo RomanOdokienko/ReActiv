@@ -143,6 +143,18 @@ const PARTNERS_HERO_CARDS: PartnersHeroCard[] = [
   },
 ];
 
+function shouldUseInteractiveScrollEffects(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return false;
+  }
+
+  return window.innerWidth >= 1024;
+}
+
 function ProblemBulletIcon() {
   return (
     <span className="partners-problem__icon" aria-hidden="true">
@@ -176,6 +188,13 @@ export function PartnersPage() {
   }, []);
 
   useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
     const timerId = window.setInterval(() => {
       handleHeroNext();
     }, 2000);
@@ -190,6 +209,13 @@ export function PartnersPage() {
     const frameNode = coverageFrameRef.current;
     const imageNode = coverageImageRef.current;
     if (!sectionNode || !frameNode || !imageNode || typeof window === "undefined") {
+      return;
+    }
+
+    if (!shouldUseInteractiveScrollEffects()) {
+      sectionNode.style.setProperty("--partners-header-offset", "0px");
+      sectionNode.style.setProperty("--coverage-scroll-distance", "0px");
+      imageNode.style.transform = "translate3d(0, 0, 0)";
       return;
     }
 
@@ -291,6 +317,18 @@ export function PartnersPage() {
     if (!sectionNode || typeof window === "undefined") {
       return;
     }
+
+    if (!shouldUseInteractiveScrollEffects()) {
+      sectionNode.style.setProperty("--partners-type-progress", "1");
+      sectionNode.style.setProperty("--partners-type-completion-progress", "1");
+      sectionNode.style.setProperty("--partners-type-heading-progress", "1");
+      sectionNode.style.setProperty("--partners-type-bg-progress", "1");
+      sectionNode.style.setProperty("--partners-type-stage", `${PARTNERS_TYPE_CHIPS.length}`);
+      sectionNode.style.setProperty("--partners-type-header-offset", "0px");
+      sectionNode.style.setProperty("--partners-type-section-height", "auto");
+      return;
+    }
+
     const shellNode = sectionNode.querySelector<HTMLElement>(".partners-type__shell");
     if (!shellNode) {
       return;
@@ -549,6 +587,7 @@ export function PartnersPage() {
                         src={card.image}
                         alt={card.title}
                         loading={isCenter ? "eager" : "lazy"}
+                        fetchPriority={isCenter ? "high" : "low"}
                         decoding="async"
                       />
                     </div>
@@ -588,7 +627,8 @@ export function PartnersPage() {
                 ref={coverageImageRef}
                 src={COVERAGE_SECTION_IMAGE}
                 alt=""
-                loading="eager"
+                loading="lazy"
+                fetchPriority="low"
                 decoding="async"
               />
               <article className="partners-coverage__badge">
