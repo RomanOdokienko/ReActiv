@@ -6,7 +6,6 @@ import {
   logActivityEvent,
 } from "../api/client";
 import type { CatalogListItem } from "../types/api";
-import "../styles/landing.css";
 
 const PREPOSITION_NBSP_PATTERN =
   /(^|[\s([{'"«„-])(а|без|в|во|для|до|за|и|из|к|ко|на|над|не|ни|о|об|обо|от|по|под|при|про|с|со|у)\s+/giu;
