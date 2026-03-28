@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import {
   getCurrentUser,
@@ -19,7 +19,6 @@ import { BlogPage } from "./pages/BlogPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
-import { PartnersPage } from "./pages/PartnersPage";
 import { ShowcaseItemPage } from "./pages/ShowcaseItemPage";
 import { ShowcasePage } from "./pages/ShowcasePage";
 import { UploadPage } from "./pages/UploadPage";
@@ -47,6 +46,10 @@ const PARTNERS_SEO_TITLE = "Партнёрам — РеАктив";
 const PARTNERS_SEO_DESCRIPTION =
   "Лендинг для партнёров РеАктив: как решаем проблему замороженного стока и ускоряем реализацию.";
 const PUBLIC_TITLE = CATALOG_SEO_TITLE;
+const PartnersPage = lazy(async () => {
+  const module = await import("./pages/PartnersPage");
+  return { default: module.PartnersPage };
+});
 
 function extractBlogSlug(pathname: string): string | null {
   if (!pathname.startsWith("/blog/")) {
@@ -520,7 +523,20 @@ export function App() {
             <Routes>
               <Route path="/" element={<ShowcasePage publicMode />} />
               <Route path="/landing" element={<LandingPage />} />
-              <Route path="/partners" element={<PartnersPage />} />
+              <Route
+                path="/partners"
+                element={
+                  <Suspense
+                    fallback={
+                      <div className="app-loading-screen" aria-live="polite" aria-label="Loading page">
+                        <div className="app-loading-screen__spinner" aria-hidden="true" />
+                      </div>
+                    }
+                  >
+                    <PartnersPage />
+                  </Suspense>
+                }
+              />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/blog/:slug" element={<BlogArticlePage />} />
               <Route path="/showcase" element={<Navigate to="/" replace />} />
