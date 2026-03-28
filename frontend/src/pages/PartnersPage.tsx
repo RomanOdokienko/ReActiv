@@ -8,13 +8,29 @@ const PARTNERS_PROBLEM_POINTS = [
   "Деньги продолжают оставаться в\u00A0непроданном стоке дольше, чем могли\u00A0бы",
 ];
 const CHANGE_CARD_MAIN_IMAGE = "/partners/change-card-main@2x.png";
+const CHANGE_CARD_MAIN_IMAGE_WEBP = "/partners/change-card-main.960.webp";
+const CHANGE_CARD_MAIN_IMAGE_AVIF = "/partners/change-card-main.960.avif";
 const CHANGE_CARD_DISTRIBUTION_IMAGE = "/partners/change-card-distribution@2x.png";
+const CHANGE_CARD_DISTRIBUTION_IMAGE_WEBP = "/partners/change-card-distribution.960.webp";
+const CHANGE_CARD_DISTRIBUTION_IMAGE_AVIF = "/partners/change-card-distribution.960.avif";
 const CHANGE_CARD_CHANNEL_IMAGE = "/partners/change-card-channel@2x.png";
+const CHANGE_CARD_CHANNEL_IMAGE_WEBP = "/partners/change-card-channel.960.webp";
+const CHANGE_CARD_CHANNEL_IMAGE_AVIF = "/partners/change-card-channel.960.avif";
 const COVERAGE_SECTION_IMAGE = "/partners/partners-coverage-bg.jpg";
+const COVERAGE_SECTION_IMAGE_WEBP = "/partners/partners-coverage-bg.960.webp 960w, /partners/partners-coverage-bg.1600.webp 1600w";
+const COVERAGE_SECTION_IMAGE_AVIF = "/partners/partners-coverage-bg.960.avif 960w, /partners/partners-coverage-bg.1600.avif 1600w";
 const HERO_CARD_IMAGE_LEFT = "/partners/partners-hero-card-left.jpg";
+const HERO_CARD_IMAGE_LEFT_WEBP = "/partners/partners-hero-card-left.700.webp";
+const HERO_CARD_IMAGE_LEFT_AVIF = "/partners/partners-hero-card-left.700.avif";
 const HERO_CARD_IMAGE_MAIN = "/partners/partners-hero-card-main.jpg";
+const HERO_CARD_IMAGE_MAIN_WEBP = "/partners/partners-hero-card-main.900.webp";
+const HERO_CARD_IMAGE_MAIN_AVIF = "/partners/partners-hero-card-main.900.avif";
 const HERO_CARD_IMAGE_RIGHT = "/partners/partners-hero-card-right.jpg";
+const HERO_CARD_IMAGE_RIGHT_WEBP = "/partners/partners-hero-card-right.700.webp";
+const HERO_CARD_IMAGE_RIGHT_AVIF = "/partners/partners-hero-card-right.700.avif";
 const WHY_SECTION_IMAGE = "/partners/why-section-image@2x.png";
+const WHY_SECTION_IMAGE_WEBP = "/partners/why-section-image.1200.webp";
+const WHY_SECTION_IMAGE_AVIF = "/partners/why-section-image.1200.avif";
 
 interface PartnersTypeChip {
   label: string;
@@ -37,6 +53,8 @@ type RevealSectionKey = "problem" | "change" | "why" | "process";
 interface PartnersHeroCard {
   id: string;
   image: string;
+  imageWebp: string;
+  imageAvif: string;
   title: string;
   subtitle: string;
   price: string;
@@ -114,6 +132,8 @@ const PARTNERS_HERO_CARDS: PartnersHeroCard[] = [
   {
     id: "left",
     image: HERO_CARD_IMAGE_LEFT,
+    imageWebp: HERO_CARD_IMAGE_LEFT_WEBP,
+    imageAvif: HERO_CARD_IMAGE_LEFT_AVIF,
     title: "Toyota Land Cruiser Prado",
     subtitle: "Prestige, 2024",
     price: "8 350 000₽",
@@ -124,6 +144,8 @@ const PARTNERS_HERO_CARDS: PartnersHeroCard[] = [
   {
     id: "center",
     image: HERO_CARD_IMAGE_MAIN,
+    imageWebp: HERO_CARD_IMAGE_MAIN_WEBP,
+    imageAvif: HERO_CARD_IMAGE_MAIN_AVIF,
     title: "LI (LiXiang) L9",
     subtitle: "Ultra, 2024",
     price: "6 950 000₽",
@@ -134,6 +156,8 @@ const PARTNERS_HERO_CARDS: PartnersHeroCard[] = [
   {
     id: "right",
     image: HERO_CARD_IMAGE_RIGHT,
+    imageWebp: HERO_CARD_IMAGE_RIGHT_WEBP,
+    imageAvif: HERO_CARD_IMAGE_RIGHT_AVIF,
     title: "Volkswagen Golf",
     subtitle: "Life, 2021",
     price: "2 450 000₽",
@@ -583,13 +607,17 @@ export function PartnersPage() {
                     aria-hidden={!isCenter}
                   >
                     <div className="partners-hero-card__media">
-                      <img
-                        src={card.image}
-                        alt={card.title}
-                        loading={isCenter ? "eager" : "lazy"}
-                        fetchPriority={isCenter ? "high" : "low"}
-                        decoding="async"
-                      />
+                      <picture>
+                        <source srcSet={card.imageAvif} type="image/avif" />
+                        <source srcSet={card.imageWebp} type="image/webp" />
+                        <img
+                          src={card.image}
+                          alt={card.title}
+                          loading={isCenter ? "eager" : "lazy"}
+                          fetchPriority={isCenter ? "high" : "low"}
+                          decoding="async"
+                        />
+                      </picture>
                     </div>
 
                     <div className="partners-hero-card__body">
@@ -623,14 +651,26 @@ export function PartnersPage() {
         >
           <div className="partners-coverage__sticky">
             <div ref={coverageFrameRef} className="partners-coverage__inner">
-              <img
-                ref={coverageImageRef}
-                src={COVERAGE_SECTION_IMAGE}
-                alt=""
-                loading="lazy"
-                fetchPriority="low"
-                decoding="async"
-              />
+              <picture>
+                <source
+                  srcSet={COVERAGE_SECTION_IMAGE_AVIF}
+                  sizes="(max-width: 1023px) 100vw, 920px"
+                  type="image/avif"
+                />
+                <source
+                  srcSet={COVERAGE_SECTION_IMAGE_WEBP}
+                  sizes="(max-width: 1023px) 100vw, 920px"
+                  type="image/webp"
+                />
+                <img
+                  ref={coverageImageRef}
+                  src={COVERAGE_SECTION_IMAGE}
+                  alt=""
+                  loading="lazy"
+                  fetchPriority="low"
+                  decoding="async"
+                />
+              </picture>
               <article className="partners-coverage__badge">
                 <p className="partners-coverage__badge-title">{"17 000+ лотов на\u00A0платформе"}</p>
                 <p className="partners-coverage__badge-text">
@@ -679,26 +719,32 @@ export function PartnersPage() {
             <article className="partners-change-card partners-change-card--main">
               <p>{"Поиск техники сразу по\u00A0рынку, а\u00A0не по\u00A0отдельным сайтам"}</p>
               <div className="partners-change-card__main-image">
-                <img
-                  src={CHANGE_CARD_MAIN_IMAGE}
-                  srcSet={`${CHANGE_CARD_MAIN_IMAGE} 2x`}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                />
+                <picture>
+                  <source srcSet={CHANGE_CARD_MAIN_IMAGE_AVIF} type="image/avif" />
+                  <source srcSet={CHANGE_CARD_MAIN_IMAGE_WEBP} type="image/webp" />
+                  <img
+                    src={CHANGE_CARD_MAIN_IMAGE}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
               </div>
             </article>
 
             <div className="partners-change__side-cards">
               <article className="partners-change-card partners-change-card--side">
                 <div className="partners-change-card__icon partners-change-card__icon--distribution">
-                  <img
-                    src={CHANGE_CARD_DISTRIBUTION_IMAGE}
-                    srcSet={`${CHANGE_CARD_DISTRIBUTION_IMAGE} 2x`}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  <picture>
+                    <source srcSet={CHANGE_CARD_DISTRIBUTION_IMAGE_AVIF} type="image/avif" />
+                    <source srcSet={CHANGE_CARD_DISTRIBUTION_IMAGE_WEBP} type="image/webp" />
+                    <img
+                      src={CHANGE_CARD_DISTRIBUTION_IMAGE}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
                 </div>
                 <p>
                   {"Дистрибуция там,"} <br />
@@ -708,13 +754,16 @@ export function PartnersPage() {
 
               <article className="partners-change-card partners-change-card--side">
                 <div className="partners-change-card__icon partners-change-card__icon--channel">
-                  <img
-                    src={CHANGE_CARD_CHANNEL_IMAGE}
-                    srcSet={`${CHANGE_CARD_CHANNEL_IMAGE} 2x`}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  <picture>
+                    <source srcSet={CHANGE_CARD_CHANNEL_IMAGE_AVIF} type="image/avif" />
+                    <source srcSet={CHANGE_CARD_CHANNEL_IMAGE_WEBP} type="image/webp" />
+                    <img
+                      src={CHANGE_CARD_CHANNEL_IMAGE}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
                 </div>
                 <p>{"Дополнительный бесплатный канал продаж"}</p>
               </article>
@@ -770,13 +819,16 @@ export function PartnersPage() {
 
           <div className="partners-why__visual">
             <div className="partners-why__image-wrap">
-              <img
-                src={WHY_SECTION_IMAGE}
-                srcSet={`${WHY_SECTION_IMAGE} 2x`}
-                alt=""
-                loading="lazy"
-                decoding="async"
-              />
+              <picture>
+                <source srcSet={WHY_SECTION_IMAGE_AVIF} type="image/avif" />
+                <source srcSet={WHY_SECTION_IMAGE_WEBP} type="image/webp" />
+                <img
+                  src={WHY_SECTION_IMAGE}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
             </div>
 
             <div className="partners-why__cards">
