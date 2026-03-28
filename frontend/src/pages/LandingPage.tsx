@@ -114,14 +114,17 @@ const ABOUT_LEASING_TYPES = [
   "конфискат лизинговых компаний",
   "корпоративные автомобили с пробегом",
 ];
-const POPULAR_BRANDS: PopularBrand[] = [
+const POPULAR_PASSENGER_BRANDS: PopularBrand[] = [
   { name: "Mercedes", query: "Mercedes-Benz", logoSrc: "/brands/mersedes.png" },
   { name: "BMW", query: "BMW", logoSrc: "/brands/bmw.png" },
-  { name: "SITRAK", query: "SITRAK", logoSrc: "/brands/sitrak.png" },
-  { name: "Shacman", query: "Shacman", logoSrc: "/brands/shacman.png" },
   { name: "Lexus", query: "Lexus", logoSrc: "/brands/lexus.png" },
   { name: "Li", query: "Li", logoSrc: "/brands/li.png" },
   { name: "Haval", query: "Haval", logoSrc: "/brands/haval.png" },
+];
+
+const POPULAR_TRUCK_BRANDS: PopularBrand[] = [
+  { name: "SITRAK", query: "SITRAK", logoSrc: "/brands/sitrak.png" },
+  { name: "Shacman", query: "Shacman", logoSrc: "/brands/shacman.png" },
 ];
 
 const FEATURED_BRAND_TARGETS: FeaturedBrandTarget[] = [
@@ -364,10 +367,38 @@ export function LandingPage() {
 
         <section className="landing-section">
           <div className="landing-section__heading">
-            <h2>Популярные марки автомобилей после лизинга</h2>
+            <h2>Популярные марки легковых автомобилей после лизинга</h2>
           </div>
           <div className="landing-brand-grid">
-            {POPULAR_BRANDS.map((brand) => (
+            {POPULAR_PASSENGER_BRANDS.map((brand) => (
+              <Link
+                key={brand.name}
+                className="landing-brand-card"
+                to={`/?brand=${encodeURIComponent(brand.query)}`}
+              >
+                <div className="landing-brand-card__top">
+                  <div className="landing-brand-card__logo-wrap">
+                    <BrandLogo brand={brand.name} src={brand.logoSrc} />
+                  </div>
+                  <img
+                    className="landing-brand-card__arrow"
+                    src={BRANDS_ARROW_ICON_URL}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                </div>
+                <strong>{brand.name}</strong>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="landing-section">
+          <div className="landing-section__heading">
+            <h2>Популярные марки грузовых автомобилей после лизинга</h2>
+          </div>
+          <div className="landing-brand-grid">
+            {POPULAR_TRUCK_BRANDS.map((brand) => (
               <Link
                 key={brand.name}
                 className="landing-brand-card"
