@@ -44,6 +44,46 @@ const PASSENGER_BRAND_SITEMAP_PATHS = [
   "/jaecoo",
 ] as const;
 
+const TRUCK_BRAND_SITEMAP_PATHS = [
+  "/sitrak",
+  "/shacman",
+  "/kamaz",
+  "/faw",
+  "/howo",
+  "/isuzu",
+  "/xcmg",
+  "/sany",
+  "/maz",
+  "/zoomlion",
+  "/volvo",
+  "/dongfeng",
+  "/jac",
+  "/scania",
+  "/hyundai",
+  "/ural",
+  "/ford",
+  "/mercedes-benz",
+  "/man",
+  "/kanglim",
+  "/liugong",
+  "/lonking",
+  "/tonar",
+  "/daf",
+  "/shantui",
+  "/iveco",
+  "/lovol",
+  "/sollers",
+  "/gaz",
+  "/sdlg",
+  "/hino",
+  "/hongyan",
+  "/grunwald",
+] as const;
+
+const BRAND_SITEMAP_PATHS = Array.from(
+  new Set([...PASSENGER_BRAND_SITEMAP_PATHS, ...TRUCK_BRAND_SITEMAP_PATHS]),
+);
+
 const STATIC_SITEMAP_URLS: StaticSitemapUrl[] = [
   {
     path: "/",
@@ -55,7 +95,7 @@ const STATIC_SITEMAP_URLS: StaticSitemapUrl[] = [
     changefreq: "weekly",
     priority: 0.8,
   },
-  ...PASSENGER_BRAND_SITEMAP_PATHS.map((path) => ({
+  ...BRAND_SITEMAP_PATHS.map((path) => ({
     path,
     changefreq: "weekly" as const,
     priority: 0.7,

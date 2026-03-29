@@ -9,10 +9,8 @@ import {
 import { FeedbackWidget } from "./components/FeedbackWidget";
 import { LegalLinks, PrivacyPolicyLink, TermsLink } from "./components/LegalLinks";
 import { getBlogArticleBySlug } from "./content/blog-articles";
-import {
-  PASSENGER_BRAND_PAGES,
-  getPassengerBrandPageBySlug,
-} from "./content/passenger-brand-pages";
+import { PASSENGER_BRAND_PAGES } from "./content/passenger-brand-pages";
+import { TRUCK_BRAND_PAGES } from "./content/truck-brand-pages";
 import { LoginPage } from "./pages/LoginPage";
 import type { AuthUser, PlatformMode } from "./types/api";
 
@@ -161,6 +159,23 @@ function PublicLegalFooter() {
   );
 }
 
+interface PublicBrandPageConfig {
+  slug: string;
+  name: string;
+  filterBrand: string;
+  filterBrandAliases?: string[];
+}
+
+const PUBLIC_BRAND_PAGES: PublicBrandPageConfig[] = Array.from(
+  new Map(
+    [...PASSENGER_BRAND_PAGES, ...TRUCK_BRAND_PAGES].map((item) => [item.slug, item]),
+  ).values(),
+);
+
+const PUBLIC_BRAND_PAGES_BY_SLUG = new Map(
+  PUBLIC_BRAND_PAGES.map((item) => [item.slug, item]),
+);
+
 function normalizePublicPathname(pathname: string): string {
   if (pathname.length <= 1) {
     return pathname;
@@ -169,7 +184,7 @@ function normalizePublicPathname(pathname: string): string {
   return pathname.replace(/\/+$/, "");
 }
 
-function resolvePassengerBrandPageByPathname(pathname: string) {
+function resolvePublicBrandPageByPathname(pathname: string) {
   const normalizedPathname = normalizePublicPathname(pathname);
   if (!normalizedPathname.startsWith("/")) {
     return undefined;
@@ -180,7 +195,7 @@ function resolvePassengerBrandPageByPathname(pathname: string) {
     return undefined;
   }
 
-  return getPassengerBrandPageBySlug(slug);
+  return PUBLIC_BRAND_PAGES_BY_SLUG.get(slug);
 }
 
 function isPublicCatalogPath(pathname: string): boolean {
@@ -189,7 +204,7 @@ function isPublicCatalogPath(pathname: string): boolean {
     normalizedPathname === "/" ||
     normalizedPathname === "/showcase" ||
     normalizedPathname.startsWith("/showcase/") ||
-    Boolean(resolvePassengerBrandPageByPathname(normalizedPathname))
+    Boolean(resolvePublicBrandPageByPathname(normalizedPathname))
   );
 }
 
@@ -349,7 +364,7 @@ export function App() {
     }
 
     const pathname = normalizePublicPathname(location.pathname);
-    const passengerBrandPage = resolvePassengerBrandPageByPathname(pathname);
+    const passengerBrandPage = resolvePublicBrandPageByPathname(pathname);
     const isLandingPath = pathname === "/landing";
     const isPartnersPath = pathname === "/partners" || pathname.startsWith("/partners/");
     const isBlogListPath = pathname === "/blog";
@@ -603,7 +618,7 @@ export function App() {
             <Suspense fallback={<RouteLoadingScreen />}>
               <Routes>
                 <Route path="/" element={<ShowcasePage publicMode />} />
-                {PASSENGER_BRAND_PAGES.map((brand) => (
+                {PUBLIC_BRAND_PAGES.map((brand) => (
                   <Route
                     key={brand.slug}
                     path={`/${brand.slug}`}
