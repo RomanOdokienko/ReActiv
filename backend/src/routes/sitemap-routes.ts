@@ -15,6 +15,35 @@ interface StaticSitemapUrl {
   priority: number;
 }
 
+const PASSENGER_BRAND_SITEMAP_PATHS = [
+  "/mercedes-benz",
+  "/bmw",
+  "/lexus",
+  "/li",
+  "/haval",
+  "/toyota",
+  "/audi",
+  "/land-rover",
+  "/zeekr",
+  "/volkswagen",
+  "/hyundai",
+  "/kia",
+  "/geely",
+  "/lada",
+  "/porsche",
+  "/tank",
+  "/ford",
+  "/mazda",
+  "/voyah",
+  "/gac",
+  "/skoda",
+  "/mitsubishi",
+  "/nissan",
+  "/jetour",
+  "/belgee",
+  "/jaecoo",
+] as const;
+
 const STATIC_SITEMAP_URLS: StaticSitemapUrl[] = [
   {
     path: "/",
@@ -26,6 +55,11 @@ const STATIC_SITEMAP_URLS: StaticSitemapUrl[] = [
     changefreq: "weekly",
     priority: 0.8,
   },
+  ...PASSENGER_BRAND_SITEMAP_PATHS.map((path) => ({
+    path,
+    changefreq: "weekly" as const,
+    priority: 0.7,
+  })),
 ];
 
 function trimTrailingSlashes(value: string): string {

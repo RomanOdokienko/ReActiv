@@ -18,6 +18,8 @@ import type {
 interface ShowcasePageProps {
   publicMode?: boolean;
   canFilterByTenant?: boolean;
+  forcedBrand?: string;
+  forcedBrandAliases?: string[];
 }
 
 const RESO_TEST_VINS = new Set([
@@ -290,7 +292,10 @@ function sanitizeRestoredShowcaseUiState(restored: Partial<ShowcaseUiState>): Sh
   };
 }
 
-function buildShowcaseFilterSearchParams(state: ShowcaseUiState): URLSearchParams {
+function buildShowcaseFilterSearchParams(
+  state: ShowcaseUiState,
+  options: { omitBrandValues?: Set<string> } = {},
+): URLSearchParams {
   const params = new URLSearchParams();
 
   if (state.bookingPreset) {
@@ -306,7 +311,10 @@ function buildShowcaseFilterSearchParams(state: ShowcaseUiState): URLSearchParam
     params.set("city", state.city);
   }
   state.selectedVehicleTypes.forEach((value) => params.append("vehicleType", value));
-  if (state.brand) {
+  if (
+    state.brand &&
+    !options.omitBrandValues?.has(normalizeFilterValueForCompare(state.brand))
+  ) {
     params.set("brand", state.brand);
   }
   if (state.model) {
@@ -547,7 +555,22 @@ function createFilterTrackingSnapshot(input: {
 export function ShowcasePage({
   publicMode = false,
   canFilterByTenant = false,
+  forcedBrand,
+  forcedBrandAliases = [],
 }: ShowcasePageProps) {
+  const forcedBrandValue = (forcedBrand ?? "").trim();
+  const forcedBrandCandidates = useMemo(() => {
+    const values = [forcedBrandValue, ...forcedBrandAliases]
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(values));
+  }, [forcedBrandAliases, forcedBrandValue]);
+  const normalizedForcedBrandCandidates = useMemo(
+    () => new Set(forcedBrandCandidates.map((value) => normalizeFilterValueForCompare(value))),
+    [forcedBrandCandidates],
+  );
+
   const [searchParams, setSearchParams] = useSearchParams();
   const pageSize = SHOWCASE_PAGE_SIZE;
   const restoredState = useMemo(readShowcaseUiState, []);
@@ -556,12 +579,19 @@ export function ShowcasePage({
     [searchParams],
   );
   const initialState = useMemo(() => {
+    const fallbackForcedBrand = forcedBrandCandidates[0] ?? "";
     if (hasKnownUrlParams) {
-      return parseShowcaseUiStateFromSearchParams(searchParams);
+      const parsedState = parseShowcaseUiStateFromSearchParams(searchParams);
+      return fallbackForcedBrand && !parsedState.brand
+        ? { ...parsedState, brand: fallbackForcedBrand }
+        : parsedState;
     }
 
-    return sanitizeRestoredShowcaseUiState(restoredState);
-  }, [hasKnownUrlParams, restoredState, searchParams]);
+    const restored = sanitizeRestoredShowcaseUiState(restoredState);
+    return fallbackForcedBrand && !restored.brand
+      ? { ...restored, brand: fallbackForcedBrand }
+      : restored;
+  }, [forcedBrandCandidates, hasKnownUrlParams, restoredState, searchParams]);
 
   const hasRestoredScrollRef = useRef(false);
   const restoreAttemptsRef = useRef(0);
@@ -945,7 +975,12 @@ export function ShowcasePage({
     }
 
     const currentSearchParams = new URLSearchParams(searchParams);
-    const nextFilterParams = buildShowcaseFilterSearchParams(showcaseUiState);
+    const nextFilterParams = buildShowcaseFilterSearchParams(showcaseUiState, {
+      omitBrandValues:
+        normalizedForcedBrandCandidates.size > 0
+          ? normalizedForcedBrandCandidates
+          : undefined,
+    });
     const nextSearchParams = mergeShowcaseSearchParams(
       currentSearchParams,
       nextFilterParams,
@@ -957,7 +992,7 @@ export function ShowcasePage({
 
     skipNextUrlToStateSyncRef.current = true;
     setSearchParams(nextSearchParams, { replace: true });
-  }, [searchParams, setSearchParams, showcaseUiState]);
+  }, [normalizedForcedBrandCandidates, searchParams, setSearchParams, showcaseUiState]);
 
   useEffect(() => {
     const hasKnownParams = hasKnownShowcaseQueryParams(searchParams);
@@ -974,9 +1009,13 @@ export function ShowcasePage({
 
     lastKnownUrlFilterPresenceRef.current = hasKnownParams;
 
-    const parsedState = hasKnownParams
+    const parsedStateBase = hasKnownParams
       ? parseShowcaseUiStateFromSearchParams(searchParams)
       : createDefaultShowcaseUiState();
+    const parsedState =
+      forcedBrandCandidates.length > 0 && !parsedStateBase.brand
+        ? { ...parsedStateBase, brand: forcedBrandCandidates[0] ?? "" }
+        : parsedStateBase;
 
     if (
       showcaseUiState.bookingPreset === parsedState.bookingPreset &&
@@ -1024,7 +1063,7 @@ export function ShowcasePage({
     setPriceSortDir(parsedState.priceSortDir);
     setViewMode(parsedState.viewMode);
     setPage(parsedState.page);
-  }, [searchParams, showcaseUiState]);
+  }, [forcedBrandCandidates, searchParams, showcaseUiState]);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -1081,7 +1120,7 @@ export function ShowcasePage({
       setVin("");
       setCity("");
       setSelectedVehicleTypes([]);
-      setBrand("");
+      setBrand(forcedBrandCandidates[0] ?? "");
       setModel("");
       setPriceMin("");
       setPriceMax("");
@@ -1097,7 +1136,7 @@ export function ShowcasePage({
     return () => {
       window.removeEventListener("reactiv:showcase-reset-filters", handleResetFilters);
     };
-  }, []);
+  }, [forcedBrandCandidates]);
 
   const items: CatalogListItem[] = itemsResponse?.items ?? [];
   const total = itemsResponse?.pagination.total ?? 0;
@@ -1585,10 +1624,21 @@ export function ShowcasePage({
       return;
     }
 
+    if (normalizedForcedBrandCandidates.has(normalizedBrand)) {
+      const matchedForcedBrand = availableBrands.find((value) =>
+        normalizedForcedBrandCandidates.has(normalizeFilterValueForCompare(value)),
+      );
+
+      if (matchedForcedBrand && matchedForcedBrand !== brand) {
+        setBrand(matchedForcedBrand);
+      }
+      return;
+    }
+
     setBrand("");
     setModel("");
     setPage(1);
-  }, [availableBrands, brand, filters]);
+  }, [availableBrands, brand, filters, normalizedForcedBrandCandidates]);
 
   useEffect(() => {
     if (!filters || !model) {
@@ -1838,7 +1888,12 @@ export function ShowcasePage({
     }
 
     const currentSearch = new URLSearchParams(searchParams);
-    const nextFilterParams = buildShowcaseFilterSearchParams(showcaseUiState);
+    const nextFilterParams = buildShowcaseFilterSearchParams(showcaseUiState, {
+      omitBrandValues:
+        normalizedForcedBrandCandidates.size > 0
+          ? normalizedForcedBrandCandidates
+          : undefined,
+    });
     const mergedParams = mergeShowcaseSearchParams(currentSearch, nextFilterParams);
     const queryString = mergedParams.toString();
     const encodedUrl = `${window.location.origin}${window.location.pathname}${

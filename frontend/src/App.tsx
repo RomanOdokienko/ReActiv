@@ -9,6 +9,10 @@ import {
 import { FeedbackWidget } from "./components/FeedbackWidget";
 import { LegalLinks, PrivacyPolicyLink, TermsLink } from "./components/LegalLinks";
 import { getBlogArticleBySlug } from "./content/blog-articles";
+import {
+  PASSENGER_BRAND_PAGES,
+  getPassengerBrandPageBySlug,
+} from "./content/passenger-brand-pages";
 import { LoginPage } from "./pages/LoginPage";
 import type { AuthUser, PlatformMode } from "./types/api";
 
@@ -157,8 +161,36 @@ function PublicLegalFooter() {
   );
 }
 
+function normalizePublicPathname(pathname: string): string {
+  if (pathname.length <= 1) {
+    return pathname;
+  }
+
+  return pathname.replace(/\/+$/, "");
+}
+
+function resolvePassengerBrandPageByPathname(pathname: string) {
+  const normalizedPathname = normalizePublicPathname(pathname);
+  if (!normalizedPathname.startsWith("/")) {
+    return undefined;
+  }
+
+  const slug = normalizedPathname.slice(1);
+  if (!slug || slug.includes("/")) {
+    return undefined;
+  }
+
+  return getPassengerBrandPageBySlug(slug);
+}
+
 function isPublicCatalogPath(pathname: string): boolean {
-  return pathname === "/" || pathname === "/showcase" || pathname.startsWith("/showcase/");
+  const normalizedPathname = normalizePublicPathname(pathname);
+  return (
+    normalizedPathname === "/" ||
+    normalizedPathname === "/showcase" ||
+    normalizedPathname.startsWith("/showcase/") ||
+    Boolean(resolvePassengerBrandPageByPathname(normalizedPathname))
+  );
 }
 
 function isPublicLayoutPath(pathname: string): boolean {
@@ -316,7 +348,8 @@ export function App() {
       return;
     }
 
-    const pathname = location.pathname;
+    const pathname = normalizePublicPathname(location.pathname);
+    const passengerBrandPage = resolvePassengerBrandPageByPathname(pathname);
     const isLandingPath = pathname === "/landing";
     const isPartnersPath = pathname === "/partners" || pathname.startsWith("/partners/");
     const isBlogListPath = pathname === "/blog";
@@ -324,7 +357,7 @@ export function App() {
     const blogArticle = blogSlug ? getBlogArticleBySlug(blogSlug) : undefined;
     const isKnownBlogArticlePath = Boolean(blogArticle);
     const isUnknownBlogArticlePath = blogSlug !== null && !blogArticle;
-    const isShowcasePath = pathname === "/" || pathname === "/showcase";
+    const isShowcasePath = pathname === "/" || pathname === "/showcase" || Boolean(passengerBrandPage);
     const isServicePath =
       pathname === "/login" ||
       pathname === HIDDEN_ADMIN_LOGIN_PATH ||
@@ -356,6 +389,9 @@ export function App() {
       title = "Карточка лота — РеАктив";
       description =
         "Подробная карточка техники: фото, характеристики, цена и расположение.";
+    } else if (passengerBrandPage) {
+      title = `${passengerBrandPage.name} после лизинга — каталог авто Reactiv`;
+      description = `Подборка лотов ${passengerBrandPage.name} после лизинга: актуальные предложения с фото, ценой и характеристиками на платформе Reactiv.`;
     } else if (isLandingPath) {
       title = LANDING_SEO_TITLE;
       description = LANDING_SEO_DESCRIPTION;
@@ -567,6 +603,19 @@ export function App() {
             <Suspense fallback={<RouteLoadingScreen />}>
               <Routes>
                 <Route path="/" element={<ShowcasePage publicMode />} />
+                {PASSENGER_BRAND_PAGES.map((brand) => (
+                  <Route
+                    key={brand.slug}
+                    path={`/${brand.slug}`}
+                    element={
+                      <ShowcasePage
+                        publicMode
+                        forcedBrand={brand.filterBrand}
+                        forcedBrandAliases={brand.filterBrandAliases}
+                      />
+                    }
+                  />
+                ))}
                 <Route path="/landing" element={<LandingPage />} />
                 <Route path="/partners" element={<PartnersPage />} />
                 <Route path="/blog" element={<BlogPage />} />

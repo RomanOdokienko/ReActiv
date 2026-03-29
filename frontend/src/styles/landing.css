@@ -311,6 +311,36 @@ body.partners-route .landing-header::before {
   gap: 8px;
 }
 
+.landing-brand-carousel {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: #c5d2f3 #eef2ff;
+}
+
+.landing-brand-carousel::-webkit-scrollbar {
+  height: 8px;
+}
+
+.landing-brand-carousel::-webkit-scrollbar-thumb {
+  background: #c5d2f3;
+  border-radius: 999px;
+}
+
+.landing-brand-carousel::-webkit-scrollbar-track {
+  background: #eef2ff;
+  border-radius: 999px;
+}
+
+.landing-brand-carousel .landing-brand-card {
+  flex: 0 0 170px;
+  min-height: 162px;
+  scroll-snap-align: start;
+}
+
 .landing-brand-card {
   display: flex;
   flex-direction: column;

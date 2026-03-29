@@ -5,6 +5,7 @@ import {
   getMediaPreviewImageUrl,
   logActivityEvent,
 } from "../api/client";
+import { PASSENGER_BRAND_PAGES } from "../content/passenger-brand-pages";
 import type { CatalogListItem } from "../types/api";
 
 const PREPOSITION_NBSP_PATTERN =
@@ -113,13 +114,7 @@ const ABOUT_LEASING_TYPES = [
   "конфискат лизинговых компаний",
   "корпоративные автомобили с пробегом",
 ];
-const POPULAR_PASSENGER_BRANDS: PopularBrand[] = [
-  { name: "Mercedes", query: "Mercedes-Benz", logoSrc: "/brands/mersedes.png" },
-  { name: "BMW", query: "BMW", logoSrc: "/brands/bmw.png" },
-  { name: "Lexus", query: "Lexus", logoSrc: "/brands/lexus.png" },
-  { name: "Li", query: "Li", logoSrc: "/brands/li.png" },
-  { name: "Haval", query: "Haval", logoSrc: "/brands/haval.png" },
-];
+const POPULAR_PASSENGER_BRANDS = PASSENGER_BRAND_PAGES;
 
 const POPULAR_TRUCK_BRANDS: PopularBrand[] = [
   { name: "SITRAK", query: "SITRAK", logoSrc: "/brands/sitrak.png" },
@@ -368,12 +363,12 @@ export function LandingPage() {
           <div className="landing-section__heading">
             <h2>Популярные марки легковых автомобилей после лизинга</h2>
           </div>
-          <div className="landing-brand-grid">
+          <div className="landing-brand-carousel">
             {POPULAR_PASSENGER_BRANDS.map((brand) => (
               <Link
-                key={brand.name}
+                key={brand.slug}
                 className="landing-brand-card"
-                to={`/?brand=${encodeURIComponent(brand.query)}`}
+                to={`/${brand.slug}`}
               >
                 <div className="landing-brand-card__top">
                   <div className="landing-brand-card__logo-wrap">
