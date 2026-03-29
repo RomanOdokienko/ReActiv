@@ -582,13 +582,13 @@ export function ShowcasePage({
     const fallbackForcedBrand = forcedBrandCandidates[0] ?? "";
     if (hasKnownUrlParams) {
       const parsedState = parseShowcaseUiStateFromSearchParams(searchParams);
-      return fallbackForcedBrand && !parsedState.brand
+      return fallbackForcedBrand
         ? { ...parsedState, brand: fallbackForcedBrand }
         : parsedState;
     }
 
     const restored = sanitizeRestoredShowcaseUiState(restoredState);
-    return fallbackForcedBrand && !restored.brand
+    return fallbackForcedBrand
       ? { ...restored, brand: fallbackForcedBrand }
       : restored;
   }, [forcedBrandCandidates, hasKnownUrlParams, restoredState, searchParams]);
@@ -1013,7 +1013,7 @@ export function ShowcasePage({
       ? parseShowcaseUiStateFromSearchParams(searchParams)
       : createDefaultShowcaseUiState();
     const parsedState =
-      forcedBrandCandidates.length > 0 && !parsedStateBase.brand
+      forcedBrandCandidates.length > 0
         ? { ...parsedStateBase, brand: forcedBrandCandidates[0] ?? "" }
         : parsedStateBase;
 
@@ -1527,6 +1527,34 @@ export function ShowcasePage({
 
     return sortFilterValuesForUi(intersection);
   }, [filters, selectedVehicleTypes, tenantMetadataKey]);
+
+  useEffect(() => {
+    if (forcedBrandCandidates.length === 0) {
+      return;
+    }
+
+    const normalizedCurrentBrand = normalizeFilterValueForCompare(brand);
+    if (normalizedForcedBrandCandidates.has(normalizedCurrentBrand)) {
+      return;
+    }
+
+    const matchedForcedBrand = availableBrands.find((value) =>
+      normalizedForcedBrandCandidates.has(normalizeFilterValueForCompare(value)),
+    );
+    const nextBrand = matchedForcedBrand ?? forcedBrandCandidates[0] ?? "";
+    if (!nextBrand || nextBrand === brand) {
+      return;
+    }
+
+    setBrand(nextBrand);
+    setModel("");
+    setPage(1);
+  }, [
+    availableBrands,
+    brand,
+    forcedBrandCandidates,
+    normalizedForcedBrandCandidates,
+  ]);
 
   const availableModels = useMemo(() => {
     if (!filters || !brand) {
