@@ -48,10 +48,6 @@ body.blog-article-route .landing-header::before {
   background: transparent;
 }
 
-body.partners-route .landing-header::before {
-  background: rgba(255, 255, 255, 0.9);
-}
-
 .landing-header__brand {
   display: flex;
   flex-direction: column;
