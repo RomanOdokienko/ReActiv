@@ -52,6 +52,10 @@ body.showcase-mobile-lock {
   padding: 0 18px;
 }
 
+.app.app--public {
+  margin-top: 0;
+}
+
 body.auth-page .app {
   max-width: none;
   margin: 0;

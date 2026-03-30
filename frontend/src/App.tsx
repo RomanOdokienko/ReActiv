@@ -604,7 +604,7 @@ export function App() {
 
       return (
         <>
-          <div className="app">
+          <div className={showPublicLayout ? "app app--public" : "app"}>
             {showPublicLayout && (
               <PublicSiteHeader
                 pathname={location.pathname}
@@ -651,7 +651,7 @@ export function App() {
 
     return (
       <>
-        <div className="app">
+        <div className="app app--public">
           <PublicSiteHeader
             pathname={location.pathname}
             isMenuOpen={isPublicMenuOpen}
