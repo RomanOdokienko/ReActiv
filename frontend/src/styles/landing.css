@@ -25,9 +25,6 @@
   top: 0;
   z-index: 40;
   isolation: isolate;
-  -webkit-backdrop-filter: blur(15px);
-  backdrop-filter: blur(15px);
-  background: transparent;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -36,7 +33,16 @@
 }
 
 .landing-header::before {
-  content: none;
+  content: "";
+  position: absolute;
+  top: 0;
+  right: calc(50% - 50vw);
+  bottom: 0;
+  left: calc(50% - 50vw);
+  z-index: -1;
+  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(15px);
+  background: transparent;
 }
 
 .landing-header__brand {
