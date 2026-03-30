@@ -311,9 +311,10 @@ function PublicSiteHeader({
   );
 }
 
-function PublicSiteFooter() {
+function PublicSiteFooter({ pathname }: { pathname: string }) {
+  const isPartnersFooter = pathname === "/partners" || pathname.startsWith("/partners/");
   return (
-    <footer className="landing-footer">
+    <footer className={`landing-footer${isPartnersFooter ? " landing-footer--partners" : ""}`}>
       <div className="landing-footer__line" aria-hidden />
       <div className="landing-footer__content">
         <p className="landing-footer__meta">
@@ -642,7 +643,7 @@ export function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
-            {showPublicLayout ? <PublicSiteFooter /> : <PublicLegalFooter />}
+            {showPublicLayout ? <PublicSiteFooter pathname={location.pathname} /> : <PublicLegalFooter />}
           </div>
           <FeedbackWidget />
         </>
@@ -664,7 +665,7 @@ export function App() {
             <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
-          <PublicSiteFooter />
+          <PublicSiteFooter pathname={location.pathname} />
         </div>
         <FeedbackWidget />
       </>
