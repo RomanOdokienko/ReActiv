@@ -169,6 +169,8 @@ interface ShowcaseItemPageProps {
   showTenantInfo?: boolean;
 }
 
+type GalleryResolutionState = "idle" | "loading" | "ready" | "empty" | "error";
+
 function formatTenantLabel(tenantId: string | null | undefined): string {
   if (typeof tenantId !== "string") {
     return "-";
@@ -220,6 +222,8 @@ export function ShowcaseItemPage({
   const [item, setItem] = useState<CatalogItem | null>(null);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState("");
+  const [galleryResolutionState, setGalleryResolutionState] =
+    useState<GalleryResolutionState>("idle");
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isThumbnailListExpanded, setIsThumbnailListExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -351,8 +355,14 @@ export function ShowcaseItemPage({
     async function resolveGallery() {
       if (!mediaSourceKeys.length) {
         setMediaUrls([]);
+        setGalleryResolutionState("empty");
         return;
       }
+
+      setGalleryResolutionState("loading");
+      setMediaUrls([]);
+      setSelectedImage("");
+      setIsLightboxOpen(false);
 
       const primarySource = mediaSourceKeys[0];
 
@@ -366,6 +376,7 @@ export function ShowcaseItemPage({
           setMediaUrls((currentUrls) =>
             areSameUrlLists(currentUrls, galleryUrls) ? currentUrls : galleryUrls,
           );
+          setGalleryResolutionState("ready");
           return;
         }
 
@@ -373,15 +384,16 @@ export function ShowcaseItemPage({
         const shouldUseFallback =
           fallbackUrls.length === 1 && fallbackUrls[0] === primarySource;
 
-        setMediaUrls((currentUrls) =>
-          shouldUseFallback && !areSameUrlLists(currentUrls, fallbackUrls)
-            ? fallbackUrls
-            : shouldUseFallback
-              ? currentUrls
-              : currentUrls.length > 0
-                ? []
-                : currentUrls,
-        );
+        if (shouldUseFallback) {
+          setMediaUrls((currentUrls) =>
+            areSameUrlLists(currentUrls, fallbackUrls) ? currentUrls : fallbackUrls,
+          );
+          setGalleryResolutionState("ready");
+          return;
+        }
+
+        setMediaUrls((currentUrls) => (currentUrls.length > 0 ? [] : currentUrls));
+        setGalleryResolutionState("empty");
       } catch (caughtError) {
         void logActivityEvent({
           eventType: "api_error",
@@ -398,15 +410,16 @@ export function ShowcaseItemPage({
           const shouldUseFallback =
             fallbackUrls.length === 1 && fallbackUrls[0] === primarySource;
 
-          setMediaUrls((currentUrls) =>
-            shouldUseFallback && !areSameUrlLists(currentUrls, fallbackUrls)
-              ? fallbackUrls
-              : shouldUseFallback
-                ? currentUrls
-                : currentUrls.length > 0
-                  ? []
-                  : currentUrls,
-          );
+          if (shouldUseFallback) {
+            setMediaUrls((currentUrls) =>
+              areSameUrlLists(currentUrls, fallbackUrls) ? currentUrls : fallbackUrls,
+            );
+            setGalleryResolutionState("ready");
+            return;
+          }
+
+          setMediaUrls((currentUrls) => (currentUrls.length > 0 ? [] : currentUrls));
+          setGalleryResolutionState("error");
         }
       }
     }
@@ -433,6 +446,8 @@ export function ShowcaseItemPage({
       ? mediaUrls.slice(collapsedPreviewCount)
       : []
     : [];
+  const isGalleryLoading = galleryResolutionState === "loading";
+  const isGalleryError = galleryResolutionState === "error";
   const contactMessage = item
     ? `Добрый день. Вопрос по лоту *${item.offerCode}`
     : "Добрый день. Вопрос по лоту";
@@ -1036,7 +1051,12 @@ export function ShowcaseItemPage({
 
             <section className="panel detail-gallery-panel">
               <div className="detail-main-image">
-                {selectedImage ? (
+                {isGalleryLoading ? (
+                  <div className="detail-image-loading" role="status" aria-live="polite">
+                    <span className="detail-image-loading__spinner" aria-hidden />
+                    <span>Загружаем фото...</span>
+                  </div>
+                ) : selectedImage ? (
                   <>
                     <button
                       type="button"
@@ -1064,7 +1084,9 @@ export function ShowcaseItemPage({
                     </div>
                   </>
                 ) : (
-                  <div className="detail-no-image">Фото отсутствует</div>
+                  <div className="detail-no-image">
+                    {isGalleryError ? "Не удалось загрузить фото" : "Фото отсутствует"}
+                  </div>
                 )}
               </div>
 

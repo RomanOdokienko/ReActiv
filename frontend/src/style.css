@@ -3691,6 +3691,27 @@ tbody tr:nth-child(even) {
   font-weight: 600;
 }
 
+.detail-image-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #6f8095;
+  font-weight: 600;
+}
+
+.detail-image-loading__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(29, 126, 229, 0.2);
+  border-top-color: #1d7ee5;
+  border-radius: 50%;
+  animation: app-spinner-rotate 0.85s linear infinite;
+}
+
 .detail-thumbnails {
   --thumb-columns: 8;
   display: grid;
