@@ -605,6 +605,7 @@ export function ShowcasePage({
   const skipNextUrlToStateSyncRef = useRef(false);
   const lastKnownUrlFilterPresenceRef = useRef(hasKnownUrlParams);
   const hasInitializedUrlSyncRef = useRef(false);
+  const hasPerformedInitialCatalogFetchRef = useRef(false);
   const copyFiltersLinkResetTimeoutRef = useRef<number | null>(null);
 
   const [filters, setFilters] = useState<CatalogFiltersResponse | null>(null);
@@ -1068,40 +1069,51 @@ export function ShowcasePage({
 
   useEffect(() => {
     const abortController = new AbortController();
-    const timeoutId = window.setTimeout(() => {
-      void (async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-          const response = await getCatalogItems(query, {
-            signal: abortController.signal,
-          });
-          setItemsResponse(response);
-        } catch (caughtError) {
-          if (caughtError instanceof Error && caughtError.name === "AbortError") {
-            return;
-          }
+    let timeoutId: number | null = null;
 
-          setError("Не удалось загрузить витрину");
-          void logActivityEvent({
-            eventType: "api_error",
-            page: "/showcase",
-            payload: {
-              endpoint: "/catalog/items",
-              message:
-                caughtError instanceof Error ? caughtError.message : "unknown_error",
-            },
-          });
-        } finally {
-          if (!abortController.signal.aborted) {
-            setIsLoading(false);
-          }
+    const executeFetch = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await getCatalogItems(query, {
+          signal: abortController.signal,
+        });
+        setItemsResponse(response);
+      } catch (caughtError) {
+        if (caughtError instanceof Error && caughtError.name === "AbortError") {
+          return;
         }
-      })();
-    }, SHOWCASE_FETCH_DEBOUNCE_MS);
+
+        setError("Не удалось загрузить витрину");
+        void logActivityEvent({
+          eventType: "api_error",
+          page: "/showcase",
+          payload: {
+            endpoint: "/catalog/items",
+            message:
+              caughtError instanceof Error ? caughtError.message : "unknown_error",
+          },
+        });
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoading(false);
+          hasPerformedInitialCatalogFetchRef.current = true;
+        }
+      }
+    };
+
+    if (hasPerformedInitialCatalogFetchRef.current) {
+      timeoutId = window.setTimeout(() => {
+        void executeFetch();
+      }, SHOWCASE_FETCH_DEBOUNCE_MS);
+    } else {
+      void executeFetch();
+    }
 
     return () => {
-      window.clearTimeout(timeoutId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
       abortController.abort();
     };
   }, [query]);
