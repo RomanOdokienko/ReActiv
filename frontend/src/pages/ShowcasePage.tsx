@@ -635,6 +635,7 @@ export function ShowcasePage({
   const [page, setPage] = useState(initialState.page);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showLoadingIndicator, setShowLoadingIndicator] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [favoriteItemIds, setFavoriteItemIds] = useState<Set<number>>(new Set());
@@ -1104,6 +1105,21 @@ export function ShowcasePage({
       abortController.abort();
     };
   }, [query]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setShowLoadingIndicator(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowLoadingIndicator(true);
+    }, 180);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isLoading]);
 
   useEffect(() => {
     writeShowcaseUiState(showcaseUiState);
@@ -2440,7 +2456,11 @@ export function ShowcasePage({
           </div>
         </div>
 
-        {isLoading && <p>Загрузка витрины...</p>}
+        {showLoadingIndicator && (
+          <div className="showcase-loading-indicator" role="status" aria-live="polite">
+            Обновляем подборку...
+          </div>
+        )}
 
         {!isLoading && !hasImportedData && (
           <p className="empty">Импортированных данных пока нет.</p>
