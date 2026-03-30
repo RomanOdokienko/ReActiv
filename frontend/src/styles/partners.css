@@ -18,9 +18,7 @@
 }
 
 .partners-change,
-.partners-type,
-.partners-process,
-.partners-cta {
+.partners-process {
   content-visibility: auto;
   contain-intrinsic-size: 1000px;
 }
