@@ -1213,6 +1213,13 @@ body.partners-route .landing-footer__content {
     padding-bottom: 24px;
   }
 
+  body.partners-route .landing-footer {
+    margin-left: -12px;
+    margin-right: -12px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
   .landing-footer__content {
     align-items: flex-start;
     flex-direction: column;
