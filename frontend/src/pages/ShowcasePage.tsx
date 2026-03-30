@@ -2450,7 +2450,7 @@ export function ShowcasePage({
           <p className="empty">По текущим фильтрам ничего не найдено.</p>
         )}
 
-        {!isLoading && items.length > 0 && (
+        {items.length > 0 && (
           <>
             <div className={effectiveViewMode === "list" ? "cards-grid cards-grid--list" : "cards-grid"}>
               {items.map((item, index) => {
