@@ -851,20 +851,31 @@ body.partners-route .landing-footer {
   margin-top: 0;
   padding-top: 0;
   padding-bottom: 32px;
-  background: #f0f1f3;
   position: relative;
   z-index: 3;
-  border-top: 1px solid #d9dde3;
+  background: transparent;
 }
 
 .landing-footer--partners {
   margin-top: 0;
   padding-top: 0;
   padding-bottom: 32px;
-  background: #f0f1f3;
   position: relative;
   z-index: 3;
+  background: transparent;
+}
+
+body.partners-route .landing-footer::before,
+.landing-footer--partners::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 50vw);
+  right: calc(50% - 50vw);
+  background: #f0f1f3;
   border-top: 1px solid #d9dde3;
+  z-index: -1;
 }
 
 .landing-footer__line {
