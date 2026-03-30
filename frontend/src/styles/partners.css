@@ -19,7 +19,6 @@
 
 .partners-change,
 .partners-type,
-.partners-why,
 .partners-process,
 .partners-cta {
   content-visibility: auto;
@@ -30,9 +29,10 @@
   content: "";
   position: absolute;
   top: 0;
-  bottom: 0;
-  left: calc(50% - 50vw);
-  right: calc(50% - 50vw);
+  left: 50%;
+  width: 100vw;
+  height: 100%;
+  transform: translateX(-50%);
   z-index: -1;
 }
 
@@ -772,6 +772,7 @@
   flex-direction: column;
   gap: 48px;
   padding: 100px 0 50px;
+  overflow: visible;
 }
 
 .partners-why__heading {
@@ -1617,8 +1618,8 @@
   }
 
   .partners-cta::before {
-    border-top-left-radius: 32px;
-    border-top-right-radius: 32px;
+    border-top-left-radius: 48px;
+    border-top-right-radius: 48px;
   }
 
   .partners-cta__shell {
