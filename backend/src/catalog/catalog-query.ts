@@ -109,6 +109,7 @@ const catalogQuerySchema = z.object({
   onlyWithPreview: booleanField,
   randomMix: booleanField,
   randomSeed: z.preprocess(toOptionalString, z.string().max(128).optional()),
+  preferPreview: booleanField,
   sortBy: z
     .enum(["created_at", "price", "year", "mileage_km", "days_on_sale"])
     .default("created_at"),

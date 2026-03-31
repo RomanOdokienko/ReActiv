@@ -922,6 +922,9 @@ export function ShowcasePage({
     if (newThisWeekOnly) {
       queryObject.newThisWeek = "true";
     }
+    if (forcedTenantValue) {
+      queryObject.preferPreview = "true";
+    }
     if (shouldUseMainShowcaseRandomMix) {
       queryObject.onlyWithPreview = "true";
       queryObject.randomMix = "true";

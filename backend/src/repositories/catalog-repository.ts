@@ -1231,12 +1231,16 @@ export function searchCatalogItems(filters: CatalogQuery): {
   } = newThisWeekContext
     ? appendNewThisWeekSqlCondition(whereClause, params, newThisWeekContext)
     : { whereClause, params };
+  const previewPriorityOrderClause = filters.preferPreview
+    ? "CASE WHEN TRIM(COALESCE(card_preview_path, '')) != '' THEN 1 ELSE 0 END DESC,"
+    : "";
 
   const baseSelectQuery = `
     SELECT *
     FROM vehicle_offers
     ${selectWhereClause}
     ORDER BY
+      ${previewPriorityOrderClause}
       has_photo DESC,
       ${filters.sortBy} ${filters.sortDir.toUpperCase()}
   `;
