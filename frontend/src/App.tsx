@@ -19,6 +19,9 @@ type PlatformModeState = "checking" | PlatformMode;
 
 const HIDDEN_ADMIN_LOGIN_PATH = "/staff-login-reactiv";
 const ACTIVITY_VIEWER_LOGINS = new Set(["alexey"]);
+const HOST_FORCED_TENANT_MAP: Record<string, string> = {
+  "gpb.reactiv.pro": "gpb",
+};
 const SEO_WEB_BASE_URL = "https://reactiv.pro";
 const SEO_KEYWORDS =
   "авто после лизинга, изъятые автомобили, конфискат авто, машины после лизинга, техника после лизинга";
@@ -331,6 +334,21 @@ function PublicSiteFooter() {
   );
 }
 
+function resolveForcedTenantByHostname(hostname: string): string | undefined {
+  const normalizedHostname = hostname.trim().toLowerCase();
+  if (!normalizedHostname) {
+    return undefined;
+  }
+
+  const mappedTenant = HOST_FORCED_TENANT_MAP[normalizedHostname];
+  if (!mappedTenant) {
+    return undefined;
+  }
+
+  const normalizedTenant = mappedTenant.trim().toLowerCase();
+  return normalizedTenant || undefined;
+}
+
 function RouteLoadingScreen() {
   return (
     <div className="app-loading-screen" aria-live="polite" aria-label="Loading page">
@@ -341,6 +359,10 @@ function RouteLoadingScreen() {
 
 export function App() {
   const location = useLocation();
+  const forcedTenantForHost =
+    typeof window !== "undefined"
+      ? resolveForcedTenantByHostname(window.location.hostname)
+      : undefined;
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [platformMode, setPlatformMode] = useState<PlatformModeState>("checking");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -617,7 +639,10 @@ export function App() {
 
             <Suspense fallback={<RouteLoadingScreen />}>
               <Routes>
-                <Route path="/" element={<ShowcasePage publicMode />} />
+                <Route
+                  path="/"
+                  element={<ShowcasePage publicMode forcedTenant={forcedTenantForHost} />}
+                />
                 {PUBLIC_BRAND_PAGES.map((brand) => (
                   <Route
                     key={brand.slug}
@@ -625,6 +650,7 @@ export function App() {
                     element={
                       <ShowcasePage
                         publicMode
+                        forcedTenant={forcedTenantForHost}
                         forcedBrand={brand.filterBrand}
                         forcedBrandAliases={brand.filterBrandAliases}
                       />
@@ -636,7 +662,10 @@ export function App() {
                 <Route path="/blog" element={<BlogPage />} />
                 <Route path="/blog/:slug" element={<BlogArticlePage />} />
                 <Route path="/showcase" element={<Navigate to="/" replace />} />
-                <Route path="/showcase/:itemId" element={<ShowcaseItemPage />} />
+                <Route
+                  path="/showcase/:itemId"
+                  element={<ShowcaseItemPage forcedTenantId={forcedTenantForHost} />}
+                />
                 <Route path={HIDDEN_ADMIN_LOGIN_PATH} element={loginElement} />
                 <Route path="/login" element={loginElement} />
                 <Route path="*" element={<Navigate to="/" replace />} />

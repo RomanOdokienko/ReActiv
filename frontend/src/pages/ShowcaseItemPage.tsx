@@ -167,6 +167,7 @@ interface DetailSpec {
 interface ShowcaseItemPageProps {
   allowFavorites?: boolean;
   showTenantInfo?: boolean;
+  forcedTenantId?: string;
 }
 
 type GalleryResolutionState = "idle" | "loading" | "ready" | "empty" | "error";
@@ -215,6 +216,7 @@ function normalizeAdminComments(
 export function ShowcaseItemPage({
   allowFavorites = false,
   showTenantInfo = false,
+  forcedTenantId,
 }: ShowcaseItemPageProps) {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
@@ -250,6 +252,18 @@ export function ShowcaseItemPage({
         const response = showTenantInfo
           ? await getAdminCatalogItemById(parsedId)
           : await getCatalogItemById(parsedId);
+
+        const normalizedForcedTenant = (forcedTenantId ?? "").trim().toLowerCase();
+        const normalizedResponseTenant = (response.tenantId ?? "").trim().toLowerCase();
+        if (
+          normalizedForcedTenant &&
+          (!normalizedResponseTenant || normalizedResponseTenant !== normalizedForcedTenant)
+        ) {
+          setItem(null);
+          setError("Лот недоступен");
+          return;
+        }
+
         setItem(response);
       } catch (caughtError) {
         void logActivityEvent({
@@ -281,7 +295,7 @@ export function ShowcaseItemPage({
     }
 
     void loadItem();
-  }, [itemId, location.pathname, showTenantInfo]);
+  }, [forcedTenantId, itemId, location.pathname, showTenantInfo]);
 
   useEffect(() => {
     if (!showTenantInfo) {

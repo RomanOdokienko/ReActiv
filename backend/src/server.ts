@@ -66,6 +66,7 @@ const host = process.env.HOST ?? "0.0.0.0";
 const DEFAULT_ALLOWED_CORS_ORIGINS = [
   "https://reactiv.pro",
   "https://www.reactiv.pro",
+  "https://gpb.reactiv.pro",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ];

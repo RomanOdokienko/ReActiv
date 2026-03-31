@@ -18,6 +18,7 @@ import type {
 interface ShowcasePageProps {
   publicMode?: boolean;
   canFilterByTenant?: boolean;
+  forcedTenant?: string;
   forcedBrand?: string;
   forcedBrandAliases?: string[];
 }
@@ -555,9 +556,11 @@ function createFilterTrackingSnapshot(input: {
 export function ShowcasePage({
   publicMode = false,
   canFilterByTenant = false,
+  forcedTenant,
   forcedBrand,
   forcedBrandAliases = [],
 }: ShowcasePageProps) {
+  const forcedTenantValue = (forcedTenant ?? "").trim();
   const forcedBrandValue = (forcedBrand ?? "").trim();
   const forcedBrandCandidates = useMemo(() => {
     const values = [forcedBrandValue, ...forcedBrandAliases]
@@ -579,19 +582,30 @@ export function ShowcasePage({
     [searchParams],
   );
   const initialState = useMemo(() => {
+    const fallbackForcedTenant = forcedTenantValue;
     const fallbackForcedBrand = forcedBrandCandidates[0] ?? "";
     if (hasKnownUrlParams) {
       const parsedState = parseShowcaseUiStateFromSearchParams(searchParams);
-      return fallbackForcedBrand
-        ? { ...parsedState, brand: fallbackForcedBrand }
-        : parsedState;
+      return {
+        ...parsedState,
+        ...(fallbackForcedTenant ? { tenantId: fallbackForcedTenant } : {}),
+        ...(fallbackForcedBrand ? { brand: fallbackForcedBrand } : {}),
+      };
     }
 
     const restored = sanitizeRestoredShowcaseUiState(restoredState);
-    return fallbackForcedBrand
-      ? { ...restored, brand: fallbackForcedBrand }
-      : restored;
-  }, [forcedBrandCandidates, hasKnownUrlParams, restoredState, searchParams]);
+    return {
+      ...restored,
+      ...(fallbackForcedTenant ? { tenantId: fallbackForcedTenant } : {}),
+      ...(fallbackForcedBrand ? { brand: fallbackForcedBrand } : {}),
+    };
+  }, [
+    forcedBrandCandidates,
+    forcedTenantValue,
+    hasKnownUrlParams,
+    restoredState,
+    searchParams,
+  ]);
 
   const hasRestoredScrollRef = useRef(false);
   const restoreAttemptsRef = useRef(0);
@@ -646,6 +660,20 @@ export function ShowcasePage({
   const [copyFiltersLinkStatus, setCopyFiltersLinkStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
+
+  useEffect(() => {
+    if (!forcedTenantValue) {
+      return;
+    }
+
+    const normalizedForcedTenant = normalizeFilterValueForCompare(forcedTenantValue);
+    if (normalizeFilterValueForCompare(tenantId) === normalizedForcedTenant) {
+      return;
+    }
+
+    setTenantId(forcedTenantValue);
+    setPage(1);
+  }, [forcedTenantValue, tenantId]);
 
   useEffect(() => {
     return () => {
@@ -849,12 +877,14 @@ export function ShowcasePage({
       sortBy,
       sortDir,
     };
+    const effectiveTenantId =
+      forcedTenantValue || (canFilterByTenant ? tenantId : "");
 
     if (bookingPreset) {
       queryObject.bookingStatus = bookingPreset;
     }
-    if (canFilterByTenant && tenantId) {
-      queryObject.tenantId = tenantId;
+    if (effectiveTenantId) {
+      queryObject.tenantId = effectiveTenantId;
     }
     if (canFilterByTenant && vin) {
       queryObject.offerCode = [vin];
@@ -904,6 +934,7 @@ export function ShowcasePage({
     brand,
     canFilterByTenant,
     city,
+    forcedTenantValue,
     priceMax,
     priceMin,
     mileageMax,
@@ -1014,10 +1045,13 @@ export function ShowcasePage({
     const parsedStateBase = hasKnownParams
       ? parseShowcaseUiStateFromSearchParams(searchParams)
       : createDefaultShowcaseUiState();
-    const parsedState =
-      forcedBrandCandidates.length > 0
-        ? { ...parsedStateBase, brand: forcedBrandCandidates[0] ?? "" }
-        : parsedStateBase;
+    let parsedState = parsedStateBase;
+    if (forcedTenantValue) {
+      parsedState = { ...parsedState, tenantId: forcedTenantValue };
+    }
+    if (forcedBrandCandidates.length > 0) {
+      parsedState = { ...parsedState, brand: forcedBrandCandidates[0] ?? "" };
+    }
 
     if (
       showcaseUiState.bookingPreset === parsedState.bookingPreset &&
@@ -1065,7 +1099,7 @@ export function ShowcasePage({
     setPriceSortDir(parsedState.priceSortDir);
     setViewMode(parsedState.viewMode);
     setPage(parsedState.page);
-  }, [forcedBrandCandidates, searchParams, showcaseUiState]);
+  }, [forcedBrandCandidates, forcedTenantValue, searchParams, showcaseUiState]);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -1144,7 +1178,7 @@ export function ShowcasePage({
 
     const handleResetFilters = () => {
       setBookingPreset("");
-      setTenantId("");
+      setTenantId(forcedTenantValue);
       setVin("");
       setCity("");
       setSelectedVehicleTypes([]);
@@ -1164,7 +1198,7 @@ export function ShowcasePage({
     return () => {
       window.removeEventListener("reactiv:showcase-reset-filters", handleResetFilters);
     };
-  }, [forcedBrandCandidates]);
+  }, [forcedBrandCandidates, forcedTenantValue]);
 
   const items: CatalogListItem[] = itemsResponse?.items ?? [];
   const total = itemsResponse?.pagination.total ?? 0;
@@ -1738,6 +1772,10 @@ export function ShowcasePage({
   }, [city, filters]);
 
   useEffect(() => {
+    if (forcedTenantValue) {
+      return;
+    }
+
     if (!tenantId) {
       return;
     }
@@ -1755,7 +1793,7 @@ export function ShowcasePage({
 
     setTenantId("");
     setPage(1);
-  }, [filters, tenantId]);
+  }, [filters, forcedTenantValue, tenantId]);
 
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
