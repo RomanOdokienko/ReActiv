@@ -295,14 +295,14 @@ function sanitizeRestoredShowcaseUiState(restored: Partial<ShowcaseUiState>): Sh
 
 function buildShowcaseFilterSearchParams(
   state: ShowcaseUiState,
-  options: { omitBrandValues?: Set<string> } = {},
+  options: { omitBrandValues?: Set<string>; omitTenant?: boolean } = {},
 ): URLSearchParams {
   const params = new URLSearchParams();
 
   if (state.bookingPreset) {
     params.set("bookingStatus", state.bookingPreset);
   }
-  if (state.tenantId) {
+  if (state.tenantId && !options.omitTenant) {
     params.set("tenantId", state.tenantId);
   }
   if (state.vin) {
@@ -1009,6 +1009,7 @@ export function ShowcasePage({
 
     const currentSearchParams = new URLSearchParams(searchParams);
     const nextFilterParams = buildShowcaseFilterSearchParams(showcaseUiState, {
+      omitTenant: Boolean(forcedTenantValue),
       omitBrandValues:
         normalizedForcedBrandCandidates.size > 0
           ? normalizedForcedBrandCandidates
@@ -1983,6 +1984,7 @@ export function ShowcasePage({
 
     const currentSearch = new URLSearchParams(searchParams);
     const nextFilterParams = buildShowcaseFilterSearchParams(showcaseUiState, {
+      omitTenant: Boolean(forcedTenantValue),
       omitBrandValues:
         normalizedForcedBrandCandidates.size > 0
           ? normalizedForcedBrandCandidates
