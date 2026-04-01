@@ -551,6 +551,14 @@ export function App() {
   }, [location.pathname]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
+
+  useEffect(() => {
     const isBlogArticlePath = location.pathname.startsWith("/blog/");
     const isPartnersPath = location.pathname === "/partners" || location.pathname.startsWith("/partners/");
     document.body.classList.toggle("blog-article-route", isBlogArticlePath);
