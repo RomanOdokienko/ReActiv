@@ -13,7 +13,8 @@ import { getLatestSuccessfulImportBatch } from "../repositories/import-batch-rep
 import { readExcel } from "../services/excel-reader";
 
 interface CliOptions {
-  filePath: string;
+  filePath?: string;
+  fileUrl?: string;
   tenantId: ImportTenantId;
   importBatchId?: string;
   dryRun: boolean;
@@ -41,9 +42,10 @@ function parseCliOptions(): CliOptions {
     argsMap.set(arg.slice(2, eqIndex), arg.slice(eqIndex + 1));
   }
 
-  const filePathRaw = argsMap.get("file");
-  if (!filePathRaw) {
-    throw new Error("Missing required --file=/path/to/file.xlsx argument");
+  const filePathRaw = argsMap.get("file")?.trim();
+  const fileUrlRaw = argsMap.get("fileUrl")?.trim();
+  if (!filePathRaw && !fileUrlRaw) {
+    throw new Error("Missing required source. Use --file=/path/to/file.xlsx or --fileUrl=https://...");
   }
 
   const tenantRaw = argsMap.get("tenant") ?? "alpha";
@@ -56,15 +58,40 @@ function parseCliOptions(): CliOptions {
   const dryRun = argsMap.get("dryRun") === "true";
 
   return {
-    filePath: path.resolve(filePathRaw),
+    filePath: filePathRaw ? path.resolve(filePathRaw) : undefined,
+    fileUrl: fileUrlRaw || undefined,
     tenantId,
     importBatchId: importBatchId?.trim() || undefined,
     dryRun,
   };
 }
 
-function buildUpdatesFromFile(filePath: string, tenantId: ImportTenantId): CoreFieldUpdate[] {
-  const fileBuffer = fs.readFileSync(filePath);
+async function loadFileBuffer(input: CliOptions): Promise<Buffer> {
+  if (input.filePath) {
+    return fs.readFileSync(input.filePath);
+  }
+
+  if (!input.fileUrl) {
+    throw new Error("No file source provided");
+  }
+
+  const response = await fetch(input.fileUrl, {
+    method: "GET",
+    redirect: "follow",
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to download file from URL: ${response.status}`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length === 0) {
+    throw new Error("Downloaded file is empty");
+  }
+
+  return buffer;
+}
+
+function buildUpdatesFromFile(fileBuffer: Buffer, tenantId: ImportTenantId): CoreFieldUpdate[] {
   const parsedWorkbook = readExcel(fileBuffer);
   const tenantProfiles = createImportTenantProfiles(HEADER_ALIASES);
   const tenantProfile = tenantProfiles[tenantId];
@@ -219,7 +246,8 @@ function runBackfill(
 async function main(): Promise<void> {
   const options = parseCliOptions();
   const targetBatchId = resolveTargetBatchId(options.tenantId, options.importBatchId);
-  const updates = buildUpdatesFromFile(options.filePath, options.tenantId);
+  const fileBuffer = await loadFileBuffer(options);
+  const updates = buildUpdatesFromFile(fileBuffer, options.tenantId);
   const result = runBackfill(
     options.tenantId,
     targetBatchId,
@@ -230,7 +258,8 @@ async function main(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log("backfill_import_core_fields_result", {
     tenantId: options.tenantId,
-    filePath: options.filePath,
+    filePath: options.filePath ?? null,
+    fileUrl: options.fileUrl ?? null,
     targetBatchId,
     dryRun: options.dryRun,
     preparedUpdates: updates.length,
