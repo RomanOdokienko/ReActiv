@@ -77,7 +77,7 @@ const ALFA_HEADER_ADDITIONS: Partial<HeaderAliases> = {
   days_on_sale: ["Срок экспозиции (дн.)", "Дней в продаже"],
   price: ["Актуальная стоимость", "Актуальная оценка", "Цена", "Утвержденная цена"],
   yandex_disk_url: ["Ссылка на фото", "Фото"],
-  booking_status: ["Статус резерва", "Бронирование"],
+  booking_status: ["Статус", "Статус резерва", "Бронирование"],
   external_id: ["№ Лота", "№ п/п"],
   crm_ref: ["Номер договора", "CRM ID", "CRM ref"],
   website_url: [
