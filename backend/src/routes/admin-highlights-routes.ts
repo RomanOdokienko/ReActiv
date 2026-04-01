@@ -11,11 +11,11 @@ const mediaHealthQuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(120).default(30),
 });
 
-function rejectIfNotAdmin(
+function rejectIfNoHighlightsAccess(
   request: FastifyRequest,
   reply: FastifyReply,
 ): boolean {
-  if (request.authUser?.role === "admin") {
+  if (request.authUser?.role === "admin" || request.authUser?.role === "stock_owner") {
     return false;
   }
 
@@ -27,7 +27,7 @@ export async function registerAdminHighlightsRoutes(
   app: FastifyInstance,
 ): Promise<void> {
   app.get("/api/admin/highlights/card-fillness", async (request, reply) => {
-    if (rejectIfNotAdmin(request, reply)) {
+    if (rejectIfNoHighlightsAccess(request, reply)) {
       return;
     }
 
@@ -42,7 +42,7 @@ export async function registerAdminHighlightsRoutes(
   });
 
   app.get("/api/admin/highlights/media-health", async (request, reply) => {
-    if (rejectIfNotAdmin(request, reply)) {
+    if (rejectIfNoHighlightsAccess(request, reply)) {
       return;
     }
 
@@ -69,7 +69,7 @@ export async function registerAdminHighlightsRoutes(
   });
 
   app.post("/api/admin/highlights/media-health/run", async (request, reply) => {
-    if (rejectIfNotAdmin(request, reply)) {
+    if (rejectIfNoHighlightsAccess(request, reply)) {
       return;
     }
 

@@ -374,6 +374,8 @@ export function App() {
   const canViewActivity =
     isAdmin || (authUser?.login ? ACTIVITY_VIEWER_LOGINS.has(authUser.login.toLowerCase()) : false);
   const canAccessUpload = authUser?.role === "admin";
+  const canAccessHighlights =
+    authUser?.role === "admin" || authUser?.role === "stock_owner";
   const canAccessCatalog = isAdmin;
   const canAccessFavorites = Boolean(authUser);
   const showMainNav = isAdmin || canAccessUpload || canViewActivity || canAccessFavorites;
@@ -734,7 +736,7 @@ export function App() {
                 Пользователи
               </NavLink>
             )}
-            {isAdmin && (
+            {canAccessHighlights && (
               <NavLink to="/admin/highlights" className={({ isActive }) => (isActive ? "active" : "")}>
                 Highlights
               </NavLink>
@@ -797,7 +799,7 @@ export function App() {
             />
             <Route
               path="/admin/highlights"
-              element={isAdmin ? <AdminHighlightsPage /> : <Navigate to="/" replace />}
+              element={canAccessHighlights ? <AdminHighlightsPage /> : <Navigate to="/" replace />}
             />
             <Route
               path="/admin/operations"
