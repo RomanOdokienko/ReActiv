@@ -114,6 +114,88 @@ function getMediaSyncStageLabel(stage: ImportMediaSyncJob["stage"]): string {
   }
 }
 
+type MediaSyncPipelineStep = {
+  id: ImportMediaSyncJob["stage"];
+  label: string;
+};
+
+type MediaSyncPipelineStepState = "pending" | "active" | "done" | "error";
+
+const MEDIA_SYNC_PIPELINE_STEPS: MediaSyncPipelineStep[] = [
+  { id: "queued", label: "В очереди" },
+  { id: "media_enrichment", label: "Получение фото" },
+  { id: "preview_sync", label: "Генерация превью" },
+  { id: "done", label: "Готово" },
+];
+
+function getMediaSyncPipelineStepState(
+  job: ImportMediaSyncJob,
+  step: MediaSyncPipelineStep,
+): MediaSyncPipelineStepState {
+  const stepOrder: Record<ImportMediaSyncJob["stage"], number> = {
+    queued: 0,
+    media_enrichment: 1,
+    preview_sync: 2,
+    done: 3,
+  };
+
+  if (job.status === "completed" || job.status === "completed_with_errors") {
+    return "done";
+  }
+
+  if (job.status === "failed") {
+    if (step.id === job.stage || (job.stage === "done" && step.id === "preview_sync")) {
+      return "error";
+    }
+    return stepOrder[step.id] < stepOrder[job.stage] ? "done" : "pending";
+  }
+
+  if (step.id === job.stage) {
+    return "active";
+  }
+
+  return stepOrder[step.id] < stepOrder[job.stage] ? "done" : "pending";
+}
+
+interface ImportMediaSyncDetailsPayload {
+  durationMs?: unknown;
+  warningCount?: unknown;
+}
+
+function parseImportMediaSyncDetails(
+  detailsJson: string | null | undefined,
+): { durationMs: number | null; warningCount: number | null } {
+  if (!detailsJson) {
+    return { durationMs: null, warningCount: null };
+  }
+
+  try {
+    const parsed = JSON.parse(detailsJson) as ImportMediaSyncDetailsPayload;
+    const durationMs =
+      typeof parsed.durationMs === "number" && Number.isFinite(parsed.durationMs) && parsed.durationMs >= 0
+        ? parsed.durationMs
+        : null;
+    const warningCount =
+      typeof parsed.warningCount === "number" && Number.isFinite(parsed.warningCount) && parsed.warningCount >= 0
+        ? parsed.warningCount
+        : null;
+    return { durationMs, warningCount };
+  } catch {
+    return { durationMs: null, warningCount: null };
+  }
+}
+
+function formatDuration(durationMs: number | null): string {
+  if (durationMs === null) {
+    return "—";
+  }
+
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 function mapBatchDetailsToImportResponse(
   details: ImportBatchDetailsResponse,
 ): ImportResponse {
@@ -270,6 +352,15 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const activeImportBatchId = result?.importBatchId ?? null;
   const mediaSyncProcessed = mediaSyncJob?.processed_count ?? 0;
   const mediaSyncTotal = mediaSyncJob?.total_count ?? 0;
+  const mediaSyncDetails = parseImportMediaSyncDetails(mediaSyncJob?.details_json);
+  const unresolvedMediaCount = mediaSyncJob
+    ? Math.max(0, mediaSyncJob.media_candidates_count - mediaSyncJob.media_updated_rows)
+    : 0;
+  const unresolvedPreviewCount = mediaSyncJob
+    ? Math.max(0, mediaSyncJob.preview_candidates_count - mediaSyncJob.preview_updated_rows)
+    : 0;
+  const mediaSyncWarningCount =
+    mediaSyncDetails.warningCount ?? unresolvedMediaCount + unresolvedPreviewCount;
   const mediaSyncProgressPercent =
     mediaSyncTotal > 0
       ? Math.max(0, Math.min(100, Math.round((mediaSyncProcessed / mediaSyncTotal) * 100)))
@@ -506,6 +597,19 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
           {mediaSyncJob ? (
             <>
               <p className="summary-note">{getMediaSyncStageLabel(mediaSyncJob.stage)}</p>
+              <div className="media-sync-pipeline" aria-label="Этапы обработки фото и превью">
+                {MEDIA_SYNC_PIPELINE_STEPS.map((step) => {
+                  const state = getMediaSyncPipelineStepState(mediaSyncJob, step);
+                  return (
+                    <div
+                      key={step.id}
+                      className={`media-sync-pipeline__step media-sync-pipeline__step--${state}`}
+                    >
+                      {step.label}
+                    </div>
+                  );
+                })}
+              </div>
               <div className="media-sync-progress">
                 <div
                   className="media-sync-progress__fill"
@@ -533,7 +637,33 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
                   <span>Сгенерировано превью</span>
                   <strong>{mediaSyncJob.preview_updated_rows}</strong>
                 </div>
+                <div className="summary-item">
+                  <span>Предупреждений</span>
+                  <strong>{mediaSyncWarningCount}</strong>
+                </div>
+                <div className="summary-item">
+                  <span>Длительность</span>
+                  <strong>{formatDuration(mediaSyncDetails.durationMs)}</strong>
+                </div>
               </div>
+
+              {mediaSyncJob.status === "completed_with_errors" && (
+                <div className="media-sync-warning-box">
+                  <p className="summary-note">
+                    Есть карточки, которые не удалось обработать с первого прохода.
+                  </p>
+                  <div className="summary-grid media-sync-summary-grid">
+                    <div className="summary-item">
+                      <span>Не подтянулись фото</span>
+                      <strong>{unresolvedMediaCount}</strong>
+                    </div>
+                    <div className="summary-item">
+                      <span>Не создались превью</span>
+                      <strong>{unresolvedPreviewCount}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {mediaSyncJob.error_message && (
                 <p className="error media-sync-panel__error">{mediaSyncJob.error_message}</p>
@@ -557,7 +687,9 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
               ? "Запуск..."
               : mediaSyncJob && isMediaSyncJobActive(mediaSyncJob.status)
                 ? "Задача выполняется"
-                : "Запустить обновление фото и превью"}
+                : mediaSyncJob?.status === "completed_with_errors"
+                  ? "Повторить обработку проблемных карточек"
+                  : "Запустить обновление фото и превью"}
           </button>
         </div>
       )}
