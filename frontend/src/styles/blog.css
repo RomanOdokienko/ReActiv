@@ -72,6 +72,11 @@
   line-height: 24px;
   letter-spacing: -0.8px;
   transition: color 220ms ease;
+  min-height: 72px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .blog-card__mock-media {
