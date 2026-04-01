@@ -11,9 +11,14 @@ function hasMultipleWords(value: string): boolean {
   return value.split(" ").filter(Boolean).length >= 2;
 }
 
-function getHeaderAliasMatchScore(header: string, alias: string): number {
+function getHeaderAliasMatchScore(
+  header: string,
+  alias: string,
+  aliasPriority: number,
+): number {
   if (header === alias) {
-    return 10_000 + alias.length;
+    // For exact matches prioritize alias order, not alias length.
+    return 100_000 + aliasPriority;
   }
 
   if (!hasMultipleWords(alias)) {
@@ -23,7 +28,8 @@ function getHeaderAliasMatchScore(header: string, alias: string): number {
   const normalizedHeader = ` ${header} `;
   const normalizedAlias = ` ${alias} `;
   if (normalizedHeader.includes(normalizedAlias)) {
-    return 5_000 + alias.length;
+    // For partial multi-word matches keep specificity by alias length.
+    return 50_000 + alias.length * 10 + aliasPriority;
   }
 
   return 0;
@@ -60,8 +66,13 @@ function pickBestColumnIndex(
 
   const candidates: Candidate[] = normalizedHeaders
     .map((header, columnIndex) => {
-      const score = aliases.reduce((maxScore, alias) => {
-        const currentScore = getHeaderAliasMatchScore(header, alias);
+      const score = aliases.reduce((maxScore, alias, aliasIndex) => {
+        const aliasPriority = aliases.length - aliasIndex;
+        const currentScore = getHeaderAliasMatchScore(
+          header,
+          alias,
+          aliasPriority,
+        );
         return currentScore > maxScore ? currentScore : maxScore;
       }, 0);
 
