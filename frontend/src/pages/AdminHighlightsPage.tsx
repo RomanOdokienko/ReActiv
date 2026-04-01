@@ -590,6 +590,7 @@ export function AdminHighlightsPage() {
       setStructureSnapshot(null);
 
       try {
+        const importHistoryPromise = getImportBatches(200).catch(() => null);
         const [
           totalResult,
           withPreviewResult,
@@ -602,7 +603,7 @@ export function AdminHighlightsPage() {
           getCatalogItems({ page: 1, pageSize: 1, onlyWithPreview: "true" }),
           getCatalogSummary(),
           getCatalogFilters(),
-          getImportBatches(200),
+          importHistoryPromise,
           ...TENANT_GROWTH_ORDER.map((tenantId) =>
             getCatalogItems({ page: 1, pageSize: 1, tenantId }),
           ),
@@ -620,12 +621,11 @@ export function AdminHighlightsPage() {
           (item) => item.trim().length > 0,
         );
 
-        const successfulImports = importResult.items.filter(
+        const successfulImports = (importResult?.items ?? []).filter(
           (item) => item.status === "completed" || item.status === "completed_with_errors",
         );
-
         const latestImportAt =
-          successfulImports[0]?.created_at ?? importResult.items[0]?.created_at ?? null;
+          successfulImports[0]?.created_at ?? importResult?.items?.[0]?.created_at ?? null;
 
         const tenantRawPoints = TENANT_GROWTH_ORDER.map((tenantId, index) => ({
           tenantId,
