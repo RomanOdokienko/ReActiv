@@ -45,13 +45,13 @@ const BASE_PASSENGER_BRAND_PAGES: PassengerBrandPageConfig[] = [
     slug: "toyota",
     name: "Toyota",
     filterBrand: "Toyota",
-    logoSrc: BRAND_PLACEHOLDER_LOGO,
+    logoSrc: "/brands/toyota.png",
   },
   {
     slug: "audi",
     name: "Audi",
     filterBrand: "Audi",
-    logoSrc: BRAND_PLACEHOLDER_LOGO,
+    logoSrc: "/brands/audi.png",
   },
   {
     slug: "land-rover",
@@ -184,4 +184,3 @@ export function getPassengerBrandPageBySlug(
 ): PassengerBrandPageConfig | undefined {
   return PASSENGER_BRAND_PAGES_BY_SLUG.get(slug);
 }
-

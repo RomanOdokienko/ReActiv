@@ -26,32 +26,32 @@ const BASE_TRUCK_BRAND_PAGES: TruckBrandPageConfig[] = [
     name: "KAMAZ",
     filterBrand: "KAMAZ",
     filterBrandAliases: ["Kamaz", "КАМАЗ", "Камаз"],
-    logoSrc: BRAND_PLACEHOLDER_LOGO,
+    logoSrc: "/brands/kamaz.png",
   },
   {
     slug: "faw",
     name: "FAW",
     filterBrand: "FAW",
-    logoSrc: BRAND_PLACEHOLDER_LOGO,
+    logoSrc: "/brands/faw.png",
   },
   {
     slug: "howo",
     name: "HOWO",
     filterBrand: "HOWO",
-    logoSrc: BRAND_PLACEHOLDER_LOGO,
+    logoSrc: "/brands/howo.png",
   },
   {
     slug: "isuzu",
     name: "Isuzu",
     filterBrand: "Isuzu",
     filterBrandAliases: ["ISUZU"],
-    logoSrc: BRAND_PLACEHOLDER_LOGO,
+    logoSrc: "/brands/isuzu.png",
   },
   {
     slug: "xcmg",
     name: "XCMG",
     filterBrand: "XCMG",
-    logoSrc: BRAND_PLACEHOLDER_LOGO,
+    logoSrc: "/brands/xcmg.png",
   },
   {
     slug: "sany",
@@ -243,4 +243,5 @@ const TRUCK_BRAND_PAGES_BY_SLUG = new Map(
 export function getTruckBrandPageBySlug(slug: string): TruckBrandPageConfig | undefined {
   return TRUCK_BRAND_PAGES_BY_SLUG.get(slug);
 }
+
 
