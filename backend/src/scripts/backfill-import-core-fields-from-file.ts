@@ -23,6 +23,7 @@ interface CliOptions {
 interface CoreFieldUpdate {
   offerCode: string;
   status: string;
+  bookingStatus: string;
   mileageKm: number | null;
   price: number | null;
 }
@@ -127,6 +128,7 @@ function buildUpdatesFromFile(fileBuffer: Buffer, tenantId: ImportTenantId): Cor
     updatesByOfferCode.set(offerCode, {
       offerCode,
       status: normalized.status ?? "",
+      bookingStatus: normalized.booking_status ?? "",
       mileageKm: normalized.mileage_km,
       price: normalized.price,
     });
@@ -173,6 +175,7 @@ function runBackfill(
     UPDATE vehicle_offers
     SET
       status = @status,
+      booking_status = @booking_status,
       mileage_km = @mileage_km,
       price = @price
     WHERE tenant_id = @tenant_id
@@ -184,6 +187,7 @@ function runBackfill(
     UPDATE vehicle_offer_snapshots
     SET
       status = @status,
+      booking_status = @booking_status,
       mileage_km = @mileage_km,
       price = @price
     WHERE tenant_id = @tenant_id
@@ -227,6 +231,7 @@ function runBackfill(
         import_batch_id: importBatchId,
         offer_code: item.offerCode,
         status: item.status,
+        booking_status: item.bookingStatus,
         mileage_km: item.mileageKm,
         price: item.price,
       };
