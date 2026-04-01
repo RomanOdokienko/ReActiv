@@ -15,6 +15,7 @@ import {
   type RangeFilters,
   type SelectedFilters,
 } from "../catalog/config";
+import { renderBookingStatusBadge } from "../catalog/booking-status";
 import type {
   CatalogFiltersResponse,
   CatalogListItem,
@@ -393,7 +394,7 @@ export function CatalogPage() {
                         <td>{formatNumberValue(item.mileageKm)}</td>
                         <td>{formatNumberValue(item.daysOnSale)}</td>
                         <td>{formatNumberValue(item.price)}</td>
-                        <td>{formatTextValue(item.bookingStatus)}</td>
+                        <td>{renderBookingStatusBadge(item.bookingStatus)}</td>
                         <td>{formatTextValue(item.responsiblePerson)}</td>
                         <td>{formatTextValue(item.storageAddress)}</td>
                       </tr>
@@ -438,7 +439,9 @@ export function CatalogPage() {
                       </div>
                       <div className="mobile-card__row">
                         <dt className="mobile-card__label">Бронь</dt>
-                        <dd className="mobile-card__value">{formatTextValue(item.bookingStatus)}</dd>
+                        <dd className="mobile-card__value">
+                          {renderBookingStatusBadge(item.bookingStatus)}
+                        </dd>
                       </div>
                       <div className="mobile-card__row">
                         <dt className="mobile-card__label">Ответственный</dt>

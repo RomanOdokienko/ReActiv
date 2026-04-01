@@ -1080,6 +1080,32 @@ a {
   color: #a62c2c;
 }
 
+.booking-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  border: 1px solid #cfd7e4;
+  background: #f4f7fb;
+  color: #415067;
+  white-space: nowrap;
+}
+
+.booking-status-badge--reserved {
+  border-color: #e9cf8c;
+  background: #fff6df;
+  color: #8a6110;
+}
+
+.booking-status-badge--free {
+  border-color: #a6d9b9;
+  background: #eaf8ef;
+  color: #1f6a44;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -20,6 +20,7 @@ import {
   removeFavoriteItem,
   updateAdminCatalogItemComment,
 } from "../api/client";
+import { renderBookingStatusBadge } from "../catalog/booking-status";
 import type { CatalogItem } from "../types/api";
 
 const RESO_TEST_VINS = new Set([
@@ -161,7 +162,7 @@ function renderTextWithLinks(value: string): ReactNode {
 
 interface DetailSpec {
   label: string;
-  value: string;
+  value: ReactNode;
 }
 
 interface ShowcaseItemPageProps {
@@ -932,7 +933,9 @@ export function ShowcaseItemPage({
                   { label: "Пробег", value: formatInteger(item.mileageKm, "км") },
                   {
                     label: "Статус брони",
-                    value: formatString(item.bookingStatus || "Без статуса"),
+                    value: showTenantInfo
+                      ? renderBookingStatusBadge(item.bookingStatus, "Без статуса")
+                      : formatString(item.bookingStatus || "Без статуса"),
                   },
                   { label: "Регион/адрес", value: formatString(item.storageAddress) },
                 ];
