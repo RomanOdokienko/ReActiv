@@ -922,9 +922,8 @@ export function ShowcasePage({
     if (newThisWeekOnly) {
       queryObject.newThisWeek = "true";
     }
-    if (forcedTenantValue) {
-      queryObject.preferPreview = "true";
-    }
+    // Keep one showcase rule for all roles/domains: cards without preview go last.
+    queryObject.preferPreview = "true";
     if (shouldUseMainShowcaseRandomMix) {
       queryObject.onlyWithPreview = "true";
       queryObject.randomMix = "true";

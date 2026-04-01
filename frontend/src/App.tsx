@@ -373,8 +373,7 @@ export function App() {
   const isAdmin = authUser?.role === "admin";
   const canViewActivity =
     isAdmin || (authUser?.login ? ACTIVITY_VIEWER_LOGINS.has(authUser.login.toLowerCase()) : false);
-  const canAccessUpload =
-    authUser?.role === "admin" || authUser?.role === "stock_owner";
+  const canAccessUpload = authUser?.role === "admin";
   const canAccessCatalog = isAdmin;
   const canAccessFavorites = Boolean(authUser);
   const showMainNav = isAdmin || canAccessUpload || canViewActivity || canAccessFavorites;

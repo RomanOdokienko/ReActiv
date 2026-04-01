@@ -23,7 +23,7 @@ function rejectIfNoImportAccess(
   request: FastifyRequest,
   reply: FastifyReply,
 ): boolean {
-  if (request.authUser?.role === "admin" || request.authUser?.role === "stock_owner") {
+  if (request.authUser?.role === "admin") {
     return false;
   }
 
