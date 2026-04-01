@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Car risk check illustration</title>
+  <desc id="desc">Stylized car and shield icon for post leasing risk article.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#dce9ff" />
+      <stop offset="100%" stop-color="#b8ccfa" />
+    </linearGradient>
+    <linearGradient id="shieldFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2e64e6" />
+      <stop offset="100%" stop-color="#2551b8" />
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="28" fill="url(#bg)" />
+  <circle cx="180" cy="110" r="90" fill="#fff" opacity="0.2" />
+  <circle cx="860" cy="500" r="130" fill="#fff" opacity="0.18" />
+  <g fill="none" stroke="#1f3f89" stroke-linecap="round" stroke-linejoin="round" stroke-width="16">
+    <path d="M180 320h430l56 72H124l56-72z" />
+    <path d="M256 320l46-92h186l46 92" />
+    <circle cx="244" cy="392" r="34" fill="#e7efff" />
+    <circle cx="548" cy="392" r="34" fill="#e7efff" />
+    <path d="M332 286h126" />
+  </g>
+  <path d="M694 174l84 30v82c0 66-36 114-84 145-48-31-84-79-84-145v-82l84-30z" fill="url(#shieldFill)" />
+  <path d="M656 286l28 30 46-50" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="16" />
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Generic blog cover illustration</title>
+  <desc id="desc">Neutral placeholder with simple flow lines.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e8f0ff" />
+      <stop offset="100%" stop-color="#cddcff" />
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="28" fill="url(#bg)" />
+  <path d="M80 354c112 0 146-162 264-162s106 138 230 138c90 0 136-114 306-114" fill="none" stroke="#2c60db" stroke-dasharray="16 14" stroke-linecap="round" stroke-width="12" />
+  <g fill="#fff" stroke="#2c60db" stroke-width="8">
+    <circle cx="128" cy="354" r="26" />
+    <circle cx="350" cy="192" r="26" />
+    <circle cx="584" cy="330" r="26" />
+    <circle cx="864" cy="216" r="26" />
+  </g>
+</svg>

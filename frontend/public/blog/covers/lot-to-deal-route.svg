@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Lot to deal route illustration</title>
+  <desc id="desc">Step by step route from lot selection to completed transaction.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#dce8ff" />
+      <stop offset="100%" stop-color="#b5c8fb" />
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="28" fill="url(#bg)" />
+  <path d="M98 386c112 0 132-160 244-160s108 138 224 138c92 0 126-108 286-108" fill="none" stroke="#2455bf" stroke-dasharray="14 14" stroke-linecap="round" stroke-width="14" />
+  <g font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700" text-anchor="middle">
+    <circle cx="146" cy="386" r="34" fill="#fff" stroke="#2b62df" stroke-width="8" />
+    <text x="146" y="398" fill="#2a4fae">1</text>
+    <circle cx="350" cy="236" r="34" fill="#fff" stroke="#2b62df" stroke-width="8" />
+    <text x="350" y="248" fill="#2a4fae">2</text>
+    <circle cx="560" cy="362" r="34" fill="#fff" stroke="#2b62df" stroke-width="8" />
+    <text x="560" y="374" fill="#2a4fae">3</text>
+  </g>
+  <g transform="translate(780 154)">
+    <rect width="128" height="172" rx="16" fill="#fff" stroke="#2b62df" stroke-width="8" />
+    <path d="M34 72l20 20 40-40" fill="none" stroke="#2b62df" stroke-linecap="round" stroke-linejoin="round" stroke-width="12" />
+    <path d="M26 118h76M26 146h76" fill="none" stroke="#8ba7ea" stroke-linecap="round" stroke-width="8" />
+  </g>
+</svg>
