@@ -283,7 +283,7 @@ function buildMainShowcaseMixOrder(now: number): number[] {
   const candidateRows = db
     .prepare(
       `
-      SELECT id, vehicle_type, modification, price
+      SELECT id, vehicle_type, modification, price, card_preview_path
       FROM vehicle_offers
       WHERE TRIM(COALESCE(card_preview_path, '')) != ''
       `,
@@ -293,9 +293,16 @@ function buildMainShowcaseMixOrder(now: number): number[] {
     vehicle_type: string;
     modification: string;
     price: number | null;
+    card_preview_path: string;
   }>;
 
-  if (candidateRows.length === 0) {
+  // Filter out stale preview paths once per mix-cache rebuild to keep
+  // randomized showcase pages densely filled.
+  const validCandidateRows = candidateRows.filter((row) =>
+    hasValidStoredPreviewPath(row.card_preview_path),
+  );
+
+  if (validCandidateRows.length === 0) {
     return [];
   }
 
@@ -303,7 +310,7 @@ function buildMainShowcaseMixOrder(now: number): number[] {
   const random = createSeededRandom(computeDeterministicHash(`main_mix:${hourSeed}`));
   const groups = new Map<string, number[]>();
 
-  candidateRows.forEach((row) => {
+  validCandidateRows.forEach((row) => {
     const groupKey = [
       normalizeMixDimension(row.vehicle_type),
       normalizeMixDimension(row.modification),
