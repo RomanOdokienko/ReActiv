@@ -34,35 +34,41 @@ export function BlogPage() {
       <div className="blog-page__section">
         <h1>Блог команды реАктив</h1>
         <div className="blog-page__cards">
-          {BLOG_CARDS.map((card, index) => (
-            <article className="blog-card" key={`${card.title}-${index}`}>
-              {card.href ? (
-                <Link className="blog-card__link-wrap" to={card.href}>
-                  <div className="blog-card__title-wrap">
-                    <h2>{card.title}</h2>
-                  </div>
-                  <div className="blog-card__footer">
-                    <p>{card.readingTime}</p>
-                    <span className="blog-card__action" aria-hidden="true">
-                      <ArrowIcon />
-                    </span>
-                  </div>
-                </Link>
-              ) : (
-                <>
-                  <div className="blog-card__title-wrap">
-                    <h2>{card.title}</h2>
-                  </div>
-                  <div className="blog-card__footer">
-                    <p>{card.readingTime}</p>
-                    <span className="blog-card__action" aria-hidden="true">
-                      <ArrowIcon />
-                    </span>
-                  </div>
-                </>
-              )}
-            </article>
-          ))}
+          {BLOG_CARDS.map((card, index) => {
+            const mediaVariant = `blog-card__mock-media--${(index % 6) + 1}`;
+
+            return (
+              <article className="blog-card" key={`${card.title}-${index}`}>
+                {card.href ? (
+                  <Link className="blog-card__link-wrap" to={card.href}>
+                    <div className="blog-card__title-wrap">
+                      <h2>{card.title}</h2>
+                      <div className={`blog-card__mock-media ${mediaVariant}`} aria-hidden="true" />
+                    </div>
+                    <div className="blog-card__footer">
+                      <p>{card.readingTime}</p>
+                      <span className="blog-card__action" aria-hidden="true">
+                        <ArrowIcon />
+                      </span>
+                    </div>
+                  </Link>
+                ) : (
+                  <>
+                    <div className="blog-card__title-wrap">
+                      <h2>{card.title}</h2>
+                      <div className={`blog-card__mock-media ${mediaVariant}`} aria-hidden="true" />
+                    </div>
+                    <div className="blog-card__footer">
+                      <p>{card.readingTime}</p>
+                      <span className="blog-card__action" aria-hidden="true">
+                        <ArrowIcon />
+                      </span>
+                    </div>
+                  </>
+                )}
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>

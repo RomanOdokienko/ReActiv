@@ -74,6 +74,66 @@
   transition: color 220ms ease;
 }
 
+.blog-card__mock-media {
+  position: relative;
+  width: 100%;
+  margin-top: 20px;
+  border-radius: 12px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid rgba(30, 30, 30, 0.08);
+  background-size: cover;
+  background-position: center;
+}
+
+.blog-card__mock-media::before,
+.blog-card__mock-media::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  opacity: 0.85;
+}
+
+.blog-card__mock-media::before {
+  width: 44%;
+  height: 44%;
+  top: 10%;
+  left: 6%;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.blog-card__mock-media::after {
+  width: 52%;
+  height: 52%;
+  right: -8%;
+  bottom: -12%;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.blog-card__mock-media--1 {
+  background-image: linear-gradient(130deg, #dbe6ff 0%, #b8cdf8 100%);
+}
+
+.blog-card__mock-media--2 {
+  background-image: linear-gradient(140deg, #e8f1ff 0%, #d5dffd 100%);
+}
+
+.blog-card__mock-media--3 {
+  background-image: linear-gradient(125deg, #d9ecff 0%, #bfd7fa 100%);
+}
+
+.blog-card__mock-media--4 {
+  background-image: linear-gradient(135deg, #ecf4ff 0%, #dbe6fb 100%);
+}
+
+.blog-card__mock-media--5 {
+  background-image: linear-gradient(135deg, #e5ecff 0%, #cad8fc 100%);
+}
+
+.blog-card__mock-media--6 {
+  background-image: linear-gradient(140deg, #e3f0ff 0%, #c7dbff 100%);
+}
+
 .blog-card__footer {
   display: flex;
   width: 100%;
@@ -125,6 +185,10 @@
   color: #fff;
 }
 
+.blog-card:hover .blog-card__mock-media {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
 @media (max-width: 1100px) {
   .blog-page__section {
     padding: 40px 0;
@@ -159,7 +223,11 @@
   .blog-card {
     flex: 0 0 100%;
     max-width: 100%;
-    height: 320px;
+    height: 340px;
     padding: 20px;
+  }
+
+  .blog-card__mock-media {
+    margin-top: 16px;
   }
 }
