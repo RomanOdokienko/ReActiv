@@ -185,6 +185,7 @@ export interface CatalogListItem {
   storageAddress: string;
   responsiblePerson: string;
   previewUrl: string | null;
+  previousPrice?: number | null;
 }
 
 export interface CatalogItemsResponse {

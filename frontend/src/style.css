@@ -3146,6 +3146,17 @@ tbody tr:nth-child(even) {
   letter-spacing: -0.02em;
 }
 
+.vehicle-card__price-old {
+  margin: 0;
+  color: #818b98;
+  font-family: "Manrope", "Segoe UI", Tahoma, sans-serif;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
 .showcase-meta {
   margin-bottom: 12px;
   display: flex;

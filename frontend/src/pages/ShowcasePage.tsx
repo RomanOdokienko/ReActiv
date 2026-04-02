@@ -416,6 +416,18 @@ function formatPrice(price: number | null): string {
   return `${price.toLocaleString("ru-RU")} ₽`;
 }
 
+function shouldShowGpbPreviousPrice(item: CatalogListItem, publicMode: boolean): boolean {
+  if (publicMode || item.tenantId !== "gpb") {
+    return false;
+  }
+
+  if (item.price === null || item.previousPrice === null || item.previousPrice === undefined) {
+    return false;
+  }
+
+  return item.previousPrice !== item.price;
+}
+
 function buildCardSubtitle(item: CatalogListItem): string {
   const yearPart = item.year !== null ? `${item.year} г` : "";
   const mileagePart =
@@ -2624,6 +2636,9 @@ export function ShowcasePage({
                       <h3>{item.title || `${item.brand} ${item.model}`}</h3>
                       <p className="vehicle-card__subtitle">{buildCardSubtitle(item)}</p>
                       <div className="vehicle-card__bottom">
+                        {shouldShowGpbPreviousPrice(item, publicMode) && (
+                          <p className="vehicle-card__price-old">{formatPrice(item.previousPrice ?? null)}</p>
+                        )}
                         <p className="vehicle-card__price">{formatPrice(item.price)}</p>
                       </div>
                     </div>

@@ -14,6 +14,7 @@ import { listVehicleOfferSnapshotCodesByImportBatchId } from "./vehicle-offer-re
 const FILTERS_METADATA_CACHE_TTL_MS = 5 * 60 * 1000;
 const MAIN_SHOWCASE_MIX_CACHE_TTL_MS = 60 * 60 * 1000;
 const MAIN_SHOWCASE_RANDOMIZED_MAX_PAGE = 3;
+const PRICE_CHANGE_HIGHLIGHT_TENANT_ID = "gpb";
 
 let filtersMetadataCache:
   | {
@@ -124,6 +125,7 @@ export interface CatalogListItem {
   storageAddress: string;
   responsiblePerson: string;
   previewUrl: string | null;
+  previousPrice?: number | null;
 }
 
 export interface CatalogSummaryAvgByVehicleTypeItem {
@@ -216,6 +218,83 @@ function toCatalogListItem(item: CatalogItem): CatalogListItem {
       ? buildStoredPreviewSourceUrl(item.cardPreviewPath)
       : null,
   };
+}
+
+function attachGpbPreviousPriceChanges(items: CatalogListItem[]): CatalogListItem[] {
+  if (items.length === 0) {
+    return items;
+  }
+
+  const gpbItems = items.filter((item) => item.tenantId === PRICE_CHANGE_HIGHLIGHT_TENANT_ID);
+  if (gpbItems.length === 0) {
+    return items;
+  }
+
+  const latestImportBatch = getLatestSuccessfulImportBatch(PRICE_CHANGE_HIGHLIGHT_TENANT_ID);
+  if (!latestImportBatch) {
+    return items;
+  }
+
+  const previousImportBatchId = getPreviousSuccessfulImportBatchId(
+    latestImportBatch.id,
+    PRICE_CHANGE_HIGHLIGHT_TENANT_ID,
+  );
+  if (!previousImportBatchId) {
+    return items;
+  }
+
+  const offerCodes = Array.from(
+    new Set(
+      gpbItems
+        .map((item) => item.offerCode.trim())
+        .filter(Boolean),
+    ),
+  );
+  if (offerCodes.length === 0) {
+    return items;
+  }
+
+  const placeholders = offerCodes.map(() => "?").join(", ");
+  const rows = db
+    .prepare(
+      `
+        SELECT offer_code, price
+        FROM vehicle_offer_snapshots
+        WHERE tenant_id = ?
+          AND import_batch_id = ?
+          AND offer_code IN (${placeholders})
+      `,
+    )
+    .all(
+      PRICE_CHANGE_HIGHLIGHT_TENANT_ID,
+      previousImportBatchId,
+      ...offerCodes,
+    ) as Array<{ offer_code: string; price: number | null }>;
+
+  const previousPriceByOfferCode = new Map<string, number | null>();
+  rows.forEach((row) => {
+    previousPriceByOfferCode.set(row.offer_code, row.price);
+  });
+
+  return items.map((item) => {
+    if (item.tenantId !== PRICE_CHANGE_HIGHLIGHT_TENANT_ID || item.price === null) {
+      return item;
+    }
+
+    const previousPrice = previousPriceByOfferCode.get(item.offerCode);
+    if (previousPrice === undefined || previousPrice === null) {
+      return item;
+    }
+
+    if (previousPrice === item.price) {
+      return item;
+    }
+
+    return {
+      ...item,
+      previousPrice,
+    };
+  });
 }
 
 function hasValidStoredPreviewPath(pathValue: string): boolean {
@@ -1289,9 +1368,10 @@ export function searchCatalogItems(filters: CatalogQuery): {
     const totalRow = db
       .prepare(`SELECT COUNT(*) as total FROM vehicle_offers ${newThisWeekCountWhereClause}`)
       .get(...newThisWeekCountParams) as { total: number };
+    const listItems = rows.map(mapDbRow).map(toCatalogListItem);
 
     return {
-      items: rows.map(mapDbRow).map(toCatalogListItem),
+      items: attachGpbPreviousPriceChanges(listItems),
       total: totalRow.total,
       newThisWeekCount: countNewThisWeekRowsBySql(
         newThisWeekCountWhereClause,
@@ -1342,9 +1422,10 @@ export function searchCatalogItems(filters: CatalogQuery): {
       filteredRows = newThisWeekRows;
     }
     const paginatedRows = filteredRows.slice(offset, offset + limit);
+    const listItems = paginatedRows.map(mapDbRow).map(toCatalogListItem);
 
     return {
-      items: paginatedRows.map(mapDbRow).map(toCatalogListItem),
+      items: attachGpbPreviousPriceChanges(listItems),
       total: filteredRows.length,
       newThisWeekCount: newThisWeekRows.length,
     };
@@ -1357,9 +1438,10 @@ export function searchCatalogItems(filters: CatalogQuery): {
   const rows = db
     .prepare(`${baseSelectQuery}\nLIMIT ?\nOFFSET ?`)
     .all(...params, limit, offset) as VehicleOfferDbRow[];
+  const listItems = rows.map(mapDbRow).map(toCatalogListItem);
 
   return {
-    items: rows.map(mapDbRow).map(toCatalogListItem),
+    items: attachGpbPreviousPriceChanges(listItems),
     total: totalRow.total,
     newThisWeekCount: countNewThisWeekRowsBySql(
       newThisWeekCountWhereClause,
