@@ -67,6 +67,43 @@ interface NormalizeVehicleOfferRowOptions {
   canonicalBrandHints?: string[];
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripBrandPrefixFromModelForSovcom(
+  brand: string | null,
+  model: string | null,
+  tenantId: string | undefined,
+): string | null {
+  if (tenantId !== "sovcombank" || !brand || !model) {
+    return model;
+  }
+
+  const trimmedBrand = brand.trim();
+  const trimmedModel = model.trim();
+  if (!trimmedBrand || !trimmedModel) {
+    return model;
+  }
+
+  // Normalize values like "Haval Jolion" => "Jolion" for Sovcom files.
+  const brandPrefixPattern = new RegExp(
+    `^${escapeRegExp(trimmedBrand)}(?:[\\s\\-_/.,:;|]+)(.+)$`,
+    "iu",
+  );
+  const matched = trimmedModel.match(brandPrefixPattern);
+  if (!matched) {
+    return model;
+  }
+
+  const stripped = normalizeString(matched[1]);
+  if (!stripped) {
+    return model;
+  }
+
+  return stripped;
+}
+
 export function normalizeVehicleOfferRow(
   row: unknown[],
   fieldToColumnIndex: ColumnMapResult["fieldToColumnIndex"],
@@ -80,7 +117,8 @@ export function normalizeVehicleOfferRow(
     canonicalBrandHints: options.canonicalBrandHints,
   });
   const brand = brandMeta.value;
-  const model = normalizeString(getValue(row, fieldToColumnIndex, "model")) || null;
+  const rawModel = normalizeString(getValue(row, fieldToColumnIndex, "model")) || null;
+  const model = stripBrandPrefixFromModelForSovcom(brand, rawModel, options.tenantId);
   const modification =
     normalizeString(getValue(row, fieldToColumnIndex, "modification")) || null;
   const modelNormalization = normalizeCatalogModelIdentity({
