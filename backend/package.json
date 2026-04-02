@@ -18,7 +18,8 @@
     "relink-card-previews": "tsx src/scripts/relink-card-previews.ts",
     "relink-card-previews:plan": "tsx src/scripts/relink-card-previews.ts --plan",
     "snapshot-media-health": "tsx src/scripts/snapshot-media-health.ts",
-    "normalize-catalog-models-inplace": "tsx src/scripts/normalize-catalog-models-inplace.ts"
+    "normalize-catalog-models-inplace": "tsx src/scripts/normalize-catalog-models-inplace.ts",
+    "normalize-sovcom-models-inplace": "tsx src/scripts/normalize-sovcom-model-brand-prefix-inplace.ts"
   },
   "keywords": [],
   "author": "",
