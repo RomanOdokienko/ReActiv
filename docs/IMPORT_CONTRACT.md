@@ -45,11 +45,15 @@ Delta is computed by `offer_code` only, inside one tenant:
 
 ## Public Showcase Filter: New This Week
 
-- Count source: latest successful import `added_rows`.
-- Filter source: codes present in latest snapshot and absent in previous snapshot.
+- If `tenant_id` is selected:
+  - source is that tenant's latest successful import vs previous successful import.
+  - "new" = codes present in latest snapshot and absent in previous snapshot.
+- If `tenant_id` is not selected:
+  - source is the sum of per-tenant "new" sets for each tenant's latest successful import.
+  - no cross-tenant offer identity merge; comparison remains strictly inside each tenant.
 
 ## Non-goals (MVP)
 
 - No field-level lifecycle analytics per offer.
-- No cross-tenant mixed deltas.
+- No cross-tenant offer identity or matching (only per-tenant delta + optional aggregate count).
 - No hard delete of historical import batches.

@@ -39,9 +39,9 @@ interface MainShowcaseMixCache {
   orderedOfferIds: number[];
 }
 
-interface NewThisWeekSqlContext {
+interface NewThisWeekTenantContext {
+  tenantId: string;
   latestImportBatchId: string;
-  latestTenantId: string;
   previousImportBatchId: string | null;
 }
 
@@ -969,94 +969,170 @@ function filterRowsByRegions(
   });
 }
 
-function filterRowsByNewThisWeek(rows: VehicleOfferDbRow[]): VehicleOfferDbRow[] {
-  const latestImportBatch = getLatestSuccessfulImportBatch();
-  if (!latestImportBatch) {
+function normalizeTenantIds(values?: string[]): string[] {
+  if (!values || values.length === 0) {
     return [];
   }
 
-  const currentRows = rows.filter((row) => row.import_batch_id === latestImportBatch.id);
-  const previousImportBatchId = getPreviousSuccessfulImportBatchId(
-    latestImportBatch.id,
-    latestImportBatch.tenant_id,
-  );
-  if (!previousImportBatchId) {
-    return currentRows;
-  }
-
-  const previousOfferCodes = new Set(
-    listVehicleOfferSnapshotCodesByImportBatchId(
-      previousImportBatchId,
-      latestImportBatch.tenant_id,
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value.trim())
+        .filter(Boolean),
     ),
   );
-
-  return currentRows.filter((row) => !previousOfferCodes.has(row.offer_code));
 }
 
-function getNewThisWeekSqlContext(): NewThisWeekSqlContext | null {
-  const latestImportBatch = getLatestSuccessfulImportBatch();
-  if (!latestImportBatch) {
-    return null;
-  }
+function listTenantIdsWithSuccessfulImports(): string[] {
+  const rows = db
+    .prepare(
+      `
+        SELECT DISTINCT tenant_id
+        FROM import_batches
+        WHERE status IN ('completed', 'completed_with_errors')
+          AND TRIM(COALESCE(tenant_id, '')) != ''
+        ORDER BY tenant_id ASC
+      `,
+    )
+    .all() as Array<{ tenant_id: string }>;
 
-  return {
-    latestImportBatchId: latestImportBatch.id,
-    latestTenantId: latestImportBatch.tenant_id,
-    previousImportBatchId: getPreviousSuccessfulImportBatchId(
-      latestImportBatch.id,
-      latestImportBatch.tenant_id,
-    ),
-  };
+  return rows.map((row) => row.tenant_id);
+}
+
+function getNewThisWeekTenantContexts(requestedTenantIds?: string[]): NewThisWeekTenantContext[] {
+  const normalizedRequestedTenantIds = normalizeTenantIds(requestedTenantIds);
+  const tenantIds =
+    normalizedRequestedTenantIds.length > 0
+      ? normalizedRequestedTenantIds
+      : listTenantIdsWithSuccessfulImports();
+
+  return tenantIds
+    .map((tenantId) => {
+      const latestImportBatch = getLatestSuccessfulImportBatch(tenantId);
+      if (!latestImportBatch) {
+        return null;
+      }
+
+      return {
+        tenantId,
+        latestImportBatchId: latestImportBatch.id,
+        previousImportBatchId: getPreviousSuccessfulImportBatchId(
+          latestImportBatch.id,
+          tenantId,
+        ),
+      };
+    })
+    .filter((context): context is NewThisWeekTenantContext => context !== null);
 }
 
 function appendNewThisWeekSqlCondition(
   whereClause: string,
   params: unknown[],
-  context: NewThisWeekSqlContext,
+  contexts: NewThisWeekTenantContext[],
 ): { whereClause: string; params: unknown[] } {
-  const paramsWithCondition = [...params, context.latestImportBatchId];
-  const baseWhereClause = whereClause
-    ? `${whereClause} AND import_batch_id = ?`
-    : "WHERE import_batch_id = ?";
+  const conditionClauses: string[] = [];
+  const conditionParams: unknown[] = [];
 
-  if (!context.previousImportBatchId) {
-    return {
-      whereClause: baseWhereClause,
-      params: paramsWithCondition,
-    };
-  }
+  contexts.forEach((context) => {
+    if (!context.previousImportBatchId) {
+      conditionClauses.push("(tenant_id = ? AND import_batch_id = ?)");
+      conditionParams.push(context.tenantId, context.latestImportBatchId);
+      return;
+    }
+
+    conditionClauses.push(`
+      (
+        tenant_id = ?
+        AND import_batch_id = ?
+        AND TRIM(COALESCE(offer_code, '')) != ''
+        AND offer_code NOT IN (
+          SELECT DISTINCT offer_code
+          FROM vehicle_offer_snapshots
+          WHERE import_batch_id = ?
+            AND tenant_id = ?
+            AND TRIM(COALESCE(offer_code, '')) != ''
+        )
+      )
+    `);
+    conditionParams.push(
+      context.tenantId,
+      context.latestImportBatchId,
+      context.previousImportBatchId,
+      context.tenantId,
+    );
+  });
+
+  const newThisWeekCondition =
+    conditionClauses.length > 0 ? `(${conditionClauses.join(" OR ")})` : "1 = 0";
+  const nextWhereClause = whereClause
+    ? `${whereClause} AND ${newThisWeekCondition}`
+    : `WHERE ${newThisWeekCondition}`;
 
   return {
-    whereClause: `
-      ${baseWhereClause}
-      AND TRIM(COALESCE(offer_code, '')) != ''
-      AND offer_code NOT IN (
-        SELECT DISTINCT offer_code
-        FROM vehicle_offer_snapshots
-        WHERE import_batch_id = ?
-          AND tenant_id = ?
-          AND TRIM(COALESCE(offer_code, '')) != ''
-      )
-    `,
-    params: [
-      ...paramsWithCondition,
-      context.previousImportBatchId,
-      context.latestTenantId,
-    ],
+    whereClause: nextWhereClause,
+    params: [...params, ...conditionParams],
   };
 }
 
-function countNewThisWeekRowsBySql(whereClause: string, params: unknown[]): number {
-  const context = getNewThisWeekSqlContext();
-  if (!context) {
+function filterRowsByNewThisWeek(
+  rows: VehicleOfferDbRow[],
+  requestedTenantIds?: string[],
+): VehicleOfferDbRow[] {
+  const contexts = getNewThisWeekTenantContexts(requestedTenantIds);
+  if (contexts.length === 0) {
+    return [];
+  }
+
+  const previousOfferCodesByTenant = new Map<string, Set<string> | null>();
+  const latestBatchIdByTenant = new Map<string, string>();
+
+  contexts.forEach((context) => {
+    latestBatchIdByTenant.set(context.tenantId, context.latestImportBatchId);
+    if (!context.previousImportBatchId) {
+      previousOfferCodesByTenant.set(context.tenantId, null);
+      return;
+    }
+
+    previousOfferCodesByTenant.set(
+      context.tenantId,
+      new Set(
+        listVehicleOfferSnapshotCodesByImportBatchId(
+          context.previousImportBatchId,
+          context.tenantId,
+        ),
+      ),
+    );
+  });
+
+  return rows.filter((row) => {
+    const latestBatchId = latestBatchIdByTenant.get(row.tenant_id);
+    if (!latestBatchId || row.import_batch_id !== latestBatchId) {
+      return false;
+    }
+
+    const previousOfferCodes = previousOfferCodesByTenant.get(row.tenant_id);
+    if (!previousOfferCodes) {
+      return true;
+    }
+
+    return !previousOfferCodes.has(row.offer_code);
+  });
+}
+
+function countNewThisWeekRowsBySql(
+  whereClause: string,
+  params: unknown[],
+  requestedTenantIds?: string[],
+): number {
+  const contexts = getNewThisWeekTenantContexts(requestedTenantIds);
+  if (contexts.length === 0) {
     return 0;
   }
 
   const {
     whereClause: withNewThisWeekWhereClause,
     params: withNewThisWeekParams,
-  } = appendNewThisWeekSqlCondition(whereClause, params, context);
+  } = appendNewThisWeekSqlCondition(whereClause, params, contexts);
 
   const row = db
     .prepare(
@@ -1220,6 +1296,7 @@ export function searchCatalogItems(filters: CatalogQuery): {
       newThisWeekCount: countNewThisWeekRowsBySql(
         newThisWeekCountWhereClause,
         newThisWeekCountParams,
+        filters.tenantId,
       ),
     };
   }
@@ -1229,14 +1306,14 @@ export function searchCatalogItems(filters: CatalogQuery): {
   const shouldFilterByNewThisWeek = filters.newThisWeek === true;
   const limit = filters.pageSize;
   const offset = (filters.page - 1) * filters.pageSize;
-  const newThisWeekContext = shouldFilterByNewThisWeek
-    ? getNewThisWeekSqlContext()
-    : null;
+  const newThisWeekContexts = shouldFilterByNewThisWeek
+    ? getNewThisWeekTenantContexts(filters.tenantId)
+    : [];
   const {
     whereClause: selectWhereClause,
     params: selectParams,
-  } = newThisWeekContext
-    ? appendNewThisWeekSqlCondition(whereClause, params, newThisWeekContext)
+  } = shouldFilterByNewThisWeek
+    ? appendNewThisWeekSqlCondition(whereClause, params, newThisWeekContexts)
     : { whereClause, params };
   const previewPriorityOrderClause = filters.preferPreview
     ? "CASE WHEN TRIM(COALESCE(card_preview_path, '')) != '' THEN 1 ELSE 0 END DESC,"
@@ -1260,7 +1337,7 @@ export function searchCatalogItems(filters: CatalogQuery): {
     }
     const newThisWeekRows = shouldFilterByNewThisWeek
       ? filteredRows
-      : filterRowsByNewThisWeek(filteredRows);
+      : filterRowsByNewThisWeek(filteredRows, filters.tenantId);
     if (shouldFilterByNewThisWeek) {
       filteredRows = newThisWeekRows;
     }
@@ -1287,6 +1364,7 @@ export function searchCatalogItems(filters: CatalogQuery): {
     newThisWeekCount: countNewThisWeekRowsBySql(
       newThisWeekCountWhereClause,
       newThisWeekCountParams,
+      filters.tenantId,
     ),
   };
 }
