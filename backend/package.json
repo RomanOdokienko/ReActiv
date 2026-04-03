@@ -13,6 +13,7 @@
     "sync-reso-media-via-api": "tsx src/scripts/sync-reso-media-via-api.ts",
     "sync-alpha-media-via-api": "tsx src/scripts/sync-alpha-media-via-api.ts",
     "scrape-sber-catalog": "tsx src/scripts/scrape-sber-catalog-to-xlsx.ts",
+    "scrape-vtb-market": "tsx src/scripts/scrape-vtb-market-to-xlsx.ts",
     "backfill-import-core-fields": "tsx src/scripts/backfill-import-core-fields-from-file.ts",
     "extract-avito-media": "tsx src/scripts/extract-avito-media.ts",
     "sync-card-previews": "tsx src/scripts/sync-card-previews.ts",

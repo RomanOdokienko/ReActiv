@@ -47,6 +47,8 @@ const DEFAULT_MEDIA_ALLOWED_HOST_PATTERNS = [
   "admin.resoleasing.com",
   "sberleasing.ru",
   ".sberleasing.ru",
+  "vtb-leasing.ru",
+  ".vtb-leasing.ru",
 ];
 const BLOCKED_HOSTS = new Set(["localhost", "localhost.localdomain"]);
 const previewCache = new Map<string, { previewUrl: string | null; expiresAt: number }>();
