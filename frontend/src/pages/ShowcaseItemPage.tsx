@@ -191,6 +191,9 @@ function formatTenantLabel(tenantId: string | null | undefined): string {
   if (normalizedTenantId === "sovcombank") {
     return "Совкомбанк Лизинг";
   }
+  if (normalizedTenantId === "sber") {
+    return "СберЛизинг";
+  }
   return tenantId.trim() || "-";
 }
 

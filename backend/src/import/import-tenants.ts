@@ -1,7 +1,7 @@
 import type { CanonicalField } from "../domain/types";
 import { normalizeOfferCode, normalizeOfferCodePreserve } from "./normalize-offer-code";
 
-export type ImportTenantId = "gpb" | "reso" | "alpha" | "sovcombank";
+export type ImportTenantId = "gpb" | "reso" | "alpha" | "sovcombank" | "sber";
 
 type HeaderAliases = Record<CanonicalField, string[]>;
 
@@ -117,6 +117,30 @@ const SOVCOMBANK_HEADER_ADDITIONS: Partial<HeaderAliases> = {
   website_url: ["Размещение объявления, ссылка"],
 };
 
+const SBER_HEADER_ADDITIONS: Partial<HeaderAliases> = {
+  offer_code: ["offer_code", "vin", "VIN", "Код предложения"],
+  status: ["status", "Статус"],
+  brand: ["brand", "Марка"],
+  model: ["model", "Модель"],
+  modification: ["modification", "Модификация"],
+  vehicle_type: ["vehicle_type", "Тип ТС", "Тип техники"],
+  year: ["year", "Год выпуска"],
+  mileage_km: ["mileage_km", "Пробег, км", "Пробег"],
+  key_count: ["key_count", "Количество ключей"],
+  pts_type: ["pts_type", "ПТС/ЭПТС"],
+  has_encumbrance: ["has_encumbrance", "Наличие обременения"],
+  is_deregistered: ["is_deregistered", "Снят с учета"],
+  responsible_person: ["responsible_person", "Ответственный"],
+  storage_address: ["storage_address", "Адрес места хранения", "Город"],
+  days_on_sale: ["days_on_sale", "Количество дней реализации"],
+  price: ["price", "Стоимость"],
+  yandex_disk_url: ["yandex_disk_url", "Ссылка на фото", "Фото"],
+  booking_status: ["booking_status", "Статус бронирования"],
+  external_id: ["external_id", "ID", "ID лота"],
+  crm_ref: ["crm_ref", "CRM"],
+  website_url: ["website_url", "Ссылка на сайт", "Ссылка на источник"],
+};
+
 function mergeAliases(
   base: HeaderAliases,
   overrides: Partial<HeaderAliases>,
@@ -177,6 +201,12 @@ export function createImportTenantProfiles(
       headerAliases: extendAliases(baseAliases, SOVCOMBANK_HEADER_ADDITIONS),
       offerCodeNormalizer: normalizeOfferCode,
     },
+    sber: {
+      id: "sber",
+      label: "СберЛизинг",
+      headerAliases: extendAliases(baseAliases, SBER_HEADER_ADDITIONS),
+      offerCodeNormalizer: normalizeOfferCode,
+    },
   };
 }
 
@@ -187,7 +217,8 @@ export function parseImportTenantId(
     rawValue === "gpb" ||
     rawValue === "reso" ||
     rawValue === "alpha" ||
-    rawValue === "sovcombank"
+    rawValue === "sovcombank" ||
+    rawValue === "sber"
   ) {
     return rawValue;
   }

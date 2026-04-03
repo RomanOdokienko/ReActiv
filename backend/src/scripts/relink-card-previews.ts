@@ -9,7 +9,7 @@ import {
   updateVehicleOfferCardPreviewPathsByOfferCode,
 } from "../repositories/vehicle-offer-repository";
 
-const KNOWN_TENANTS = ["gpb", "reso", "alpha", "sovcombank"] as const;
+const KNOWN_TENANTS = ["gpb", "reso", "alpha", "sovcombank", "sber"] as const;
 const DEFAULT_UPDATE_CHUNK_SIZE = 1000;
 
 interface RelinkOptions {

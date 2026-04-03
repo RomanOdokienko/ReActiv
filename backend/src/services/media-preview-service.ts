@@ -42,6 +42,8 @@ const DEFAULT_MEDIA_ALLOWED_HOST_PATTERNS = [
   "storage.yandexcloud.net",
   "api-sale.resoleasing.com",
   "admin.resoleasing.com",
+  "sberleasing.ru",
+  ".sberleasing.ru",
 ];
 const BLOCKED_HOSTS = new Set(["localhost", "localhost.localdomain"]);
 const previewCache = new Map<string, { previewUrl: string | null; expiresAt: number }>();

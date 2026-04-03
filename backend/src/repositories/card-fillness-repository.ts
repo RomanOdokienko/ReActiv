@@ -56,9 +56,10 @@ const TENANT_LABELS: Record<string, string> = {
   reso: "РЕСО-Лизинг",
   alpha: "Альфа-Лизинг",
   sovcombank: "Совкомбанк Лизинг",
+  sber: "СберЛизинг",
 };
 
-const TENANT_ORDER = ["gpb", "reso", "alpha", "sovcombank"];
+const TENANT_ORDER = ["gpb", "reso", "alpha", "sovcombank", "sber"];
 
 const FIELD_DEFINITIONS: Array<{
   key: CardFillnessFieldMeta["key"];

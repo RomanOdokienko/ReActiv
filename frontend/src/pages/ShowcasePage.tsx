@@ -2127,6 +2127,9 @@ export function ShowcasePage({
     if (normalized === "sovcombank") {
       return "Совкомбанк Лизинг";
     }
+    if (normalized === "sber") {
+      return "СберЛизинг";
+    }
     return value;
   }
 

@@ -1,6 +1,6 @@
 export type UserRole = "admin" | "manager" | "stock_owner";
 export type PlatformMode = "closed" | "open";
-export type ImportTenantId = "gpb" | "reso" | "alpha" | "sovcombank";
+export type ImportTenantId = "gpb" | "reso" | "alpha" | "sovcombank" | "sber";
 
 export interface ImportErrorItem {
   rowNumber: number;
