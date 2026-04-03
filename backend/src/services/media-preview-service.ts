@@ -233,7 +233,13 @@ function isYandexPublicLink(url: string): boolean {
 }
 
 function extractHttpUrls(rawValue: string): string[] {
-  const matches = rawValue.match(/https?:\/\/\S+/gi) ?? [];
+  // Some imports persist multiple URLs in one cell. During normalization
+  // whitespace between URLs may be URL-encoded (`%20`, `%0A`), so split
+  // those separators back before extracting links.
+  const normalizedSource = rawValue
+    .replace(/%(?:0A|0D|09|20)+(?=https?:\/\/)/gi, " ")
+    .replace(/[\r\n\t]+/g, " ");
+  const matches = normalizedSource.match(/https?:\/\/\S+/gi) ?? [];
   const cleaned = matches
     .map((item) => item.replace(/[),.;]+$/g, "").trim())
     .filter(Boolean);
