@@ -99,7 +99,7 @@ function parseNonNegativeIntEnv(
 function getSafeScrapeOptions(): VtbScrapeOptions {
   return {
     // Conservative defaults to avoid tripping anti-bot limits.
-    pageLimit: parsePositiveIntEnv("VTB_DIRECT_IMPORT_PAGE_LIMIT", 60, 500),
+    pageLimit: parsePositiveIntEnv("VTB_DIRECT_IMPORT_PAGE_LIMIT", 300, 500),
     detailConcurrency: parsePositiveIntEnv("VTB_DIRECT_IMPORT_CONCURRENCY", 2, 4),
     delayMs: parseNonNegativeIntEnv("VTB_DIRECT_IMPORT_DELAY_MS", 350, 10_000),
     timeoutMs: parsePositiveIntEnv("VTB_DIRECT_IMPORT_TIMEOUT_MS", 20_000, 120_000),
@@ -355,4 +355,3 @@ export function ensureVtbDirectImportBackgroundWorker(
 ): void {
   scheduleQueueProcessing(logger);
 }
-

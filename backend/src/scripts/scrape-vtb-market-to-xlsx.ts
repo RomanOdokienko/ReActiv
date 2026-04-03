@@ -361,6 +361,35 @@ function extractHrefValues(html: string): string[] {
     .filter(Boolean);
 }
 
+function extractAnchorTags(html: string): string[] {
+  return [...html.matchAll(/<a\b[^>]*>/gi)]
+    .map((match) => match[0] ?? "")
+    .filter(Boolean);
+}
+
+function extractAnchorHrefsByClass(html: string, classFragment: string): string[] {
+  const links: string[] = [];
+  const tags = extractAnchorTags(html);
+
+  tags.forEach((tag) => {
+    const classAttrRaw = tag.match(/\bclass=['"]([^'"]+)['"]/i)?.[1] ?? "";
+    const classAttr = decodeHtmlEntities(classAttrRaw);
+    if (!classAttr.includes(classFragment)) {
+      return;
+    }
+
+    const hrefRaw = tag.match(/\bhref=['"]([^'"]+)['"]/i)?.[1] ?? "";
+    const href = decodeHtmlEntities(hrefRaw).trim();
+    if (!href) {
+      return;
+    }
+
+    links.push(href);
+  });
+
+  return links;
+}
+
 function resolvePagerPath(html: string): string {
   const hrefs = extractHrefValues(html);
   for (const href of hrefs) {
@@ -379,6 +408,60 @@ function resolvePagerPath(html: string): string {
   }
 
   return "/market/f/type-is-4/";
+}
+
+function normalizeMarketPath(pathname: string): string {
+  const trimmed = pathname.trim();
+  if (!trimmed) {
+    return VTB_MARKET_PATH;
+  }
+
+  const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.endsWith("/") ? withLeadingSlash : `${withLeadingSlash}/`;
+}
+
+function extractTypeFilterPaths(rootHtml: string): string[] {
+  const fallbackPath = normalizeMarketPath(resolvePagerPath(rootHtml));
+  const bindMatch = rootHtml.match(/<market-smart-filter[^>]*v-bind="([^"]+)"/i);
+  if (!bindMatch) {
+    return [fallbackPath];
+  }
+
+  try {
+    const decodedBindJson = decodeHtmlEntities(bindMatch[1] ?? "");
+    const parsed = JSON.parse(decodedBindJson) as {
+      items?: Array<Record<string, unknown>>;
+    };
+
+    const items = Array.isArray(parsed.items) ? parsed.items : [];
+    const typeItem = items.find((item) => {
+      const code = typeof item.CODE === "string" ? item.CODE : "";
+      return code.trim().toUpperCase() === "TYPE";
+    });
+
+    const rawValues = typeItem?.VALUES;
+    const values = Array.isArray(rawValues) ? rawValues : [];
+    const paths = values
+      .map((value) => {
+        const record = value as Record<string, unknown>;
+        const rawUrlId = String(record.URL_ID ?? "").trim();
+        if (!rawUrlId) {
+          return "";
+        }
+
+        return normalizeMarketPath(`/market/f/type-is-${rawUrlId}/`);
+      })
+      .filter(Boolean);
+
+    const uniquePaths = [...new Set(paths)];
+    if (uniquePaths.length > 0) {
+      return uniquePaths;
+    }
+
+    return [fallbackPath];
+  } catch {
+    return [fallbackPath];
+  }
 }
 
 function extractLastPageNumber(html: string): number {
@@ -409,31 +492,62 @@ function extractLastPageNumber(html: string): number {
 }
 
 function buildMarketPageUrl(page: number, pagerPath: string): string {
+  const normalizedPath = normalizeMarketPath(pagerPath);
   if (page <= 1) {
-    return `${VTB_BASE_URL}${VTB_MARKET_PATH}`;
+    return `${VTB_BASE_URL}${normalizedPath}`;
   }
-  return `${VTB_BASE_URL}${pagerPath}?PAGEN_1=${page}`;
+  return `${VTB_BASE_URL}${normalizedPath}?PAGEN_1=${page}`;
+}
+
+function isVtbDetailPath(pathname: string): boolean {
+  if (!pathname || pathname === "/" || pathname === "/market/" || pathname === "/market") {
+    return false;
+  }
+
+  if (pathname.startsWith("/market/f/")) {
+    return false;
+  }
+
+  if (pathname.startsWith("/market/")) {
+    return true;
+  }
+
+  if (pathname.startsWith("/auto/probeg/")) {
+    return true;
+  }
+
+  return false;
+}
+
+function normalizeRelativePath(href: string): string {
+  try {
+    const parsed = new URL(href, VTB_BASE_URL);
+    const pathname = parsed.pathname;
+    if (!pathname) {
+      return "";
+    }
+    return pathname.endsWith("/") ? pathname : `${pathname}/`;
+  } catch {
+    return "";
+  }
 }
 
 function extractMarketItemRelativeLinks(html: string): string[] {
-  const hrefs = extractHrefValues(html);
-  const links = hrefs
-    .map((href) => {
-      try {
-        const parsed = new URL(href, VTB_BASE_URL);
-        return parsed.pathname;
-      } catch {
-        return "";
-      }
-    })
-    .filter(Boolean)
-    .filter((pathname) => pathname.startsWith("/market/"))
-    .filter((pathname) => !pathname.startsWith("/market/f/"))
-    .filter((pathname) => pathname !== "/market/" && pathname !== "/market")
-    .filter((pathname) => !/\.(?:css|js|png|jpe?g|webp|svg|gif|ico)$/i.test(pathname))
-    .map((pathname) => (pathname.endsWith("/") ? pathname : `${pathname}/`));
+  const cardLinkHrefs = extractAnchorHrefsByClass(html, "t-market-item-bottom-link");
+  const cardLinks = cardLinkHrefs
+    .map((href) => normalizeRelativePath(href))
+    .filter((pathname) => isVtbDetailPath(pathname));
 
-  return [...new Set(links)];
+  if (cardLinks.length > 0) {
+    return [...new Set(cardLinks)];
+  }
+
+  const fallbackLinks = extractHrefValues(html)
+    .map((href) => normalizeRelativePath(href))
+    .filter((pathname) => isVtbDetailPath(pathname))
+    .filter((pathname) => !/\.(?:css|js|png|jpe?g|webp|svg|gif|ico)$/i.test(pathname));
+
+  return [...new Set(fallbackLinks)];
 }
 
 function parseBrandModel(title: string): { brand: string; model: string } {
@@ -583,6 +697,29 @@ function parseGalleryUrls(autoCardHtml: string): string[] {
     .filter((url) => /\.(?:png|jpe?g|webp|gif|bmp|svg)(?:\?|$)/i.test(url));
 }
 
+function parsePriceFromAutoCard(autoCardHtml: string): number | null {
+  const candidateBlocks = [
+    ...extractDivBlocksByClass(autoCardHtml, "t-market-auto-full-price"),
+    ...extractDivBlocksByClass(autoCardHtml, "t-calculator-card-price"),
+    ...extractDivBlocksByClass(autoCardHtml, "t-auto-card-price"),
+    ...extractDivBlocksByClass(autoCardHtml, "t-market-auto-month-price"),
+  ];
+
+  for (const candidate of candidateBlocks) {
+    const parsed = parseInteger(normalizeText(candidate));
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+
+  const inlineMatch = autoCardHtml.match(/([\d\s]{3,})\s*(?:&#8381;|₽|руб)/i);
+  if (inlineMatch?.[1]) {
+    return parseInteger(inlineMatch[1]);
+  }
+
+  return null;
+}
+
 function parseVtbItem(detailRelativePath: string, html: string): ParsedVtbItem | null {
   const detailUrl = toAbsoluteUrl(detailRelativePath);
   const autoCardHtml = extractDivBlocksByClass(html, "t-auto-card")[0] ?? html;
@@ -606,6 +743,7 @@ function parseVtbItem(detailRelativePath: string, html: string): ParsedVtbItem |
   const city = findSpecValue(specRows, ["город"]) || summaryMeta.city;
   const yearFromSpec = parseInteger(findSpecValue(specRows, ["год выпуска"]));
   const mileageFromSpec = parseInteger(findSpecValue(specRows, ["пробег"]));
+  const priceFromSpec = parseInteger(findSpecValue(specRows, ["цена", "стоимость"]));
   const storageAddress = findSpecValue(specRows, ["адрес стоянки"]);
   const availabilityRaw =
     normalizeText(
@@ -613,13 +751,10 @@ function parseVtbItem(detailRelativePath: string, html: string): ParsedVtbItem |
       "",
     ) || "Доступно для покупки";
   const { status, bookingStatus } = mapAvailabilityToStatus(availabilityRaw);
-  const price = parseInteger(
-    normalizeText(
-      extractDivBlocksByClass(autoCardHtml, "t-auto-card-price")[0] ??
-      autoCardHtml.match(/<div[^>]*class="[^"]*t-auto-card-price[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ??
-      "",
-    ),
-  );
+  const price =
+    parsePriceFromAutoCard(autoCardHtml) ??
+    parsePriceFromAutoCard(html) ??
+    priceFromSpec;
 
   const galleryUrls = parseGalleryUrls(autoCardHtml);
   const mediaSource = galleryUrls.join("\n");
@@ -708,37 +843,59 @@ async function collectMarketItemLinks(
   onProgress?: (progress: VtbScrapeProgress) => void,
 ): Promise<string[]> {
   const rootHtml = await fetchTextWithTimeout(`${VTB_BASE_URL}${VTB_MARKET_PATH}`, options.timeoutMs);
-  const pagerPath = resolvePagerPath(rootHtml);
-  const lastPage = extractLastPageNumber(rootHtml);
-  const targetPageCount = Math.max(1, Math.min(lastPage, options.pageLimit));
+  const categoryPaths = extractTypeFilterPaths(rootHtml);
 
   const itemLinks = new Set<string>();
-  for (let page = 1; page <= targetPageCount; page += 1) {
-    const pageUrl = buildMarketPageUrl(page, pagerPath);
-    const html = page === 1 ? rootHtml : await fetchTextWithTimeout(pageUrl, options.timeoutMs);
-    const links = extractMarketItemRelativeLinks(html);
-    links.forEach((link) => itemLinks.add(link));
+  let processedPages = 0;
+  let totalPlannedPages = 0;
+  let maxItemsReached = false;
 
-    console.log("vtb_scrape_list_page_done", {
-      page,
-      pageUrl,
-      linksFound: links.length,
-      totalUniqueLinks: itemLinks.size,
-      targetPageCount,
-    });
-    onProgress?.({
-      stage: "listing",
-      processed: page,
-      total: targetPageCount,
-    });
+  for (const categoryPath of categoryPaths) {
+    const firstPageUrl = buildMarketPageUrl(1, categoryPath);
+    const firstPageHtml = await fetchTextWithTimeout(firstPageUrl, options.timeoutMs);
+    const lastPage = extractLastPageNumber(firstPageHtml);
+    const targetPageCount = Math.max(1, Math.min(lastPage, options.pageLimit));
+    totalPlannedPages += targetPageCount;
 
-    if (options.maxItems !== null && itemLinks.size >= options.maxItems) {
+    for (let page = 1; page <= targetPageCount; page += 1) {
+      const pageUrl = buildMarketPageUrl(page, categoryPath);
+      const html =
+        page === 1 ? firstPageHtml : await fetchTextWithTimeout(pageUrl, options.timeoutMs);
+      const links = extractMarketItemRelativeLinks(html);
+      links.forEach((link) => itemLinks.add(link));
+      processedPages += 1;
+
+      console.log("vtb_scrape_list_page_done", {
+        categoryPath,
+        page,
+        pageUrl,
+        linksFound: links.length,
+        totalUniqueLinks: itemLinks.size,
+        targetPageCount,
+        processedPages,
+        totalPlannedPages,
+      });
+      onProgress?.({
+        stage: "listing",
+        processed: processedPages,
+        total: Math.max(processedPages, totalPlannedPages),
+      });
+
+      if (options.maxItems !== null && itemLinks.size >= options.maxItems) {
+        maxItemsReached = true;
+        break;
+      }
+
+      if (page < targetPageCount) {
+        await sleep(options.delayMs);
+      }
+    }
+
+    if (maxItemsReached) {
       break;
     }
 
-    if (page < targetPageCount) {
-      await sleep(options.delayMs);
-    }
+    await sleep(options.delayMs);
   }
 
   const collected = Array.from(itemLinks.values());
