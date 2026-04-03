@@ -6,7 +6,9 @@ import {
   getImportMediaSyncJob,
   getImportBatchDetails,
   getImportBatches,
+  getLatestVtbDirectImportJob,
   runImportMediaSyncJob,
+  runVtbDirectImport,
   uploadImport,
 } from "../api/client";
 import type {
@@ -15,6 +17,7 @@ import type {
   ImportMediaSyncJob,
   ImportResponse,
   ImportTenantId,
+  VtbDirectImportJob,
 } from "../types/api";
 
 interface UploadPageProps {
@@ -109,6 +112,56 @@ function getMediaSyncStageLabel(stage: ImportMediaSyncJob["stage"]): string {
       return "Подтягиваем фото из источников";
     case "preview_sync":
       return "Генерируем превью карточек";
+    case "done":
+      return "Завершено";
+    default:
+      return stage;
+  }
+}
+
+function isVtbDirectImportJobActive(status: VtbDirectImportJob["status"]): boolean {
+  return status === "queued" || status === "running";
+}
+
+function getVtbDirectImportStatusLabel(status: VtbDirectImportJob["status"]): string {
+  switch (status) {
+    case "queued":
+      return "В очереди";
+    case "running":
+      return "Выполняется";
+    case "completed":
+      return "Завершено";
+    case "completed_with_errors":
+      return "Завершено с предупреждениями";
+    case "failed":
+      return "Ошибка";
+    default:
+      return status;
+  }
+}
+
+function getVtbDirectImportStatusTone(
+  status: VtbDirectImportJob["status"],
+): "good" | "warn" | "bad" {
+  if (status === "completed") {
+    return "good";
+  }
+  if (status === "queued" || status === "running" || status === "completed_with_errors") {
+    return "warn";
+  }
+  return "bad";
+}
+
+function getVtbDirectImportStageLabel(stage: VtbDirectImportJob["stage"]): string {
+  switch (stage) {
+    case "queued":
+      return "Ожидает запуска";
+    case "scraping":
+      return "Собираем данные с сайта ВТБ";
+    case "importing":
+      return "Импортируем данные в витрину";
+    case "media_sync":
+      return "Запускаем фоновое обновление фото и превью";
     case "done":
       return "Завершено";
     default:
@@ -343,6 +396,12 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [mediaSyncJob, setMediaSyncJob] = useState<ImportMediaSyncJob | null>(null);
   const [mediaSyncError, setMediaSyncError] = useState<string | null>(null);
+  const [vtbDirectImportJob, setVtbDirectImportJob] = useState<VtbDirectImportJob | null>(null);
+  const [vtbDirectImportError, setVtbDirectImportError] = useState<string | null>(null);
+  const [isStartingVtbDirectImport, setIsStartingVtbDirectImport] = useState(false);
+  const [lastHandledVtbDirectTerminalJobId, setLastHandledVtbDirectTerminalJobId] = useState<
+    string | null
+  >(null);
   const criticalErrors = result
     ? result.errors.filter((item) => isCriticalImportError(item))
     : [];
@@ -371,6 +430,19 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
           ? 0
           : 100
         : 0;
+  const vtbDirectImportProcessed = vtbDirectImportJob?.processed_count ?? 0;
+  const vtbDirectImportTotal = vtbDirectImportJob?.total_count ?? 0;
+  const vtbDirectImportProgressPercent =
+    vtbDirectImportTotal > 0
+      ? Math.max(
+          0,
+          Math.min(100, Math.round((vtbDirectImportProcessed / vtbDirectImportTotal) * 100)),
+        )
+      : vtbDirectImportJob
+        ? isVtbDirectImportJobActive(vtbDirectImportJob.status)
+          ? 0
+          : 100
+        : 0;
 
   async function loadHistory() {
     try {
@@ -395,6 +467,74 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   useEffect(() => {
     void loadHistory();
   }, [tenantId]);
+
+  useEffect(() => {
+    if (tenantId !== "vtb") {
+      setVtbDirectImportJob(null);
+      setVtbDirectImportError(null);
+      setLastHandledVtbDirectTerminalJobId(null);
+      return;
+    }
+
+    let isCancelled = false;
+    let intervalId: number | null = null;
+
+    const fetchLatestDirectImportJob = async () => {
+      try {
+        const job = await getLatestVtbDirectImportJob();
+        if (isCancelled) {
+          return;
+        }
+
+        setVtbDirectImportError(null);
+        setVtbDirectImportJob(job);
+
+        if (!job) {
+          return;
+        }
+
+        if (!isVtbDirectImportJobActive(job.status)) {
+          if (intervalId !== null) {
+            window.clearInterval(intervalId);
+            intervalId = null;
+          }
+
+          if (job.id !== lastHandledVtbDirectTerminalJobId) {
+            setLastHandledVtbDirectTerminalJobId(job.id);
+            if (job.import_batch_id) {
+              await loadHistory();
+            }
+
+            if (job.status === "completed" || job.status === "completed_with_errors") {
+              setSuccess("Прямой парсинг ВТБ завершен.");
+            }
+          }
+        }
+      } catch (caughtError) {
+        if (isCancelled) {
+          return;
+        }
+
+        setVtbDirectImportError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Не удалось загрузить статус прямого парсинга ВТБ",
+        );
+      }
+    };
+
+    void fetchLatestDirectImportJob();
+    intervalId = window.setInterval(() => {
+      void fetchLatestDirectImportJob();
+    }, 3000);
+
+    return () => {
+      isCancelled = true;
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [tenantId, lastHandledVtbDirectTerminalJobId]);
 
   useEffect(() => {
     if (!activeImportBatchId) {
@@ -536,6 +676,28 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     }
   }
 
+  async function handleRunVtbDirectImportClick(): Promise<void> {
+    setIsStartingVtbDirectImport(true);
+    setError(null);
+    setSuccess(null);
+    setVtbDirectImportError(null);
+
+    try {
+      const job = await runVtbDirectImport();
+      setVtbDirectImportJob(job);
+      setLastHandledVtbDirectTerminalJobId(null);
+      setSuccess("Прямой парсинг ВТБ поставлен в очередь.");
+    } catch (caughtError) {
+      setVtbDirectImportError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Не удалось запустить прямой парсинг ВТБ",
+      );
+    } finally {
+      setIsStartingVtbDirectImport(false);
+    }
+  }
+
   return (
     <section>
       <h1>Загрузите excel-файл с лотами</h1>
@@ -579,8 +741,71 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
         </button>
       </form>
 
+      {tenantId === "vtb" && (
+        <div className="panel media-sync-panel">
+          <div className="summary-head">
+            <h2>Прямой парсинг ВТБ</h2>
+            <span
+              className={`status-pill ${
+                vtbDirectImportJob
+                  ? getVtbDirectImportStatusTone(vtbDirectImportJob.status)
+                  : "warn"
+              }`}
+            >
+              {vtbDirectImportJob
+                ? getVtbDirectImportStatusLabel(vtbDirectImportJob.status)
+                : "Нет задачи"}
+            </span>
+          </div>
+
+          {vtbDirectImportJob ? (
+            <>
+              <p className="summary-note">
+                {getVtbDirectImportStageLabel(vtbDirectImportJob.stage)}
+              </p>
+              <div className="media-sync-progress">
+                <div
+                  className="media-sync-progress__fill"
+                  style={{ width: `${vtbDirectImportProgressPercent}%` }}
+                />
+              </div>
+              <p className="media-sync-progress__meta">
+                {vtbDirectImportProcessed} / {vtbDirectImportTotal} (
+                {vtbDirectImportProgressPercent}%)
+              </p>
+              {vtbDirectImportJob.error_message && (
+                <p className="error media-sync-panel__error">{vtbDirectImportJob.error_message}</p>
+              )}
+            </>
+          ) : (
+            <p className="summary-note">
+              Запуск создает новый импорт ВТБ напрямую с сайта, без ручного файла.
+            </p>
+          )}
+
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={
+              isStartingVtbDirectImport ||
+              Boolean(vtbDirectImportJob && isVtbDirectImportJobActive(vtbDirectImportJob.status))
+            }
+            onClick={() => {
+              void handleRunVtbDirectImportClick();
+            }}
+          >
+            {isStartingVtbDirectImport
+              ? "Запуск..."
+              : vtbDirectImportJob && isVtbDirectImportJobActive(vtbDirectImportJob.status)
+                ? "Задача выполняется"
+                : "Запустить прямой парсинг ВТБ"}
+          </button>
+        </div>
+      )}
+
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
+      {vtbDirectImportError && <p className="error">{vtbDirectImportError}</p>}
       {mediaSyncError && <p className="error">{mediaSyncError}</p>}
 
       {activeImportBatchId && (

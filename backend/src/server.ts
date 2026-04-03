@@ -11,6 +11,7 @@ import { registerAdminCatalogExportRoutes } from "./routes/admin-catalog-export-
 import { registerAdminCatalogRoutes } from "./routes/admin-catalog-routes";
 import { registerAdminHighlightsRoutes } from "./routes/admin-highlights-routes";
 import { registerAdminResoMediaRoutes } from "./routes/admin-reso-media-routes";
+import { registerAdminVtbImportRoutes } from "./routes/admin-vtb-import-routes";
 import { registerActivityRoutes } from "./routes/activity-routes";
 import { registerAuthRoutes } from "./routes/auth-routes";
 import { registerCatalogRoutes } from "./routes/catalog-routes";
@@ -26,6 +27,7 @@ import { authenticateRequest, getCsrfHeaderName, hasValidCsrfToken } from "./ser
 import { ensureBootstrapAdmin } from "./startup/bootstrap-admin";
 import { startMediaHealthScheduler } from "./services/media-health-scheduler";
 import { ensureImportMediaSyncBackgroundWorkers } from "./services/import-media-sync-service";
+import { ensureVtbDirectImportBackgroundWorker } from "./services/vtb-direct-import-service";
 
 const DEFAULT_TRUST_PROXY_HOPS = process.env.NODE_ENV === "production" ? 1 : 0;
 
@@ -933,12 +935,14 @@ async function startServer(): Promise<void> {
   await registerAdminHighlightsRoutes(app);
   await registerAdminResoMediaRoutes(app);
   await registerAdminAlphaMediaRoutes(app);
+  await registerAdminVtbImportRoutes(app);
   await registerActivityRoutes(app);
 
   try {
     await app.listen({ port, host });
     stopMediaHealthScheduler = startMediaHealthScheduler(app.log);
     ensureImportMediaSyncBackgroundWorkers(app.log);
+    ensureVtbDirectImportBackgroundWorker(app.log);
     process.once("SIGTERM", () => {
       void gracefulShutdown("SIGTERM");
     });

@@ -168,6 +168,38 @@ export interface ImportMediaSyncJob {
   updated_at: string;
 }
 
+export type VtbDirectImportJobStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "completed_with_errors"
+  | "failed";
+
+export type VtbDirectImportJobStage =
+  | "queued"
+  | "scraping"
+  | "importing"
+  | "media_sync"
+  | "done";
+
+export interface VtbDirectImportJob {
+  id: string;
+  tenant_id: ImportTenantId;
+  trigger_type: "manual_api";
+  status: VtbDirectImportJobStatus;
+  stage: VtbDirectImportJobStage;
+  processed_count: number;
+  total_count: number;
+  error_message: string | null;
+  details_json: string | null;
+  import_batch_id: string | null;
+  media_sync_job_id: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  updated_at: string;
+}
+
 export interface CatalogListItem {
   id: number;
   tenantId?: string;

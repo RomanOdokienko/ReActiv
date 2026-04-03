@@ -11,6 +11,15 @@ const DEFAULT_DELAY_MS = 120;
 const DEFAULT_DETAIL_CONCURRENCY = 6;
 const CURRENT_YEAR = new Date().getFullYear();
 
+export interface VtbScrapeOptions {
+  outputPath?: string;
+  pageLimit?: number;
+  maxItems?: number | null;
+  timeoutMs?: number;
+  delayMs?: number;
+  detailConcurrency?: number;
+}
+
 interface ScriptOptions {
   outputPath: string;
   pageLimit: number;
@@ -44,69 +53,119 @@ interface ParsedVtbItem {
 
 type ExportRow = Record<CanonicalField, string | number | boolean | null>;
 
+export interface VtbScrapeProgress {
+  stage: "listing" | "details";
+  processed: number;
+  total: number;
+}
+
+export interface VtbScrapeResult {
+  itemsCount: number;
+  withPrice: number;
+  withYear: number;
+  withMileage: number;
+  withMedia: number;
+  fileBuffer: Buffer;
+  outputPath?: string;
+}
+
 const EXPORT_HEADERS: CanonicalField[] = [...REQUIRED_IMPORT_FIELDS];
 
-function parseOptions(argv: string[]): ScriptOptions {
+function clampPositiveInt(value: number | undefined, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.floor(value));
+}
+
+function clampNonNegativeInt(value: number | undefined, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return fallback;
+  }
+
+  return Math.max(0, Math.floor(value));
+}
+
+export function resolveVtbScrapeOptions(
+  input: VtbScrapeOptions = {},
+): ScriptOptions {
   const datePart = new Date().toISOString().slice(0, 10);
-  const options: ScriptOptions = {
-    outputPath: path.resolve(process.cwd(), `tmp/vtb-market-${datePart}.xlsx`),
-    pageLimit: DEFAULT_PAGE_LIMIT,
-    maxItems: null,
-    timeoutMs: DEFAULT_TIMEOUT_MS,
-    delayMs: DEFAULT_DELAY_MS,
-    detailConcurrency: DEFAULT_DETAIL_CONCURRENCY,
+  const maxItems =
+    typeof input.maxItems === "number" && Number.isFinite(input.maxItems) && input.maxItems > 0
+      ? Math.floor(input.maxItems)
+      : null;
+
+  const outputPath = input.outputPath?.trim()
+    ? path.resolve(process.cwd(), input.outputPath)
+    : path.resolve(process.cwd(), `tmp/vtb-market-${datePart}.xlsx`);
+
+  return {
+    outputPath,
+    pageLimit: clampPositiveInt(input.pageLimit, DEFAULT_PAGE_LIMIT),
+    maxItems,
+    timeoutMs: clampPositiveInt(input.timeoutMs, DEFAULT_TIMEOUT_MS),
+    delayMs: clampNonNegativeInt(input.delayMs, DEFAULT_DELAY_MS),
+    detailConcurrency: clampPositiveInt(
+      input.detailConcurrency,
+      DEFAULT_DETAIL_CONCURRENCY,
+    ),
   };
+}
+
+function parseOptions(argv: string[]): ScriptOptions {
+  const nextOptions: VtbScrapeOptions = {};
 
   argv.forEach((argument) => {
     if (argument.startsWith("--output=")) {
       const raw = argument.slice("--output=".length).trim();
       if (raw) {
-        options.outputPath = path.resolve(process.cwd(), raw);
+        nextOptions.outputPath = raw;
       }
       return;
     }
 
     if (argument.startsWith("--pageLimit=")) {
-      const parsed = Number(argument.slice("--pageLimit=".length).trim());
-      if (Number.isFinite(parsed) && parsed > 0) {
-        options.pageLimit = Math.max(1, Math.floor(parsed));
+      const value = Number(argument.slice("--pageLimit=".length).trim());
+      if (Number.isFinite(value) && value > 0) {
+        nextOptions.pageLimit = Math.max(1, Math.floor(value));
       }
       return;
     }
 
     if (argument.startsWith("--maxItems=")) {
-      const parsed = Number(argument.slice("--maxItems=".length).trim());
-      if (Number.isFinite(parsed) && parsed > 0) {
-        options.maxItems = Math.max(1, Math.floor(parsed));
+      const value = Number(argument.slice("--maxItems=".length).trim());
+      if (Number.isFinite(value) && value > 0) {
+        nextOptions.maxItems = Math.max(1, Math.floor(value));
       }
       return;
     }
 
     if (argument.startsWith("--timeoutMs=")) {
-      const parsed = Number(argument.slice("--timeoutMs=".length).trim());
-      if (Number.isFinite(parsed) && parsed > 0) {
-        options.timeoutMs = Math.max(1_000, Math.floor(parsed));
+      const value = Number(argument.slice("--timeoutMs=".length).trim());
+      if (Number.isFinite(value) && value > 0) {
+        nextOptions.timeoutMs = Math.max(1_000, Math.floor(value));
       }
       return;
     }
 
     if (argument.startsWith("--delayMs=")) {
-      const parsed = Number(argument.slice("--delayMs=".length).trim());
-      if (Number.isFinite(parsed) && parsed >= 0) {
-        options.delayMs = Math.max(0, Math.floor(parsed));
+      const value = Number(argument.slice("--delayMs=".length).trim());
+      if (Number.isFinite(value) && value >= 0) {
+        nextOptions.delayMs = Math.max(0, Math.floor(value));
       }
       return;
     }
 
     if (argument.startsWith("--detailConcurrency=")) {
-      const parsed = Number(argument.slice("--detailConcurrency=".length).trim());
-      if (Number.isFinite(parsed) && parsed > 0) {
-        options.detailConcurrency = Math.max(1, Math.floor(parsed));
+      const value = Number(argument.slice("--detailConcurrency=".length).trim());
+      if (Number.isFinite(value) && value > 0) {
+        nextOptions.detailConcurrency = Math.max(1, Math.floor(value));
       }
     }
   });
 
-  return options;
+  return resolveVtbScrapeOptions(nextOptions);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -626,7 +685,7 @@ function toSheetRows(rows: ExportRow[]): Array<Record<string, string | number | 
   });
 }
 
-function writeWorkbook(outputPath: string, rows: ExportRow[]): void {
+function buildWorkbookBuffer(rows: ExportRow[]): Buffer {
   const workbook = XLSX.utils.book_new();
   const sheetRows = toSheetRows(rows);
   const worksheet = XLSX.utils.json_to_sheet(sheetRows, {
@@ -634,13 +693,20 @@ function writeWorkbook(outputPath: string, rows: ExportRow[]): void {
   });
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "vtb_market");
+  return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+}
+
+function writeWorkbook(outputPath: string, rows: ExportRow[]): void {
   mkdirSync(path.dirname(outputPath), { recursive: true });
 
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  const buffer = buildWorkbookBuffer(rows);
   writeFileSync(outputPath, buffer);
 }
 
-async function collectMarketItemLinks(options: ScriptOptions): Promise<string[]> {
+async function collectMarketItemLinks(
+  options: ScriptOptions,
+  onProgress?: (progress: VtbScrapeProgress) => void,
+): Promise<string[]> {
   const rootHtml = await fetchTextWithTimeout(`${VTB_BASE_URL}${VTB_MARKET_PATH}`, options.timeoutMs);
   const pagerPath = resolvePagerPath(rootHtml);
   const lastPage = extractLastPageNumber(rootHtml);
@@ -660,6 +726,11 @@ async function collectMarketItemLinks(options: ScriptOptions): Promise<string[]>
       totalUniqueLinks: itemLinks.size,
       targetPageCount,
     });
+    onProgress?.({
+      stage: "listing",
+      processed: page,
+      total: targetPageCount,
+    });
 
     if (options.maxItems !== null && itemLinks.size >= options.maxItems) {
       break;
@@ -678,8 +749,11 @@ async function collectMarketItemLinks(options: ScriptOptions): Promise<string[]>
   return collected;
 }
 
-async function collectVtbItems(options: ScriptOptions): Promise<ParsedVtbItem[]> {
-  const detailLinks = await collectMarketItemLinks(options);
+async function collectVtbItems(
+  options: ScriptOptions,
+  onProgress?: (progress: VtbScrapeProgress) => void,
+): Promise<ParsedVtbItem[]> {
+  const detailLinks = await collectMarketItemLinks(options, onProgress);
   const itemsByOfferCode = new Map<string, ParsedVtbItem>();
   let failedDetails = 0;
 
@@ -704,6 +778,11 @@ async function collectVtbItems(options: ScriptOptions): Promise<ParsedVtbItem[]>
             parsedUniqueItems: itemsByOfferCode.size,
             failedDetails,
           });
+          onProgress?.({
+            stage: "details",
+            processed: index + 1,
+            total: detailLinks.length,
+          });
         }
       } catch (error) {
         failedDetails += 1;
@@ -726,29 +805,51 @@ async function collectVtbItems(options: ScriptOptions): Promise<ParsedVtbItem[]>
   return Array.from(itemsByOfferCode.values());
 }
 
-async function main(): Promise<void> {
-  const options = parseOptions(process.argv.slice(2));
-  console.log("vtb_scrape_started", options);
-
-  const items = await collectVtbItems(options);
+export async function scrapeVtbMarketToWorkbook(
+  options: VtbScrapeOptions = {},
+  onProgress?: (progress: VtbScrapeProgress) => void,
+): Promise<VtbScrapeResult> {
+  const resolvedOptions = resolveVtbScrapeOptions(options);
+  const items = await collectVtbItems(resolvedOptions, onProgress);
   const exportRows = items.map((item) => toExportRow(item));
-  writeWorkbook(options.outputPath, exportRows);
+  const fileBuffer = buildWorkbookBuffer(exportRows);
 
-  const stats = {
-    totalItems: items.length,
+  return {
+    itemsCount: items.length,
     withPrice: items.filter((item) => item.price !== null).length,
     withYear: items.filter((item) => item.year !== null).length,
     withMileage: items.filter((item) => item.mileageKm !== null).length,
     withMedia: items.filter((item) => item.mediaSource.trim().length > 0).length,
+    fileBuffer,
+    outputPath: resolvedOptions.outputPath,
+  };
+}
+
+async function main(): Promise<void> {
+  const options = parseOptions(process.argv.slice(2));
+  console.log("vtb_scrape_started", options);
+
+  const result = await scrapeVtbMarketToWorkbook(options);
+  mkdirSync(path.dirname(options.outputPath), { recursive: true });
+  writeFileSync(options.outputPath, result.fileBuffer);
+
+  const stats = {
+    totalItems: result.itemsCount,
+    withPrice: result.withPrice,
+    withYear: result.withYear,
+    withMileage: result.withMileage,
+    withMedia: result.withMedia,
     outputPath: options.outputPath,
   };
 
   console.log("vtb_scrape_completed", stats);
 }
 
-void main().catch((error) => {
-  console.log("vtb_scrape_failed", {
-    error: error instanceof Error ? error.message : "unknown_error",
+if (require.main === module) {
+  void main().catch((error) => {
+    console.log("vtb_scrape_failed", {
+      error: error instanceof Error ? error.message : "unknown_error",
+    });
+    process.exitCode = 1;
   });
-  process.exitCode = 1;
-});
+}

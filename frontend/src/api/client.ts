@@ -20,6 +20,7 @@ import type {
   CatalogSummaryResponse,
   ImportResponse,
   ImportTenantId,
+  VtbDirectImportJob,
   PlatformMode,
   PlatformModeResponse,
   ResetAdminPasswordResponse,
@@ -737,6 +738,84 @@ export async function runImportMediaSyncJob(
     }
 
     const payload = (await response.json()) as { job: ImportMediaSyncJob };
+    return payload.job;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getLatestVtbDirectImportJob(): Promise<VtbDirectImportJob | null> {
+  try {
+    const response = await fetch(buildUrl("/admin/vtb-import/latest"), {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить статус прямого парсинга ВТБ");
+    }
+
+    const payload = (await response.json()) as { job?: VtbDirectImportJob | null };
+    return payload.job ?? null;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getVtbDirectImportJob(
+  jobId: string,
+): Promise<VtbDirectImportJob> {
+  try {
+    const response = await fetch(buildUrl(`/admin/vtb-import/${jobId}`), {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (response.status === 404) {
+      throw new Error("VTB_IMPORT_JOB_NOT_FOUND");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить статус прямого парсинга ВТБ");
+    }
+
+    const payload = (await response.json()) as { job: VtbDirectImportJob };
+    return payload.job;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function runVtbDirectImport(): Promise<VtbDirectImportJob> {
+  try {
+    const response = await fetch(buildUrl("/admin/vtb-import/run"), {
+      method: "POST",
+      credentials: "include",
+      headers: withCsrfHeaders(),
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (!response.ok) {
+      throw new Error("Не удалось запустить прямой парсинг ВТБ");
+    }
+
+    const payload = (await response.json()) as { job: VtbDirectImportJob };
     return payload.job;
   } catch (error) {
     if (error instanceof TypeError) {
