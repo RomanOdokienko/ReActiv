@@ -48,7 +48,7 @@ interface HighlightsStructureSnapshot {
   typeShares: StructureTypeShareItem[];
 }
 
-const TENANT_GROWTH_ORDER: ImportTenantId[] = ["gpb", "reso", "alpha", "sovcombank", "sber"];
+const TENANT_GROWTH_ORDER: ImportTenantId[] = ["gpb", "reso", "alpha", "sovcombank", "sber", "vtb"];
 const STRUCTURE_CATEGORY_LIMIT = 4;
 const STRUCTURE_SHARE_PRIMARY_LIMIT = 4;
 const STRUCTURE_SHARE_OTHER_LABEL = "Прочее";
@@ -70,6 +70,7 @@ const TENANT_LABELS: Record<ImportTenantId, string> = {
   alpha: "Альфа-Лизинг",
   sovcombank: "Совкомбанк Лизинг",
   sber: "СберЛизинг",
+  vtb: "ВТБ Лизинг",
 };
 
 const TENANT_SHORT_LABELS: Record<ImportTenantId, string> = {
@@ -78,6 +79,7 @@ const TENANT_SHORT_LABELS: Record<ImportTenantId, string> = {
   alpha: "АЛЬФА",
   sovcombank: "СОВКОМ",
   sber: "СБЕР",
+  vtb: "ВТБ",
 };
 
 const WEEKLY_HIGHLIGHTS: WeeklyHighlightItem[] = [

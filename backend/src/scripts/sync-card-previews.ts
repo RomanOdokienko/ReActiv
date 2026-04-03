@@ -2,7 +2,7 @@ import { initializeSchema } from "../db/schema";
 import { ensureMediaStorageRoot } from "../services/local-media-storage";
 import { syncCardPreviewsForTenant } from "../services/card-preview-sync-service";
 
-const KNOWN_TENANTS = ["gpb", "reso", "alpha", "sovcombank", "sber"] as const;
+const KNOWN_TENANTS = ["gpb", "reso", "alpha", "sovcombank", "sber", "vtb"] as const;
 const DEFAULT_LIMIT = 500;
 const DEFAULT_CONCURRENCY = 4;
 

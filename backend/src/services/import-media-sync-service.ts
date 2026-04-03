@@ -411,7 +411,7 @@ export function getLatestImportMediaSyncJobForImportBatch(
 export function ensureImportMediaSyncBackgroundWorkers(
   logger?: FastifyBaseLogger,
 ): void {
-  const tenantIds: ImportTenantId[] = ["gpb", "reso", "alpha", "sovcombank", "sber"];
+  const tenantIds: ImportTenantId[] = ["gpb", "reso", "alpha", "sovcombank", "sber", "vtb"];
   tenantIds.forEach((tenantId) => {
     scheduleTenantQueueRun(tenantId, {
       logger,

@@ -2130,6 +2130,9 @@ export function ShowcasePage({
     if (normalized === "sber") {
       return "СберЛизинг";
     }
+    if (normalized === "vtb") {
+      return "ВТБ Лизинг";
+    }
     return value;
   }
 

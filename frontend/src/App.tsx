@@ -21,6 +21,7 @@ const HIDDEN_ADMIN_LOGIN_PATH = "/staff-login-reactiv";
 const ACTIVITY_VIEWER_LOGINS = new Set(["alexey"]);
 const HOST_FORCED_TENANT_MAP: Record<string, string> = {
   "gpb.reactiv.pro": "gpb",
+  "vtb.reactiv.pro": "vtb",
 };
 const SEO_WEB_BASE_URL = "https://reactiv.pro";
 const SEO_KEYWORDS =

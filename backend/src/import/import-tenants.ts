@@ -1,7 +1,7 @@
 import type { CanonicalField } from "../domain/types";
 import { normalizeOfferCode, normalizeOfferCodePreserve } from "./normalize-offer-code";
 
-export type ImportTenantId = "gpb" | "reso" | "alpha" | "sovcombank" | "sber";
+export type ImportTenantId = "gpb" | "reso" | "alpha" | "sovcombank" | "sber" | "vtb";
 
 type HeaderAliases = Record<CanonicalField, string[]>;
 
@@ -141,6 +141,30 @@ const SBER_HEADER_ADDITIONS: Partial<HeaderAliases> = {
   website_url: ["website_url", "Ссылка на сайт", "Ссылка на источник"],
 };
 
+const VTB_HEADER_ADDITIONS: Partial<HeaderAliases> = {
+  offer_code: ["offer_code", "vin", "VIN", "Код предложения", "Код лота"],
+  status: ["status", "Статус"],
+  brand: ["brand", "Марка"],
+  model: ["model", "Модель"],
+  modification: ["modification", "Модификация"],
+  vehicle_type: ["vehicle_type", "Тип ТС", "Тип техники"],
+  year: ["year", "Год выпуска"],
+  mileage_km: ["mileage_km", "Пробег, км", "Пробег"],
+  key_count: ["key_count", "Количество ключей"],
+  pts_type: ["pts_type", "ПТС/ЭПТС"],
+  has_encumbrance: ["has_encumbrance", "Наличие обременения"],
+  is_deregistered: ["is_deregistered", "Снят с учета"],
+  responsible_person: ["responsible_person", "Ответственный"],
+  storage_address: ["storage_address", "Адрес места хранения", "Город"],
+  days_on_sale: ["days_on_sale", "Количество дней реализации"],
+  price: ["price", "Стоимость", "Цена"],
+  yandex_disk_url: ["yandex_disk_url", "Ссылка на фото", "Фото"],
+  booking_status: ["booking_status", "Статус бронирования", "Бронь"],
+  external_id: ["external_id", "ID", "ID лота"],
+  crm_ref: ["crm_ref", "CRM"],
+  website_url: ["website_url", "Ссылка на сайт", "Ссылка на источник"],
+};
+
 function mergeAliases(
   base: HeaderAliases,
   overrides: Partial<HeaderAliases>,
@@ -207,6 +231,12 @@ export function createImportTenantProfiles(
       headerAliases: extendAliases(baseAliases, SBER_HEADER_ADDITIONS),
       offerCodeNormalizer: normalizeOfferCode,
     },
+    vtb: {
+      id: "vtb",
+      label: "ВТБ Лизинг",
+      headerAliases: extendAliases(baseAliases, VTB_HEADER_ADDITIONS),
+      offerCodeNormalizer: normalizeOfferCode,
+    },
   };
 }
 
@@ -218,7 +248,8 @@ export function parseImportTenantId(
     rawValue === "reso" ||
     rawValue === "alpha" ||
     rawValue === "sovcombank" ||
-    rawValue === "sber"
+    rawValue === "sber" ||
+    rawValue === "vtb"
   ) {
     return rawValue;
   }
