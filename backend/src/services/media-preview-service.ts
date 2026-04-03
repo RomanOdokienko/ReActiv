@@ -33,6 +33,9 @@ const URL_REACHABILITY_TIMEOUT_MS = 4_000;
 const URL_REACHABILITY_CONCURRENCY = 8;
 const MEDIA_FETCH_TIMEOUT_MS = 6_000;
 const MEDIA_FETCH_MAX_REDIRECTS = 3;
+const MEDIA_FETCH_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+const MEDIA_FETCH_ACCEPT = "image/avif,image/webp,image/apng,image/*,*/*;q=0.8";
 const DEFAULT_MEDIA_ALLOWED_HOST_PATTERNS = [
   "yadi.sk",
   ".yadi.sk",
@@ -51,6 +54,24 @@ const galleryCache = new Map<string, { galleryUrls: string[]; expiresAt: number 
 const urlReachabilityCache = new Map<string, { isReachable: boolean; expiresAt: number }>();
 const RESO_IMAGE_BASE_URL = "https://api-sale.resoleasing.com";
 const RESO_SALE_API_BASE_URL = "https://admin.resoleasing.com/api/sales-catalog";
+
+function buildMediaFetchHeaders(url: string): Headers {
+  const headers = new Headers();
+  headers.set("user-agent", MEDIA_FETCH_USER_AGENT);
+  headers.set("accept", MEDIA_FETCH_ACCEPT);
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host === "sberleasing.ru" || host.endsWith(".sberleasing.ru")) {
+      headers.set("referer", "https://www.sberleasing.ru/");
+    }
+  } catch {
+    // Ignore malformed URL because URL validity is checked earlier.
+  }
+
+  return headers;
+}
 
 function normalizeHostPattern(value: string): string | null {
   const normalized = value.trim().toLowerCase();
@@ -270,6 +291,7 @@ export async function fetchAllowedMediaRemote(
         method,
         redirect: "manual",
         signal: abortController.signal,
+        headers: buildMediaFetchHeaders(currentUrl),
       });
     } finally {
       clearTimeout(timeoutId);
