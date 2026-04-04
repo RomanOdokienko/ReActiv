@@ -51,6 +51,11 @@ interface ParsedVtbItem {
   externalId: string;
 }
 
+interface VtbDetailLink {
+  relativePath: string;
+  categoryPath: string;
+}
+
 type ExportRow = Record<CanonicalField, string | number | boolean | null>;
 
 export interface VtbScrapeProgress {
@@ -567,13 +572,47 @@ function parseBrandModel(title: string): { brand: string; model: string } {
   };
 }
 
+function extractTypeCodeFromCategoryPath(categoryPath: string): string {
+  const match = categoryPath.match(/type-is-(\d+)/i);
+  return match?.[1] ?? "";
+}
+
+function mapTypeCodeToVehicleType(typeCode: string): string | null {
+  switch (typeCode) {
+    case "1":
+      return "Автобус";
+    case "2":
+      return "Грузовой";
+    case "3":
+      return "ЛКТ";
+    case "4":
+      return "Легковой";
+    case "5":
+      return "Прицеп";
+    case "6":
+      return "СПЕЦТЕХНИКА";
+    default:
+      return null;
+  }
+}
+
+function resolveVtbVehicleType(categoryPath: string, typeFromSpec: string): string {
+  const specValue = normalizeText(typeFromSpec);
+  if (specValue) {
+    return specValue;
+  }
+
+  const typeCode = extractTypeCodeFromCategoryPath(categoryPath);
+  return mapTypeCodeToVehicleType(typeCode) ?? "Легковой";
+}
+
 function mapAvailabilityToStatus(availability: string): {
   status: string;
   bookingStatus: string;
 } {
   const normalized = normalizeLabelKey(availability);
 
-  if (normalized.includes("резерв") || normalized.includes("забронир")) {
+  if (normalized.includes("резерв") || normalized.includes("заброни")) {
     return { status: "Забронировано", bookingStatus: "Резерв" };
   }
 
@@ -720,7 +759,11 @@ function parsePriceFromAutoCard(autoCardHtml: string): number | null {
   return null;
 }
 
-function parseVtbItem(detailRelativePath: string, html: string): ParsedVtbItem | null {
+function parseVtbItem(
+  detailRelativePath: string,
+  categoryPath: string,
+  html: string,
+): ParsedVtbItem | null {
   const detailUrl = toAbsoluteUrl(detailRelativePath);
   const autoCardHtml = extractDivBlocksByClass(html, "t-auto-card")[0] ?? html;
   const titleRaw = autoCardHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "";
@@ -744,6 +787,7 @@ function parseVtbItem(detailRelativePath: string, html: string): ParsedVtbItem |
   const yearFromSpec = parseInteger(findSpecValue(specRows, ["год выпуска"]));
   const mileageFromSpec = parseInteger(findSpecValue(specRows, ["пробег"]));
   const priceFromSpec = parseInteger(findSpecValue(specRows, ["цена", "стоимость"]));
+  const vehicleTypeFromSpec = findSpecValue(specRows, ["тип тс", "тип техники"]);
   const storageAddress = findSpecValue(specRows, ["адрес стоянки"]);
   const availabilityRaw =
     normalizeText(
@@ -773,7 +817,7 @@ function parseVtbItem(detailRelativePath: string, html: string): ParsedVtbItem |
     brand: brandModel.brand,
     model: brandModel.model,
     modification: title,
-    vehicleType: "Легковой транспорт",
+    vehicleType: resolveVtbVehicleType(categoryPath, vehicleTypeFromSpec),
     year,
     mileageKm: mileageFromSpec ?? summaryMeta.mileageKm,
     price,
@@ -841,11 +885,11 @@ function writeWorkbook(outputPath: string, rows: ExportRow[]): void {
 async function collectMarketItemLinks(
   options: ScriptOptions,
   onProgress?: (progress: VtbScrapeProgress) => void,
-): Promise<string[]> {
+): Promise<VtbDetailLink[]> {
   const rootHtml = await fetchTextWithTimeout(`${VTB_BASE_URL}${VTB_MARKET_PATH}`, options.timeoutMs);
   const categoryPaths = extractTypeFilterPaths(rootHtml);
 
-  const itemLinks = new Set<string>();
+  const itemLinks = new Map<string, VtbDetailLink>();
   let processedPages = 0;
   let totalPlannedPages = 0;
   let maxItemsReached = false;
@@ -862,7 +906,14 @@ async function collectMarketItemLinks(
       const html =
         page === 1 ? firstPageHtml : await fetchTextWithTimeout(pageUrl, options.timeoutMs);
       const links = extractMarketItemRelativeLinks(html);
-      links.forEach((link) => itemLinks.add(link));
+      links.forEach((link) => {
+        if (!itemLinks.has(link)) {
+          itemLinks.set(link, {
+            relativePath: link,
+            categoryPath,
+          });
+        }
+      });
       processedPages += 1;
 
       console.log("vtb_scrape_list_page_done", {
@@ -917,11 +968,12 @@ async function collectVtbItems(
   await runConcurrently(
     detailLinks,
     options.detailConcurrency,
-    async (relativePath, index) => {
+    async (detailLink, index) => {
       try {
+        const relativePath = detailLink.relativePath;
         const detailUrl = toAbsoluteUrl(relativePath);
         const html = await fetchTextWithTimeout(detailUrl, options.timeoutMs);
-        const parsed = parseVtbItem(relativePath, html);
+        const parsed = parseVtbItem(relativePath, detailLink.categoryPath, html);
         if (!parsed) {
           failedDetails += 1;
         } else if (!itemsByOfferCode.has(parsed.offerCode)) {
@@ -944,7 +996,7 @@ async function collectVtbItems(
       } catch (error) {
         failedDetails += 1;
         console.log("vtb_scrape_detail_failed", {
-          relativePath,
+          relativePath: detailLink.relativePath,
           error: error instanceof Error ? error.message : "unknown_error",
         });
       }
@@ -1010,3 +1062,4 @@ if (require.main === module) {
     process.exitCode = 1;
   });
 }
+
