@@ -1612,52 +1612,74 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
               <details className="import-warning-details">
                 <summary>
-                  Показать детали критичных ошибок ({criticalErrors.length} из {criticalErrorsTotalCount})
+                  Показать детали критичных ошибок (
+                  {hasImportDetailsLoaded
+                    ? `${criticalErrors.length} из ${criticalErrorsTotalCount}`
+                    : `всего ${criticalErrorsTotalCount}`}
+                  )
                 </summary>
-                <div className="table-wrap desktop-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Строка</th>
-                        <th>Поле</th>
-                        <th>Сообщение</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {criticalErrors.map((item, index) => (
-                        <tr key={`critical-${item.rowNumber}-${item.field}-${index}`}>
-                          <td>{item.rowNumber}</td>
-                          <td>{getFieldLabel(item.field)}</td>
-                          <td>{getWarningText(item.field, item.message)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mobile-cards">
-                  {criticalErrors.map((item, index) => (
-                    <article
-                      key={`mobile-critical-${item.rowNumber}-${item.field}-${index}`}
-                      className="mobile-card"
+                {criticalErrors.length === 0 ? (
+                  <div className="summary-note">
+                    <p>Детали еще не загружены.</p>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={isLoadingImportDetails || isLoadingMoreImportDetails}
+                      onClick={() => {
+                        void loadImportBatchDetails(result.importBatchId);
+                      }}
                     >
-                      <div className="mobile-card__head">
-                        <strong>Критичная ошибка в строке {item.rowNumber}</strong>
-                      </div>
-                      <dl className="mobile-card__list">
-                        <div className="mobile-card__row">
-                          <dt className="mobile-card__label">Поле</dt>
-                          <dd className="mobile-card__value">{getFieldLabel(item.field)}</dd>
-                        </div>
-                        <div className="mobile-card__row">
-                          <dt className="mobile-card__label">Сообщение</dt>
-                          <dd className="mobile-card__value">
-                            {getWarningText(item.field, item.message)}
-                          </dd>
-                        </div>
-                      </dl>
-                    </article>
-                  ))}
-                </div>
+                      {isLoadingImportDetails ? "Загрузка деталей..." : "Загрузить детали ошибок"}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="table-wrap desktop-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Строка</th>
+                            <th>Поле</th>
+                            <th>Сообщение</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {criticalErrors.map((item, index) => (
+                            <tr key={`critical-${item.rowNumber}-${item.field}-${index}`}>
+                              <td>{item.rowNumber}</td>
+                              <td>{getFieldLabel(item.field)}</td>
+                              <td>{getWarningText(item.field, item.message)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mobile-cards">
+                      {criticalErrors.map((item, index) => (
+                        <article
+                          key={`mobile-critical-${item.rowNumber}-${item.field}-${index}`}
+                          className="mobile-card"
+                        >
+                          <div className="mobile-card__head">
+                            <strong>Критичная ошибка в строке {item.rowNumber}</strong>
+                          </div>
+                          <dl className="mobile-card__list">
+                            <div className="mobile-card__row">
+                              <dt className="mobile-card__label">Поле</dt>
+                              <dd className="mobile-card__value">{getFieldLabel(item.field)}</dd>
+                            </div>
+                            <div className="mobile-card__row">
+                              <dt className="mobile-card__label">Сообщение</dt>
+                              <dd className="mobile-card__value">
+                                {getWarningText(item.field, item.message)}
+                              </dd>
+                            </div>
+                          </dl>
+                        </article>
+                      ))}
+                    </div>
+                  </>
+                )}
               </details>
             </>
           )}
@@ -1682,52 +1704,74 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
               <details className="import-warning-details">
                 <summary>
-                  Показать детали предупреждений ({warningErrors.length} из {warningErrorsTotalCount})
+                  Показать детали предупреждений (
+                  {hasImportDetailsLoaded
+                    ? `${warningErrors.length} из ${warningErrorsTotalCount}`
+                    : `всего ${warningErrorsTotalCount}`}
+                  )
                 </summary>
-                <div className="table-wrap desktop-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Строка</th>
-                        <th>Поле</th>
-                        <th>Сообщение</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {warningErrors.map((item, index) => (
-                        <tr key={`${item.rowNumber}-${item.field}-${index}`}>
-                          <td>{item.rowNumber}</td>
-                          <td>{getFieldLabel(item.field)}</td>
-                          <td>{getWarningText(item.field, item.message)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mobile-cards">
-                  {warningErrors.map((item, index) => (
-                    <article
-                      key={`mobile-${item.rowNumber}-${item.field}-${index}`}
-                      className="mobile-card"
+                {warningErrors.length === 0 ? (
+                  <div className="summary-note">
+                    <p>Детали еще не загружены.</p>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={isLoadingImportDetails || isLoadingMoreImportDetails}
+                      onClick={() => {
+                        void loadImportBatchDetails(result.importBatchId);
+                      }}
                     >
-                      <div className="mobile-card__head">
-                        <strong>Предупреждение в строке {item.rowNumber}</strong>
-                      </div>
-                      <dl className="mobile-card__list">
-                        <div className="mobile-card__row">
-                          <dt className="mobile-card__label">Поле</dt>
-                          <dd className="mobile-card__value">{getFieldLabel(item.field)}</dd>
-                        </div>
-                        <div className="mobile-card__row">
-                          <dt className="mobile-card__label">Сообщение</dt>
-                          <dd className="mobile-card__value">
-                            {getWarningText(item.field, item.message)}
-                          </dd>
-                        </div>
-                      </dl>
-                    </article>
-                  ))}
-                </div>
+                      {isLoadingImportDetails ? "Загрузка деталей..." : "Загрузить детали ошибок"}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="table-wrap desktop-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Строка</th>
+                            <th>Поле</th>
+                            <th>Сообщение</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {warningErrors.map((item, index) => (
+                            <tr key={`${item.rowNumber}-${item.field}-${index}`}>
+                              <td>{item.rowNumber}</td>
+                              <td>{getFieldLabel(item.field)}</td>
+                              <td>{getWarningText(item.field, item.message)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mobile-cards">
+                      {warningErrors.map((item, index) => (
+                        <article
+                          key={`mobile-${item.rowNumber}-${item.field}-${index}`}
+                          className="mobile-card"
+                        >
+                          <div className="mobile-card__head">
+                            <strong>Предупреждение в строке {item.rowNumber}</strong>
+                          </div>
+                          <dl className="mobile-card__list">
+                            <div className="mobile-card__row">
+                              <dt className="mobile-card__label">Поле</dt>
+                              <dd className="mobile-card__value">{getFieldLabel(item.field)}</dd>
+                            </div>
+                            <div className="mobile-card__row">
+                              <dt className="mobile-card__label">Сообщение</dt>
+                              <dd className="mobile-card__value">
+                                {getWarningText(item.field, item.message)}
+                              </dd>
+                            </div>
+                          </dl>
+                        </article>
+                      ))}
+                    </div>
+                  </>
+                )}
               </details>
             </>
           )}
