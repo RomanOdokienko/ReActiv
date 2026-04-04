@@ -644,8 +644,26 @@ export async function getImportBatches(
 
 export async function getImportBatchDetails(
   importBatchId: string,
+  options: { errorsLimit?: number; errorsOffset?: number } = {},
 ): Promise<ImportBatchDetailsResponse> {
-  const response = await fetch(buildUrl(`/imports/${importBatchId}`), {
+  const params = new URLSearchParams();
+  if (
+    typeof options.errorsLimit === "number" &&
+    Number.isFinite(options.errorsLimit) &&
+    options.errorsLimit >= 0
+  ) {
+    params.set("errorsLimit", String(Math.floor(options.errorsLimit)));
+  }
+  if (
+    typeof options.errorsOffset === "number" &&
+    Number.isFinite(options.errorsOffset) &&
+    options.errorsOffset >= 0
+  ) {
+    params.set("errorsOffset", String(Math.floor(options.errorsOffset)));
+  }
+
+  const query = params.toString();
+  const response = await fetch(buildUrl(`/imports/${importBatchId}${query ? `?${query}` : ""}`), {
     credentials: "include",
     cache: "no-store",
   });

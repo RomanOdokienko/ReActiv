@@ -101,6 +101,7 @@ export interface ImportErrorRecord {
 export interface ImportBatchDetailsResponse {
   importBatch: ImportBatchListItem;
   errors: ImportErrorRecord[];
+  errorsTotal: number;
 }
 
 export interface ClearImportsResponse {

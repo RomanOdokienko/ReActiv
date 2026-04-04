@@ -5,7 +5,10 @@ import {
   listImportBatches,
 } from "../repositories/import-batch-repository";
 import { parseImportTenantId } from "../import/import-tenants";
-import { getImportErrorsByBatchId } from "../repositories/import-error-repository";
+import {
+  countImportErrorsByBatchId,
+  getImportErrorsByBatchId,
+} from "../repositories/import-error-repository";
 import { importWorkbook } from "../services/import-service";
 import {
   enqueueImportMediaSyncJob,
@@ -201,11 +204,31 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
       return reply.code(404).send({ message: "Import batch not found" });
     }
 
-    const errors = getImportErrorsByBatchId(params.id);
+    const query = request.query as {
+      errorsLimit?: string | number;
+      errorsOffset?: string | number;
+    };
+    const parsedErrorsLimit = Number(query.errorsLimit);
+    const parsedErrorsOffset = Number(query.errorsOffset);
+    const errorsLimit =
+      Number.isFinite(parsedErrorsLimit) && parsedErrorsLimit >= 0
+        ? Math.min(Math.floor(parsedErrorsLimit), 10_000)
+        : undefined;
+    const errorsOffset =
+      Number.isFinite(parsedErrorsOffset) && parsedErrorsOffset >= 0
+        ? Math.floor(parsedErrorsOffset)
+        : 0;
+
+    const errors = getImportErrorsByBatchId(params.id, {
+      limit: errorsLimit,
+      offset: errorsOffset,
+    });
+    const errorsTotal = countImportErrorsByBatchId(params.id);
 
     return reply.code(200).send({
       importBatch,
       errors,
+      errorsTotal,
     });
   });
 

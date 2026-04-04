@@ -43,6 +43,8 @@ const IMPORT_TENANTS: Array<{ id: ImportTenantId; label: string }> = [
   { id: "carcade", label: "CARCADE" },
 ];
 
+const IMPORT_ERRORS_PAGE_SIZE = 500;
+
 function getTenantLabel(tenantId: ImportTenantId): string {
   return IMPORT_TENANTS.find((item) => item.id === tenantId)?.label ?? tenantId;
 }
@@ -467,7 +469,9 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [success, setSuccess] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResponse | null>(null);
   const [isLoadingImportDetails, setIsLoadingImportDetails] = useState(false);
+  const [isLoadingMoreImportDetails, setIsLoadingMoreImportDetails] = useState(false);
   const [importDetailsError, setImportDetailsError] = useState<string | null>(null);
+  const [importErrorsTotal, setImportErrorsTotal] = useState<number | null>(null);
   const [loadedImportDetailsBatchId, setLoadedImportDetailsBatchId] = useState<string | null>(null);
   const [history, setHistory] = useState<ImportBatchListItem[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -498,6 +502,11 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const criticalSummary = useMemo(() => buildWarningSummary(criticalErrors), [criticalErrors]);
   const warningSummary = useMemo(() => buildWarningSummary(warningErrors), [warningErrors]);
   const hasImportDetailsLoaded = Boolean(result) && loadedImportDetailsBatchId === result?.importBatchId;
+  const shownImportErrorsCount = result?.errors.length ?? 0;
+  const hasMoreImportErrors =
+    hasImportDetailsLoaded &&
+    importErrorsTotal !== null &&
+    shownImportErrorsCount < importErrorsTotal;
   const activeImportBatchId = result?.importBatchId ?? null;
   const mediaSyncProcessed = mediaSyncJob?.processed_count ?? 0;
   const mediaSyncTotal = mediaSyncJob?.total_count ?? 0;
@@ -550,27 +559,44 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
   async function loadImportBatchDetails(
     importBatchId: string,
-    options: { requestId?: number } = {},
+    options: { requestId?: number; append?: boolean } = {},
   ): Promise<void> {
-    const cachedDetails = importDetailsCacheRef.current.get(importBatchId);
-    if (cachedDetails) {
-      setLoadedImportDetailsBatchId(importBatchId);
-      setImportDetailsError(null);
-      setResult((current) => {
-        if (!current || current.importBatchId !== importBatchId) {
-          return current;
-        }
-        return mapBatchDetailsToImportResponse(cachedDetails);
-      });
-      return;
+    const append = options.append === true;
+    const currentLoadedCount =
+      append && result?.importBatchId === importBatchId ? result.errors.length : 0;
+
+    if (!append && currentLoadedCount === 0) {
+      const cachedDetails = importDetailsCacheRef.current.get(importBatchId);
+      if (cachedDetails) {
+        setLoadedImportDetailsBatchId(importBatchId);
+        setImportErrorsTotal(cachedDetails.errorsTotal);
+        setImportDetailsError(null);
+        setResult((current) => {
+          if (!current || current.importBatchId !== importBatchId) {
+            return current;
+          }
+          return mapBatchDetailsToImportResponse(cachedDetails);
+        });
+        return;
+      }
     }
 
-    setIsLoadingImportDetails(true);
+    if (append) {
+      setIsLoadingMoreImportDetails(true);
+    } else {
+      setIsLoadingImportDetails(true);
+    }
     setImportDetailsError(null);
 
     try {
-      const details = await getImportBatchDetails(importBatchId);
-      importDetailsCacheRef.current.set(importBatchId, details);
+      const details = await getImportBatchDetails(importBatchId, {
+        errorsLimit: IMPORT_ERRORS_PAGE_SIZE,
+        errorsOffset: currentLoadedCount,
+      });
+
+      if (!append && currentLoadedCount === 0) {
+        importDetailsCacheRef.current.set(importBatchId, details);
+      }
 
       if (
         options.requestId !== undefined &&
@@ -580,11 +606,35 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
       }
 
       setLoadedImportDetailsBatchId(importBatchId);
+      setImportErrorsTotal(details.errorsTotal);
       setResult((current) => {
         if (!current || current.importBatchId !== importBatchId) {
           return current;
         }
-        return mapBatchDetailsToImportResponse(details);
+
+        const mapped = mapBatchDetailsToImportResponse(details);
+        if (!append) {
+          return mapped;
+        }
+
+        const mergedErrors = [...current.errors];
+        const existingIds = new Set(
+          mergedErrors.map(
+            (item) => `${item.rowNumber}:${item.field ?? ""}:${item.message}`,
+          ),
+        );
+        mapped.errors.forEach((item) => {
+          const key = `${item.rowNumber}:${item.field ?? ""}:${item.message}`;
+          if (!existingIds.has(key)) {
+            existingIds.add(key);
+            mergedErrors.push(item);
+          }
+        });
+
+        return {
+          ...current,
+          errors: mergedErrors,
+        };
       });
     } catch (caughtError) {
       if (
@@ -606,7 +656,11 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
       ) {
         return;
       }
-      setIsLoadingImportDetails(false);
+      if (append) {
+        setIsLoadingMoreImportDetails(false);
+      } else {
+        setIsLoadingImportDetails(false);
+      }
     }
   }
 
@@ -618,6 +672,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
       setHistoryError(null);
       setImportDetailsError(null);
       setIsLoadingImportDetails(false);
+      setIsLoadingMoreImportDetails(false);
 
       const response = await getImportBatches(20, tenantId);
       if (requestId !== historyRequestCounterRef.current) {
@@ -630,6 +685,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
       if (!latestImport) {
         setResult(null);
         setLoadedImportDetailsBatchId(null);
+        setImportErrorsTotal(null);
         setMediaSyncJob(null);
         return;
       }
@@ -638,11 +694,13 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
       if (cachedDetails) {
         setResult(mapBatchDetailsToImportResponse(cachedDetails));
         setLoadedImportDetailsBatchId(latestImport.id);
+        setImportErrorsTotal(cachedDetails.errorsTotal);
         return;
       }
 
       setResult(mapBatchListItemToImportResponse(latestImport));
       setLoadedImportDetailsBatchId(null);
+      setImportErrorsTotal(null);
 
       if (options.preloadDetails) {
         await loadImportBatchDetails(latestImport.id, { requestId });
@@ -856,12 +914,14 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     setError(null);
     setSuccess(null);
     setImportDetailsError(null);
+    setImportErrorsTotal(null);
     setResult(null);
 
     try {
       const response = await uploadImport(file, tenantId);
       setResult(response);
       setLoadedImportDetailsBatchId(response.importBatchId);
+      setImportErrorsTotal(response.errors.length);
       if (response.summary.importedRows > 0) {
         setSuccess(
           `Файл «${file.name}» загружен. Данные добавлены в витрину.`,
@@ -899,6 +959,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     try {
       const response = await clearImports(tenantId);
       setResult(null);
+      setImportErrorsTotal(null);
       await loadHistory();
       setSuccess(
         `Удалено: предложений ${response.vehicleOffersDeleted}, импортов ${response.importBatchesDeleted}, ошибок ${response.importErrorsDeleted}.`,
@@ -1359,6 +1420,26 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
               >
                 {isLoadingImportDetails ? "Загрузка деталей..." : "Загрузить детали ошибок"}
               </button>
+            </div>
+          )}
+
+          {hasImportDetailsLoaded && importErrorsTotal !== null && (
+            <div className="summary-note">
+              <p>
+                Загружено ошибок: {shownImportErrorsCount} из {importErrorsTotal}.
+              </p>
+              {hasMoreImportErrors && (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={isLoadingImportDetails || isLoadingMoreImportDetails}
+                  onClick={() => {
+                    void loadImportBatchDetails(result.importBatchId, { append: true });
+                  }}
+                >
+                  {isLoadingMoreImportDetails ? "Загружаем еще..." : "Показать еще ошибки"}
+                </button>
+              )}
             </div>
           )}
 
