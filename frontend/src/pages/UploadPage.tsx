@@ -3,15 +3,18 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import {
   clearImports,
+  getLatestCarcadeDirectImportJob,
   getImportMediaSyncJob,
   getImportBatchDetails,
   getImportBatches,
   getLatestVtbDirectImportJob,
+  runCarcadeDirectImport,
   runImportMediaSyncJob,
   runVtbDirectImport,
   uploadImport,
 } from "../api/client";
 import type {
+  CarcadeDirectImportJob,
   ImportBatchDetailsResponse,
   ImportBatchListItem,
   ImportMediaSyncJob,
@@ -37,6 +40,7 @@ const IMPORT_TENANTS: Array<{ id: ImportTenantId; label: string }> = [
   { id: "sovcombank", label: "Совкомбанк Лизинг" },
   { id: "sber", label: "СберЛизинг" },
   { id: "vtb", label: "ВТБ Лизинг" },
+  { id: "carcade", label: "CARCADE" },
 ];
 
 function getTenantLabel(tenantId: ImportTenantId): string {
@@ -158,6 +162,58 @@ function getVtbDirectImportStageLabel(stage: VtbDirectImportJob["stage"]): strin
       return "Ожидает запуска";
     case "scraping":
       return "Собираем данные с сайта ВТБ";
+    case "importing":
+      return "Импортируем данные в витрину";
+    case "media_sync":
+      return "Запускаем фоновое обновление фото и превью";
+    case "done":
+      return "Завершено";
+    default:
+      return stage;
+  }
+}
+
+function isCarcadeDirectImportJobActive(status: CarcadeDirectImportJob["status"]): boolean {
+  return status === "queued" || status === "running";
+}
+
+function getCarcadeDirectImportStatusLabel(
+  status: CarcadeDirectImportJob["status"],
+): string {
+  switch (status) {
+    case "queued":
+      return "В очереди";
+    case "running":
+      return "Выполняется";
+    case "completed":
+      return "Завершено";
+    case "completed_with_errors":
+      return "Завершено с предупреждениями";
+    case "failed":
+      return "Ошибка";
+    default:
+      return status;
+  }
+}
+
+function getCarcadeDirectImportStatusTone(
+  status: CarcadeDirectImportJob["status"],
+): "good" | "warn" | "bad" {
+  if (status === "completed") {
+    return "good";
+  }
+  if (status === "queued" || status === "running" || status === "completed_with_errors") {
+    return "warn";
+  }
+  return "bad";
+}
+
+function getCarcadeDirectImportStageLabel(stage: CarcadeDirectImportJob["stage"]): string {
+  switch (stage) {
+    case "queued":
+      return "Ожидает запуска";
+    case "scraping":
+      return "Собираем данные с сайта CARCADE";
     case "importing":
       return "Импортируем данные в витрину";
     case "media_sync":
@@ -402,6 +458,12 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [lastHandledVtbDirectTerminalJobId, setLastHandledVtbDirectTerminalJobId] = useState<
     string | null
   >(null);
+  const [carcadeDirectImportJob, setCarcadeDirectImportJob] = useState<CarcadeDirectImportJob | null>(null);
+  const [carcadeDirectImportError, setCarcadeDirectImportError] = useState<string | null>(null);
+  const [isStartingCarcadeDirectImport, setIsStartingCarcadeDirectImport] = useState(false);
+  const [lastHandledCarcadeDirectTerminalJobId, setLastHandledCarcadeDirectTerminalJobId] = useState<
+    string | null
+  >(null);
   const criticalErrors = result
     ? result.errors.filter((item) => isCriticalImportError(item))
     : [];
@@ -440,6 +502,22 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
         )
       : vtbDirectImportJob
         ? isVtbDirectImportJobActive(vtbDirectImportJob.status)
+          ? 0
+          : 100
+        : 0;
+  const carcadeDirectImportProcessed = carcadeDirectImportJob?.processed_count ?? 0;
+  const carcadeDirectImportTotal = carcadeDirectImportJob?.total_count ?? 0;
+  const carcadeDirectImportProgressPercent =
+    carcadeDirectImportTotal > 0
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            Math.round((carcadeDirectImportProcessed / carcadeDirectImportTotal) * 100),
+          ),
+        )
+      : carcadeDirectImportJob
+        ? isCarcadeDirectImportJobActive(carcadeDirectImportJob.status)
           ? 0
           : 100
         : 0;
@@ -535,6 +613,74 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
       }
     };
   }, [tenantId, lastHandledVtbDirectTerminalJobId]);
+
+  useEffect(() => {
+    if (tenantId !== "carcade") {
+      setCarcadeDirectImportJob(null);
+      setCarcadeDirectImportError(null);
+      setLastHandledCarcadeDirectTerminalJobId(null);
+      return;
+    }
+
+    let isCancelled = false;
+    let intervalId: number | null = null;
+
+    const fetchLatestDirectImportJob = async () => {
+      try {
+        const job = await getLatestCarcadeDirectImportJob();
+        if (isCancelled) {
+          return;
+        }
+
+        setCarcadeDirectImportError(null);
+        setCarcadeDirectImportJob(job);
+
+        if (!job) {
+          return;
+        }
+
+        if (!isCarcadeDirectImportJobActive(job.status)) {
+          if (intervalId !== null) {
+            window.clearInterval(intervalId);
+            intervalId = null;
+          }
+
+          if (job.id !== lastHandledCarcadeDirectTerminalJobId) {
+            setLastHandledCarcadeDirectTerminalJobId(job.id);
+            if (job.import_batch_id) {
+              await loadHistory();
+            }
+
+            if (job.status === "completed" || job.status === "completed_with_errors") {
+              setSuccess("Прямой парсинг CARCADE завершен.");
+            }
+          }
+        }
+      } catch (caughtError) {
+        if (isCancelled) {
+          return;
+        }
+
+        setCarcadeDirectImportError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Не удалось загрузить статус прямого парсинга CARCADE",
+        );
+      }
+    };
+
+    void fetchLatestDirectImportJob();
+    intervalId = window.setInterval(() => {
+      void fetchLatestDirectImportJob();
+    }, 3000);
+
+    return () => {
+      isCancelled = true;
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [tenantId, lastHandledCarcadeDirectTerminalJobId]);
 
   useEffect(() => {
     if (!activeImportBatchId) {
@@ -698,6 +844,28 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     }
   }
 
+  async function handleRunCarcadeDirectImportClick(): Promise<void> {
+    setIsStartingCarcadeDirectImport(true);
+    setError(null);
+    setSuccess(null);
+    setCarcadeDirectImportError(null);
+
+    try {
+      const job = await runCarcadeDirectImport();
+      setCarcadeDirectImportJob(job);
+      setLastHandledCarcadeDirectTerminalJobId(null);
+      setSuccess("Прямой парсинг CARCADE поставлен в очередь.");
+    } catch (caughtError) {
+      setCarcadeDirectImportError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Не удалось запустить прямой парсинг CARCADE",
+      );
+    } finally {
+      setIsStartingCarcadeDirectImport(false);
+    }
+  }
+
   return (
     <section>
       <h1>Загрузите excel-файл с лотами</h1>
@@ -803,9 +971,78 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
         </div>
       )}
 
+      {tenantId === "carcade" && (
+        <div className="panel media-sync-panel">
+          <div className="summary-head">
+            <h2>Прямой парсинг CARCADE</h2>
+            <span
+              className={`status-pill ${
+                carcadeDirectImportJob
+                  ? getCarcadeDirectImportStatusTone(carcadeDirectImportJob.status)
+                  : "warn"
+              }`}
+            >
+              {carcadeDirectImportJob
+                ? getCarcadeDirectImportStatusLabel(carcadeDirectImportJob.status)
+                : "Нет задачи"}
+            </span>
+          </div>
+
+          {carcadeDirectImportJob ? (
+            <>
+              <p className="summary-note">
+                {getCarcadeDirectImportStageLabel(carcadeDirectImportJob.stage)}
+              </p>
+              <div className="media-sync-progress">
+                <div
+                  className="media-sync-progress__fill"
+                  style={{ width: `${carcadeDirectImportProgressPercent}%` }}
+                />
+              </div>
+              <p className="media-sync-progress__meta">
+                {carcadeDirectImportProcessed} / {carcadeDirectImportTotal} (
+                {carcadeDirectImportProgressPercent}%)
+              </p>
+              {carcadeDirectImportJob.error_message && (
+                <p className="error media-sync-panel__error">
+                  {carcadeDirectImportJob.error_message}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="summary-note">
+              Запуск создает новый импорт CARCADE напрямую с сайта, без ручного файла.
+            </p>
+          )}
+
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={
+              isStartingCarcadeDirectImport ||
+              Boolean(
+                carcadeDirectImportJob &&
+                  isCarcadeDirectImportJobActive(carcadeDirectImportJob.status),
+              )
+            }
+            onClick={() => {
+              void handleRunCarcadeDirectImportClick();
+            }}
+          >
+            {isStartingCarcadeDirectImport
+              ? "Запуск..."
+              : carcadeDirectImportJob &&
+                  isCarcadeDirectImportJobActive(carcadeDirectImportJob.status)
+                ? "Задача выполняется"
+                : "Запустить прямой парсинг CARCADE"}
+          </button>
+        </div>
+      )}
+
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
       {vtbDirectImportError && <p className="error">{vtbDirectImportError}</p>}
+      {carcadeDirectImportError && <p className="error">{carcadeDirectImportError}</p>}
       {mediaSyncError && <p className="error">{mediaSyncError}</p>}
 
       {activeImportBatchId && (

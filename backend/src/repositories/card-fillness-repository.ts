@@ -58,9 +58,10 @@ const TENANT_LABELS: Record<string, string> = {
   sovcombank: "Совкомбанк Лизинг",
   sber: "СберЛизинг",
   vtb: "ВТБ Лизинг",
+  carcade: "CARCADE",
 };
 
-const TENANT_ORDER = ["gpb", "reso", "alpha", "sovcombank", "sber", "vtb"];
+const TENANT_ORDER = ["gpb", "reso", "alpha", "sovcombank", "sber", "vtb", "carcade"];
 
 const FIELD_DEFINITIONS: Array<{
   key: CardFillnessFieldMeta["key"];
@@ -209,3 +210,4 @@ export function getCardFillnessSummary(): CardFillnessSummary {
     },
   };
 }
+

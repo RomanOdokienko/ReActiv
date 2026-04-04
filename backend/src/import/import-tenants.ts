@@ -1,7 +1,14 @@
 import type { CanonicalField } from "../domain/types";
 import { normalizeOfferCode, normalizeOfferCodePreserve } from "./normalize-offer-code";
 
-export type ImportTenantId = "gpb" | "reso" | "alpha" | "sovcombank" | "sber" | "vtb";
+export type ImportTenantId =
+  | "gpb"
+  | "reso"
+  | "alpha"
+  | "sovcombank"
+  | "sber"
+  | "vtb"
+  | "carcade";
 
 type HeaderAliases = Record<CanonicalField, string[]>;
 
@@ -165,6 +172,30 @@ const VTB_HEADER_ADDITIONS: Partial<HeaderAliases> = {
   website_url: ["website_url", "Ссылка на сайт", "Ссылка на источник"],
 };
 
+const CARCADE_HEADER_ADDITIONS: Partial<HeaderAliases> = {
+  offer_code: ["offer_code", "vin", "VIN", "Код предложения"],
+  status: ["status", "Статус"],
+  brand: ["brand", "Марка"],
+  model: ["model", "Модель"],
+  modification: ["modification", "Модификация"],
+  vehicle_type: ["vehicle_type", "Тип ТС", "Тип техники"],
+  year: ["year", "Год выпуска"],
+  mileage_km: ["mileage_km", "Пробег, км", "Пробег"],
+  key_count: ["key_count", "Количество ключей"],
+  pts_type: ["pts_type", "ПТС/ЭПТС"],
+  has_encumbrance: ["has_encumbrance", "Наличие обременения"],
+  is_deregistered: ["is_deregistered", "Снят с учета"],
+  responsible_person: ["responsible_person", "Ответственный"],
+  storage_address: ["storage_address", "Адрес места хранения", "Город"],
+  days_on_sale: ["days_on_sale", "Количество дней реализации"],
+  price: ["price", "Стоимость", "Цена"],
+  yandex_disk_url: ["yandex_disk_url", "Ссылка на фото", "Фото"],
+  booking_status: ["booking_status", "Статус бронирования", "Бронь"],
+  external_id: ["external_id", "ID", "ID лота"],
+  crm_ref: ["crm_ref", "CRM"],
+  website_url: ["website_url", "Ссылка на сайт", "Ссылка на источник"],
+};
+
 function mergeAliases(
   base: HeaderAliases,
   overrides: Partial<HeaderAliases>,
@@ -237,6 +268,12 @@ export function createImportTenantProfiles(
       headerAliases: extendAliases(baseAliases, VTB_HEADER_ADDITIONS),
       offerCodeNormalizer: normalizeOfferCode,
     },
+    carcade: {
+      id: "carcade",
+      label: "CARCADE",
+      headerAliases: extendAliases(baseAliases, CARCADE_HEADER_ADDITIONS),
+      offerCodeNormalizer: normalizeOfferCode,
+    },
   };
 }
 
@@ -249,7 +286,8 @@ export function parseImportTenantId(
     rawValue === "alpha" ||
     rawValue === "sovcombank" ||
     rawValue === "sber" ||
-    rawValue === "vtb"
+    rawValue === "vtb" ||
+    rawValue === "carcade"
   ) {
     return rawValue;
   }

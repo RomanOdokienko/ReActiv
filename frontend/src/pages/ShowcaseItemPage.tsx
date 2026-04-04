@@ -197,6 +197,9 @@ function formatTenantLabel(tenantId: string | null | undefined): string {
   if (normalizedTenantId === "vtb") {
     return "ВТБ Лизинг";
   }
+  if (normalizedTenantId === "carcade") {
+    return "CARCADE";
+  }
   return tenantId.trim() || "-";
 }
 

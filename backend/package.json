@@ -14,6 +14,7 @@
     "sync-alpha-media-via-api": "tsx src/scripts/sync-alpha-media-via-api.ts",
     "scrape-sber-catalog": "tsx src/scripts/scrape-sber-catalog-to-xlsx.ts",
     "scrape-vtb-market": "tsx src/scripts/scrape-vtb-market-to-xlsx.ts",
+    "scrape-carcade-catalog": "tsx src/scripts/scrape-carcade-used-to-xlsx.ts",
     "backfill-vtb-vehicle-types": "tsx src/scripts/backfill-vtb-vehicle-types-from-category.ts",
     "backfill-import-core-fields": "tsx src/scripts/backfill-import-core-fields-from-file.ts",
     "extract-avito-media": "tsx src/scripts/extract-avito-media.ts",

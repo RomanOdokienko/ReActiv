@@ -49,6 +49,8 @@ const DEFAULT_MEDIA_ALLOWED_HOST_PATTERNS = [
   ".sberleasing.ru",
   "vtb-leasing.ru",
   ".vtb-leasing.ru",
+  "carcade.com",
+  ".carcade.com",
 ];
 const BLOCKED_HOSTS = new Set(["localhost", "localhost.localdomain"]);
 const previewCache = new Map<string, { previewUrl: string | null; expiresAt: number }>();
@@ -67,6 +69,8 @@ function buildMediaFetchHeaders(url: string): Headers {
     const host = parsed.hostname.toLowerCase();
     if (host === "sberleasing.ru" || host.endsWith(".sberleasing.ru")) {
       headers.set("referer", "https://www.sberleasing.ru/");
+    } else if (host === "carcade.com" || host.endsWith(".carcade.com")) {
+      headers.set("referer", "https://www.carcade.com/");
     }
   } catch {
     // Ignore malformed URL because URL validity is checked earlier.

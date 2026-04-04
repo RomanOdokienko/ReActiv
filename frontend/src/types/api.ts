@@ -1,6 +1,13 @@
 export type UserRole = "admin" | "manager" | "stock_owner";
 export type PlatformMode = "closed" | "open";
-export type ImportTenantId = "gpb" | "reso" | "alpha" | "sovcombank" | "sber" | "vtb";
+export type ImportTenantId =
+  | "gpb"
+  | "reso"
+  | "alpha"
+  | "sovcombank"
+  | "sber"
+  | "vtb"
+  | "carcade";
 
 export interface ImportErrorItem {
   rowNumber: number;
@@ -188,6 +195,38 @@ export interface VtbDirectImportJob {
   trigger_type: "manual_api";
   status: VtbDirectImportJobStatus;
   stage: VtbDirectImportJobStage;
+  processed_count: number;
+  total_count: number;
+  error_message: string | null;
+  details_json: string | null;
+  import_batch_id: string | null;
+  media_sync_job_id: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  updated_at: string;
+}
+
+export type CarcadeDirectImportJobStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "completed_with_errors"
+  | "failed";
+
+export type CarcadeDirectImportJobStage =
+  | "queued"
+  | "scraping"
+  | "importing"
+  | "media_sync"
+  | "done";
+
+export interface CarcadeDirectImportJob {
+  id: string;
+  tenant_id: ImportTenantId;
+  trigger_type: "manual_api";
+  status: CarcadeDirectImportJobStatus;
+  stage: CarcadeDirectImportJobStage;
   processed_count: number;
   total_count: number;
   error_message: string | null;

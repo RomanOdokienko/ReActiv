@@ -2133,6 +2133,9 @@ export function ShowcasePage({
     if (normalized === "vtb") {
       return "ВТБ Лизинг";
     }
+    if (normalized === "carcade") {
+      return "CARCADE";
+    }
     return value;
   }
 

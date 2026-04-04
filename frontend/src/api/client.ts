@@ -20,6 +20,7 @@ import type {
   CatalogSummaryResponse,
   ImportResponse,
   ImportTenantId,
+  CarcadeDirectImportJob,
   VtbDirectImportJob,
   PlatformMode,
   PlatformModeResponse,
@@ -816,6 +817,84 @@ export async function runVtbDirectImport(): Promise<VtbDirectImportJob> {
     }
 
     const payload = (await response.json()) as { job: VtbDirectImportJob };
+    return payload.job;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getLatestCarcadeDirectImportJob(): Promise<CarcadeDirectImportJob | null> {
+  try {
+    const response = await fetch(buildUrl("/admin/carcade-import/latest"), {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (!response.ok) {
+      throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЃС‚Р°С‚СѓСЃ РїСЂСЏРјРѕРіРѕ РїР°СЂСЃРёРЅРіР° CARCADE");
+    }
+
+    const payload = (await response.json()) as { job?: CarcadeDirectImportJob | null };
+    return payload.job ?? null;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getCarcadeDirectImportJob(
+  jobId: string,
+): Promise<CarcadeDirectImportJob> {
+  try {
+    const response = await fetch(buildUrl(`/admin/carcade-import/${jobId}`), {
+      credentials: "include",
+      cache: "no-store",
+    });
+
+    if (response.status === 404) {
+      throw new Error("CARCADE_IMPORT_JOB_NOT_FOUND");
+    }
+
+    if (!response.ok) {
+      throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СЃС‚Р°С‚СѓСЃ РїСЂСЏРјРѕРіРѕ РїР°СЂСЃРёРЅРіР° CARCADE");
+    }
+
+    const payload = (await response.json()) as { job: CarcadeDirectImportJob };
+    return payload.job;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function runCarcadeDirectImport(): Promise<CarcadeDirectImportJob> {
+  try {
+    const response = await fetch(buildUrl("/admin/carcade-import/run"), {
+      method: "POST",
+      credentials: "include",
+      headers: withCsrfHeaders(),
+    });
+
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+
+    if (!response.ok) {
+      throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РїСѓСЃС‚РёС‚СЊ РїСЂСЏРјРѕР№ РїР°СЂСЃРёРЅРі CARCADE");
+    }
+
+    const payload = (await response.json()) as { job: CarcadeDirectImportJob };
     return payload.job;
   } catch (error) {
     if (error instanceof TypeError) {

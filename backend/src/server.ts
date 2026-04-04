@@ -9,6 +9,7 @@ import { registerAdminUserRoutes } from "./routes/admin-user-routes";
 import { registerAdminAlphaMediaRoutes } from "./routes/admin-alpha-media-routes";
 import { registerAdminCatalogExportRoutes } from "./routes/admin-catalog-export-routes";
 import { registerAdminCatalogRoutes } from "./routes/admin-catalog-routes";
+import { registerAdminCarcadeImportRoutes } from "./routes/admin-carcade-import-routes";
 import { registerAdminHighlightsRoutes } from "./routes/admin-highlights-routes";
 import { registerAdminResoMediaRoutes } from "./routes/admin-reso-media-routes";
 import { registerAdminVtbImportRoutes } from "./routes/admin-vtb-import-routes";
@@ -27,6 +28,7 @@ import { authenticateRequest, getCsrfHeaderName, hasValidCsrfToken } from "./ser
 import { ensureBootstrapAdmin } from "./startup/bootstrap-admin";
 import { startMediaHealthScheduler } from "./services/media-health-scheduler";
 import { ensureImportMediaSyncBackgroundWorkers } from "./services/import-media-sync-service";
+import { ensureCarcadeDirectImportBackgroundWorker } from "./services/carcade-direct-import-service";
 import { ensureVtbDirectImportBackgroundWorker } from "./services/vtb-direct-import-service";
 
 const DEFAULT_TRUST_PROXY_HOPS = process.env.NODE_ENV === "production" ? 1 : 0;
@@ -936,6 +938,7 @@ async function startServer(): Promise<void> {
   await registerAdminResoMediaRoutes(app);
   await registerAdminAlphaMediaRoutes(app);
   await registerAdminVtbImportRoutes(app);
+  await registerAdminCarcadeImportRoutes(app);
   await registerActivityRoutes(app);
 
   try {
@@ -943,6 +946,7 @@ async function startServer(): Promise<void> {
     stopMediaHealthScheduler = startMediaHealthScheduler(app.log);
     ensureImportMediaSyncBackgroundWorkers(app.log);
     ensureVtbDirectImportBackgroundWorker(app.log);
+    ensureCarcadeDirectImportBackgroundWorker(app.log);
     process.once("SIGTERM", () => {
       void gracefulShutdown("SIGTERM");
     });
