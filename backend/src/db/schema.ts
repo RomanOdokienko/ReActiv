@@ -579,6 +579,7 @@ export function initializeSchema(): void {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_import_batches_tenant_created_at ON import_batches(tenant_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_import_errors_tenant_created_at ON import_errors(tenant_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_import_errors_batch_id_id ON import_errors(import_batch_id, id);
     CREATE INDEX IF NOT EXISTS idx_catalog_model_norm_reviews_batch ON catalog_model_normalization_reviews(import_batch_id);
     CREATE INDEX IF NOT EXISTS idx_catalog_model_norm_reviews_tenant_status ON catalog_model_normalization_reviews(tenant_id, review_status, created_at);
     CREATE INDEX IF NOT EXISTS idx_catalog_model_norm_reviews_offer ON catalog_model_normalization_reviews(tenant_id, offer_code, created_at);

@@ -115,7 +115,7 @@ export function listImportBatches(limit = 20, tenantId?: string): ImportBatchRec
             created_at
           FROM import_batches
           WHERE tenant_id = ?
-          ORDER BY datetime(created_at) DESC, id DESC
+          ORDER BY created_at DESC, id DESC
           LIMIT ?
         `,
       )
@@ -139,7 +139,7 @@ export function listImportBatches(limit = 20, tenantId?: string): ImportBatchRec
           unchanged_rows,
           created_at
         FROM import_batches
-        ORDER BY datetime(created_at) DESC, id DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT ?
       `,
     )
@@ -229,7 +229,7 @@ export function getLatestSuccessfulImportBatch(tenantId?: string): ImportBatchRe
           FROM import_batches
           WHERE status IN ('completed', 'completed_with_errors')
             AND tenant_id = ?
-          ORDER BY datetime(created_at) DESC, id DESC
+          ORDER BY created_at DESC, id DESC
           LIMIT 1
         `,
       )
@@ -256,7 +256,7 @@ export function getLatestSuccessfulImportBatch(tenantId?: string): ImportBatchRe
           created_at
         FROM import_batches
         WHERE status IN ('completed', 'completed_with_errors')
-        ORDER BY datetime(created_at) DESC, id DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT 1
       `,
     )
@@ -278,7 +278,7 @@ export function getPreviousSuccessfulImportBatchId(
           WHERE status IN ('completed', 'completed_with_errors')
             AND id != ?
             AND tenant_id = ?
-          ORDER BY datetime(created_at) DESC, id DESC
+          ORDER BY created_at DESC, id DESC
           LIMIT 1
         `,
       )
@@ -294,7 +294,7 @@ export function getPreviousSuccessfulImportBatchId(
         FROM import_batches
         WHERE status IN ('completed', 'completed_with_errors')
           AND id != ?
-        ORDER BY datetime(created_at) DESC, id DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT 1
       `,
     )

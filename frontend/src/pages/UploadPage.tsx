@@ -1,5 +1,5 @@
 ﻿import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   clearImports,
@@ -331,6 +331,24 @@ function mapBatchDetailsToImportResponse(
   };
 }
 
+function mapBatchListItemToImportResponse(item: ImportBatchListItem): ImportResponse {
+  return {
+    importBatchId: item.id,
+    tenantId: item.tenant_id,
+    status: item.status,
+    summary: {
+      totalRows: item.total_rows,
+      importedRows: item.imported_rows,
+      skippedRows: item.skipped_rows,
+      addedRows: item.added_rows,
+      updatedRows: item.updated_rows,
+      removedRows: item.removed_rows,
+      unchangedRows: item.unchanged_rows,
+    },
+    errors: [],
+  };
+}
+
 function getFieldLabel(field: string | null): string {
   switch (field) {
     case "offer_code":
@@ -448,6 +466,9 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResponse | null>(null);
+  const [isLoadingImportDetails, setIsLoadingImportDetails] = useState(false);
+  const [importDetailsError, setImportDetailsError] = useState<string | null>(null);
+  const [loadedImportDetailsBatchId, setLoadedImportDetailsBatchId] = useState<string | null>(null);
   const [history, setHistory] = useState<ImportBatchListItem[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [mediaSyncJob, setMediaSyncJob] = useState<ImportMediaSyncJob | null>(null);
@@ -464,14 +485,19 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [lastHandledCarcadeDirectTerminalJobId, setLastHandledCarcadeDirectTerminalJobId] = useState<
     string | null
   >(null);
-  const criticalErrors = result
-    ? result.errors.filter((item) => isCriticalImportError(item))
-    : [];
-  const warningErrors = result
-    ? result.errors.filter((item) => !isCriticalImportError(item))
-    : [];
-  const criticalSummary = buildWarningSummary(criticalErrors);
-  const warningSummary = buildWarningSummary(warningErrors);
+  const historyRequestCounterRef = useRef(0);
+  const importDetailsCacheRef = useRef<Map<string, ImportBatchDetailsResponse>>(new Map());
+  const criticalErrors = useMemo(
+    () => (result ? result.errors.filter((item) => isCriticalImportError(item)) : []),
+    [result],
+  );
+  const warningErrors = useMemo(
+    () => (result ? result.errors.filter((item) => !isCriticalImportError(item)) : []),
+    [result],
+  );
+  const criticalSummary = useMemo(() => buildWarningSummary(criticalErrors), [criticalErrors]);
+  const warningSummary = useMemo(() => buildWarningSummary(warningErrors), [warningErrors]);
+  const hasImportDetailsLoaded = Boolean(result) && loadedImportDetailsBatchId === result?.importBatchId;
   const activeImportBatchId = result?.importBatchId ?? null;
   const mediaSyncProcessed = mediaSyncJob?.processed_count ?? 0;
   const mediaSyncTotal = mediaSyncJob?.total_count ?? 0;
@@ -522,22 +548,109 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
           : 100
         : 0;
 
-  async function loadHistory() {
+  async function loadImportBatchDetails(
+    importBatchId: string,
+    options: { requestId?: number } = {},
+  ): Promise<void> {
+    const cachedDetails = importDetailsCacheRef.current.get(importBatchId);
+    if (cachedDetails) {
+      setLoadedImportDetailsBatchId(importBatchId);
+      setImportDetailsError(null);
+      setResult((current) => {
+        if (!current || current.importBatchId !== importBatchId) {
+          return current;
+        }
+        return mapBatchDetailsToImportResponse(cachedDetails);
+      });
+      return;
+    }
+
+    setIsLoadingImportDetails(true);
+    setImportDetailsError(null);
+
+    try {
+      const details = await getImportBatchDetails(importBatchId);
+      importDetailsCacheRef.current.set(importBatchId, details);
+
+      if (
+        options.requestId !== undefined &&
+        options.requestId !== historyRequestCounterRef.current
+      ) {
+        return;
+      }
+
+      setLoadedImportDetailsBatchId(importBatchId);
+      setResult((current) => {
+        if (!current || current.importBatchId !== importBatchId) {
+          return current;
+        }
+        return mapBatchDetailsToImportResponse(details);
+      });
+    } catch (caughtError) {
+      if (
+        options.requestId !== undefined &&
+        options.requestId !== historyRequestCounterRef.current
+      ) {
+        return;
+      }
+
+      setImportDetailsError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Не удалось загрузить детали ошибок импорта",
+      );
+    } finally {
+      if (
+        options.requestId !== undefined &&
+        options.requestId !== historyRequestCounterRef.current
+      ) {
+        return;
+      }
+      setIsLoadingImportDetails(false);
+    }
+  }
+
+  async function loadHistory(options: { preloadDetails?: boolean } = {}) {
+    const requestId = historyRequestCounterRef.current + 1;
+    historyRequestCounterRef.current = requestId;
+
     try {
       setHistoryError(null);
-      const response = await getImportBatches(20, tenantId);
-      setHistory(response.items);
-      const latestImportId = response.items[0]?.id;
+      setImportDetailsError(null);
+      setIsLoadingImportDetails(false);
 
-      if (!latestImportId) {
+      const response = await getImportBatches(20, tenantId);
+      if (requestId !== historyRequestCounterRef.current) {
+        return;
+      }
+
+      setHistory(response.items);
+      const latestImport = response.items[0];
+
+      if (!latestImport) {
         setResult(null);
+        setLoadedImportDetailsBatchId(null);
         setMediaSyncJob(null);
         return;
       }
 
-      const details = await getImportBatchDetails(latestImportId);
-      setResult(mapBatchDetailsToImportResponse(details));
+      const cachedDetails = importDetailsCacheRef.current.get(latestImport.id);
+      if (cachedDetails) {
+        setResult(mapBatchDetailsToImportResponse(cachedDetails));
+        setLoadedImportDetailsBatchId(latestImport.id);
+        return;
+      }
+
+      setResult(mapBatchListItemToImportResponse(latestImport));
+      setLoadedImportDetailsBatchId(null);
+
+      if (options.preloadDetails) {
+        await loadImportBatchDetails(latestImport.id, { requestId });
+      }
     } catch {
+      if (requestId !== historyRequestCounterRef.current) {
+        return;
+      }
       setHistoryError("Не удалось загрузить историю импортов");
     }
   }
@@ -742,11 +855,13 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     setIsSubmitting(true);
     setError(null);
     setSuccess(null);
+    setImportDetailsError(null);
     setResult(null);
 
     try {
       const response = await uploadImport(file, tenantId);
       setResult(response);
+      setLoadedImportDetailsBatchId(response.importBatchId);
       if (response.summary.importedRows > 0) {
         setSuccess(
           `Файл «${file.name}» загружен. Данные добавлены в витрину.`,
@@ -756,7 +871,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
           `Файл «${file.name}» обработан, но записи в витрину не добавлены.`,
         );
       }
-      await loadHistory();
+      await loadHistory({ preloadDetails: true });
     } catch (caughtError) {
       if (caughtError instanceof Error) {
         setError(caughtError.message);
@@ -1041,6 +1156,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
+      {importDetailsError && <p className="error">{importDetailsError}</p>}
       {vtbDirectImportError && <p className="error">{vtbDirectImportError}</p>}
       {carcadeDirectImportError && <p className="error">{carcadeDirectImportError}</p>}
       {mediaSyncError && <p className="error">{mediaSyncError}</p>}
@@ -1229,6 +1345,22 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
               {canAccessCatalog ? "Открыть каталог" : "Открыть витрину"}
             </Link>
           </p>
+
+          {result.status === "completed_with_errors" && !hasImportDetailsLoaded && (
+            <div className="summary-note">
+              <p>Детали ошибок загружаются отдельно, чтобы быстрее переключать лизингодателей.</p>
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={isLoadingImportDetails}
+                onClick={() => {
+                  void loadImportBatchDetails(result.importBatchId);
+                }}
+              >
+                {isLoadingImportDetails ? "Загрузка деталей..." : "Загрузить детали ошибок"}
+              </button>
+            </div>
+          )}
 
           {criticalErrors.length > 0 && (
             <>
