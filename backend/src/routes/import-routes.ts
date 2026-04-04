@@ -7,6 +7,7 @@ import {
 import { parseImportTenantId } from "../import/import-tenants";
 import {
   countImportErrorsByBatchId,
+  getImportErrorSummaryByBatchId,
   getImportErrorsByBatchId,
 } from "../repositories/import-error-repository";
 import { importWorkbook } from "../services/import-service";
@@ -229,6 +230,27 @@ export async function registerImportRoutes(app: FastifyInstance): Promise<void> 
       importBatch,
       errors,
       errorsTotal,
+    });
+  });
+
+  app.get("/api/imports/:id/errors-summary", async (request, reply) => {
+    if (rejectIfNoImportAccess(request, reply)) {
+      return;
+    }
+
+    const params = request.params as { id: string };
+    const importBatch = getImportBatchById(params.id);
+
+    if (!importBatch) {
+      return reply.code(404).send({ message: "Import batch not found" });
+    }
+
+    const items = getImportErrorSummaryByBatchId(params.id);
+    const totalErrors = countImportErrorsByBatchId(params.id);
+
+    return reply.code(200).send({
+      items,
+      totalErrors,
     });
   });
 

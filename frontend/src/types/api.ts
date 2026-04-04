@@ -98,10 +98,21 @@ export interface ImportErrorRecord {
   created_at: string;
 }
 
+export interface ImportErrorSummaryItem {
+  field: string | null;
+  message: string;
+  count: number;
+}
+
 export interface ImportBatchDetailsResponse {
   importBatch: ImportBatchListItem;
   errors: ImportErrorRecord[];
   errorsTotal: number;
+}
+
+export interface ImportErrorSummaryResponse {
+  items: ImportErrorSummaryItem[];
+  totalErrors: number;
 }
 
 export interface ClearImportsResponse {

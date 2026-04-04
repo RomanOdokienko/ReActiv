@@ -10,6 +10,12 @@ export interface ImportErrorRecord {
   created_at: string;
 }
 
+export interface ImportErrorSummaryRecord {
+  field: string | null;
+  message: string;
+  count: number;
+}
+
 interface InsertImportErrorInput {
   import_batch_id: string;
   tenant_id: string;
@@ -75,4 +81,23 @@ export function countImportErrorsByBatchId(importBatchId: string): number {
     .get(importBatchId) as { count?: number } | undefined;
 
   return row?.count ?? 0;
+}
+
+export function getImportErrorSummaryByBatchId(
+  importBatchId: string,
+): ImportErrorSummaryRecord[] {
+  return db
+    .prepare(
+      `
+        SELECT
+          field,
+          message,
+          COUNT(*) AS count
+        FROM import_errors
+        WHERE import_batch_id = ?
+        GROUP BY field, message
+        ORDER BY count DESC, field ASC, message ASC
+      `,
+    )
+    .all(importBatchId) as ImportErrorSummaryRecord[];
 }

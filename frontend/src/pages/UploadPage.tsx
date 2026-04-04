@@ -7,6 +7,7 @@ import {
   getImportMediaSyncJob,
   getImportBatchDetails,
   getImportBatches,
+  getImportErrorsSummary,
   getLatestVtbDirectImportJob,
   runCarcadeDirectImport,
   runImportMediaSyncJob,
@@ -17,6 +18,7 @@ import type {
   CarcadeDirectImportJob,
   ImportBatchDetailsResponse,
   ImportBatchListItem,
+  ImportErrorSummaryItem as ImportErrorSummaryApiItem,
   ImportMediaSyncJob,
   ImportResponse,
   ImportTenantId,
@@ -47,10 +49,6 @@ const IMPORT_ERRORS_PAGE_SIZE = 500;
 
 function getTenantLabel(tenantId: ImportTenantId): string {
   return IMPORT_TENANTS.find((item) => item.id === tenantId)?.label ?? tenantId;
-}
-
-function isCriticalImportError(error: ImportResponse["errors"][number]): boolean {
-  return error.field === "offer_code" || error.field === "brand";
 }
 
 function getStatusTone(
@@ -459,6 +457,57 @@ function buildWarningSummary(
   return Array.from(grouped.values()).sort((left, right) => right.count - left.count);
 }
 
+function isCriticalErrorField(field: string | null): boolean {
+  return field === "offer_code" || field === "brand";
+}
+
+function buildWarningSummaryFromErrorSummary(
+  items: ImportErrorSummaryApiItem[],
+): ImportWarningSummaryItem[] {
+  const grouped = new Map<string, ImportWarningSummaryItem>();
+
+  items.forEach((item) => {
+    const summary = getWarningText(item.field, item.message);
+    const groupKey = `${item.field ?? "general"}::${summary}`;
+    const existing = grouped.get(groupKey);
+
+    if (existing) {
+      existing.count += item.count;
+      return;
+    }
+
+    grouped.set(groupKey, {
+      field: item.field,
+      summary,
+      count: item.count,
+    });
+  });
+
+  return Array.from(grouped.values()).sort((left, right) => right.count - left.count);
+}
+
+function buildErrorSummaryItemsFromErrors(
+  errors: ImportResponse["errors"],
+): ImportErrorSummaryApiItem[] {
+  const grouped = new Map<string, ImportErrorSummaryApiItem>();
+  errors.forEach((item) => {
+    const key = `${item.field ?? "general"}::${item.message}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+
+    grouped.set(key, {
+      field: item.field,
+      message: item.message,
+      count: 1,
+    });
+  });
+
+  return Array.from(grouped.values()).sort((left, right) => right.count - left.count);
+}
+
 export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [file, setFile] = useState<File | null>(null);
   const [tenantId, setTenantId] = useState<ImportTenantId>("gpb");
@@ -473,6 +522,9 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const [importDetailsError, setImportDetailsError] = useState<string | null>(null);
   const [importErrorsTotal, setImportErrorsTotal] = useState<number | null>(null);
   const [loadedImportDetailsBatchId, setLoadedImportDetailsBatchId] = useState<string | null>(null);
+  const [importErrorSummaryItems, setImportErrorSummaryItems] = useState<ImportErrorSummaryApiItem[]>([]);
+  const [isLoadingImportErrorSummary, setIsLoadingImportErrorSummary] = useState(false);
+  const [importErrorSummaryError, setImportErrorSummaryError] = useState<string | null>(null);
   const [history, setHistory] = useState<ImportBatchListItem[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [mediaSyncJob, setMediaSyncJob] = useState<ImportMediaSyncJob | null>(null);
@@ -492,15 +544,45 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
   const historyRequestCounterRef = useRef(0);
   const importDetailsCacheRef = useRef<Map<string, ImportBatchDetailsResponse>>(new Map());
   const criticalErrors = useMemo(
-    () => (result ? result.errors.filter((item) => isCriticalImportError(item)) : []),
+    () => (result ? result.errors.filter((item) => isCriticalErrorField(item.field)) : []),
     [result],
   );
   const warningErrors = useMemo(
-    () => (result ? result.errors.filter((item) => !isCriticalImportError(item)) : []),
+    () => (result ? result.errors.filter((item) => !isCriticalErrorField(item.field)) : []),
     [result],
   );
-  const criticalSummary = useMemo(() => buildWarningSummary(criticalErrors), [criticalErrors]);
-  const warningSummary = useMemo(() => buildWarningSummary(warningErrors), [warningErrors]);
+  const criticalSummary = useMemo(() => {
+    if (importErrorSummaryItems.length > 0) {
+      return buildWarningSummaryFromErrorSummary(
+        importErrorSummaryItems.filter((item) => isCriticalErrorField(item.field)),
+      );
+    }
+    return buildWarningSummary(criticalErrors);
+  }, [importErrorSummaryItems, criticalErrors]);
+  const warningSummary = useMemo(() => {
+    if (importErrorSummaryItems.length > 0) {
+      return buildWarningSummaryFromErrorSummary(
+        importErrorSummaryItems.filter((item) => !isCriticalErrorField(item.field)),
+      );
+    }
+    return buildWarningSummary(warningErrors);
+  }, [importErrorSummaryItems, warningErrors]);
+  const criticalErrorsTotalCount = useMemo(() => {
+    if (importErrorSummaryItems.length > 0) {
+      return importErrorSummaryItems
+        .filter((item) => isCriticalErrorField(item.field))
+        .reduce((sum, item) => sum + item.count, 0);
+    }
+    return criticalErrors.length;
+  }, [importErrorSummaryItems, criticalErrors.length]);
+  const warningErrorsTotalCount = useMemo(() => {
+    if (importErrorSummaryItems.length > 0) {
+      return importErrorSummaryItems
+        .filter((item) => !isCriticalErrorField(item.field))
+        .reduce((sum, item) => sum + item.count, 0);
+    }
+    return warningErrors.length;
+  }, [importErrorSummaryItems, warningErrors.length]);
   const hasImportDetailsLoaded = Boolean(result) && loadedImportDetailsBatchId === result?.importBatchId;
   const shownImportErrorsCount = result?.errors.length ?? 0;
   const hasMoreImportErrors =
@@ -664,6 +746,49 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     }
   }
 
+  async function loadImportErrorSummary(
+    importBatchId: string,
+    options: { requestId?: number } = {},
+  ): Promise<void> {
+    setIsLoadingImportErrorSummary(true);
+    setImportErrorSummaryError(null);
+
+    try {
+      const response = await getImportErrorsSummary(importBatchId);
+      if (
+        options.requestId !== undefined &&
+        options.requestId !== historyRequestCounterRef.current
+      ) {
+        return;
+      }
+
+      setImportErrorSummaryItems(response.items);
+      setImportErrorsTotal(response.totalErrors);
+    } catch (caughtError) {
+      if (
+        options.requestId !== undefined &&
+        options.requestId !== historyRequestCounterRef.current
+      ) {
+        return;
+      }
+
+      setImportErrorSummaryError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Не удалось загрузить сводку ошибок импорта",
+      );
+      setImportErrorSummaryItems([]);
+    } finally {
+      if (
+        options.requestId !== undefined &&
+        options.requestId !== historyRequestCounterRef.current
+      ) {
+        return;
+      }
+      setIsLoadingImportErrorSummary(false);
+    }
+  }
+
   async function loadHistory(options: { preloadDetails?: boolean } = {}) {
     const requestId = historyRequestCounterRef.current + 1;
     historyRequestCounterRef.current = requestId;
@@ -673,6 +798,9 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
       setImportDetailsError(null);
       setIsLoadingImportDetails(false);
       setIsLoadingMoreImportDetails(false);
+      setImportErrorSummaryError(null);
+      setIsLoadingImportErrorSummary(false);
+      setImportErrorSummaryItems([]);
 
       const response = await getImportBatches(20, tenantId);
       if (requestId !== historyRequestCounterRef.current) {
@@ -686,6 +814,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
         setResult(null);
         setLoadedImportDetailsBatchId(null);
         setImportErrorsTotal(null);
+        setImportErrorSummaryItems([]);
         setMediaSyncJob(null);
         return;
       }
@@ -695,12 +824,20 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
         setResult(mapBatchDetailsToImportResponse(cachedDetails));
         setLoadedImportDetailsBatchId(latestImport.id);
         setImportErrorsTotal(cachedDetails.errorsTotal);
+        if (cachedDetails.errorsTotal > 0) {
+          void loadImportErrorSummary(latestImport.id, { requestId });
+        }
         return;
       }
 
       setResult(mapBatchListItemToImportResponse(latestImport));
       setLoadedImportDetailsBatchId(null);
       setImportErrorsTotal(null);
+      if (latestImport.status === "completed_with_errors") {
+        void loadImportErrorSummary(latestImport.id, { requestId });
+      } else {
+        setImportErrorSummaryItems([]);
+      }
 
       if (options.preloadDetails) {
         await loadImportBatchDetails(latestImport.id, { requestId });
@@ -914,6 +1051,8 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     setError(null);
     setSuccess(null);
     setImportDetailsError(null);
+    setImportErrorSummaryError(null);
+    setImportErrorSummaryItems([]);
     setImportErrorsTotal(null);
     setResult(null);
 
@@ -922,6 +1061,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
       setResult(response);
       setLoadedImportDetailsBatchId(response.importBatchId);
       setImportErrorsTotal(response.errors.length);
+      setImportErrorSummaryItems(buildErrorSummaryItemsFromErrors(response.errors));
       if (response.summary.importedRows > 0) {
         setSuccess(
           `Файл «${file.name}» загружен. Данные добавлены в витрину.`,
@@ -955,6 +1095,8 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
     setIsClearing(true);
     setError(null);
     setSuccess(null);
+    setImportErrorSummaryError(null);
+    setImportErrorSummaryItems([]);
 
     try {
       const response = await clearImports(tenantId);
@@ -1218,6 +1360,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
       {error && <p className="error">{error}</p>}
       {success && <p className="success">{success}</p>}
       {importDetailsError && <p className="error">{importDetailsError}</p>}
+      {importErrorSummaryError && <p className="error">{importErrorSummaryError}</p>}
       {vtbDirectImportError && <p className="error">{vtbDirectImportError}</p>}
       {carcadeDirectImportError && <p className="error">{carcadeDirectImportError}</p>}
       {mediaSyncError && <p className="error">{mediaSyncError}</p>}
@@ -1443,7 +1586,13 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
             </div>
           )}
 
-          {criticalErrors.length > 0 && (
+          {result.status === "completed_with_errors" &&
+            isLoadingImportErrorSummary &&
+            importErrorSummaryItems.length === 0 && (
+              <p className="summary-note">Загружаем сводку ошибок...</p>
+            )}
+
+          {criticalErrorsTotalCount > 0 && (
             <>
               <h3>Критичные ошибки</h3>
               <div className="summary-grid import-warning-summary-grid">
@@ -1463,7 +1612,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
               <details className="import-warning-details">
                 <summary>
-                  Показать детали критичных ошибок ({criticalErrors.length})
+                  Показать детали критичных ошибок ({criticalErrors.length} из {criticalErrorsTotalCount})
                 </summary>
                 <div className="table-wrap desktop-table">
                   <table>
@@ -1513,7 +1662,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
             </>
           )}
 
-          {warningErrors.length > 0 && (
+          {warningErrorsTotalCount > 0 && (
             <>
               <h3>Предупреждения</h3>
               <div className="summary-grid import-warning-summary-grid">
@@ -1533,7 +1682,7 @@ export function UploadPage({ canAccessCatalog = true }: UploadPageProps) {
 
               <details className="import-warning-details">
                 <summary>
-                  Показать детали предупреждений ({warningErrors.length})
+                  Показать детали предупреждений ({warningErrors.length} из {warningErrorsTotalCount})
                 </summary>
                 <div className="table-wrap desktop-table">
                   <table>

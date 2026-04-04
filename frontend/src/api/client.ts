@@ -14,6 +14,7 @@ import type {
   GuestActivitySummaryResponse,
   ImportBatchesResponse,
   ImportBatchDetailsResponse,
+  ImportErrorSummaryResponse,
   ImportMediaSyncJob,
   CatalogFiltersResponse,
   CatalogItemsResponse,
@@ -671,6 +672,19 @@ export async function getImportBatchDetails(
     throw new Error("Не удалось загрузить данные импорта");
   }
   return (await response.json()) as ImportBatchDetailsResponse;
+}
+
+export async function getImportErrorsSummary(
+  importBatchId: string,
+): Promise<ImportErrorSummaryResponse> {
+  const response = await fetch(buildUrl(`/imports/${importBatchId}/errors-summary`), {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error("Не удалось загрузить сводку ошибок импорта");
+  }
+  return (await response.json()) as ImportErrorSummaryResponse;
 }
 
 export async function clearImports(
