@@ -800,7 +800,13 @@ export function App() {
             />
             <Route
               path="/admin/highlights"
-              element={canAccessHighlights ? <AdminHighlightsPage /> : <Navigate to="/" replace />}
+              element={
+                canAccessHighlights ? (
+                  <AdminHighlightsPage userRole={authUser?.role} />
+                ) : (
+                  <Navigate to="/" replace />
+                )
+              }
             />
             <Route
               path="/admin/operations"

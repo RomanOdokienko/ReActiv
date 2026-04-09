@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { getCatalogFilters, getCatalogItems, getCatalogSummary, getImportBatches } from "../api/client";
-import type { CatalogSummaryResponse, ImportTenantId } from "../types/api";
+import type { CatalogSummaryResponse, ImportTenantId, UserRole } from "../types/api";
 
 interface HighlightsKpiSnapshot {
   totalOffers: number;
@@ -607,7 +607,11 @@ function InvestorGrowthChart({
   );
 }
 
-export function AdminHighlightsPage() {
+interface AdminHighlightsPageProps {
+  userRole?: UserRole;
+}
+
+export function AdminHighlightsPage({ userRole }: AdminHighlightsPageProps) {
   const [snapshot, setSnapshot] = useState<HighlightsKpiSnapshot | null>(null);
   const [structureSnapshot, setStructureSnapshot] = useState<HighlightsStructureSnapshot | null>(
     null,
@@ -624,7 +628,10 @@ export function AdminHighlightsPage() {
       setStructureSnapshot(null);
 
       try {
-        const importHistoryPromise = getImportBatches(200).catch(() => null);
+        const canReadImports = userRole === "admin";
+        const importHistoryPromise = canReadImports
+          ? getImportBatches(200).catch(() => null)
+          : Promise.resolve(null);
         const [
           totalResult,
           withPreviewResult,
@@ -717,7 +724,7 @@ export function AdminHighlightsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [userRole]);
 
   const productStatus = useMemo(() => getProductStatus(snapshot), [snapshot]);
 

@@ -179,7 +179,9 @@ function getActivityAttributionContext(): ActivityAttributionContext {
 }
 
 function backendUnavailableError(): Error {
-  return new Error("Бэкенд недоступен. Запустите сервер на порту 3001.");
+  return new Error(
+    "Не удалось выполнить запрос к API (сеть/CORS). Проверьте доступность бэкенда и настройки домена.",
+  );
 }
 
 function readStoredCsrfToken(): string | null {
