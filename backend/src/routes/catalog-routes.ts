@@ -344,18 +344,6 @@ function sanitizeCatalogFiltersForPublicTenantVisibility(
   return nextMetadata;
 }
 
-function resolveAllowedPublicTenantIds(): string[] {
-  const metadata = getCatalogFiltersMetadata();
-  if (!Array.isArray(metadata.tenantId)) {
-    return [];
-  }
-
-  return metadata.tenantId.filter(
-    (tenantId): tenantId is string =>
-      typeof tenantId === "string" && !isTenantHiddenForPublic(tenantId),
-  );
-}
-
 function applyPublicTenantVisibility(
   query: ReturnType<typeof parseCatalogQuery>,
   isAuthenticated: boolean,
@@ -364,30 +352,29 @@ function applyPublicTenantVisibility(
     return query;
   }
 
-  const allowedTenantIds = resolveAllowedPublicTenantIds();
-  if (allowedTenantIds.length === 0) {
-    return {
-      ...query,
-      tenantId: [TEMP_PUBLIC_HIDDEN_TENANT_SENTINEL],
-    };
-  }
+  const explicitExcludedTenantIds = (query.excludedTenantId ?? [])
+    .map((tenantId) => tenantId.trim())
+    .filter(Boolean);
+  const excludedTenantIds = Array.from(
+    new Set([...explicitExcludedTenantIds, ...Array.from(TEMP_PUBLIC_HIDDEN_TENANT_IDS)]),
+  );
 
-  const allowedByNormalized = new Set(allowedTenantIds.map((tenantId) => normalizeTenantId(tenantId)));
   if (query.tenantId && query.tenantId.length > 0) {
     const filteredTenantIds = query.tenantId.filter((tenantId) =>
-      allowedByNormalized.has(normalizeTenantId(tenantId)),
+      !isTenantHiddenForPublic(tenantId),
     );
 
     return {
       ...query,
       tenantId:
         filteredTenantIds.length > 0 ? filteredTenantIds : [TEMP_PUBLIC_HIDDEN_TENANT_SENTINEL],
+      excludedTenantId: excludedTenantIds,
     };
   }
 
   return {
     ...query,
-    tenantId: allowedTenantIds,
+    excludedTenantId: excludedTenantIds,
   };
 }
 
@@ -441,6 +428,10 @@ function applyPublicQueryCaps(
     pageSize: Math.min(query.pageSize, PUBLIC_CATALOG_MAX_PAGE_SIZE),
     search: capStringLength(query.search, PUBLIC_CATALOG_MAX_SEARCH_LENGTH),
     offerCode: capArray(query.offerCode, PUBLIC_CATALOG_MAX_FILTER_VALUES_PER_FIELD),
+    excludedTenantId: capArray(
+      query.excludedTenantId,
+      PUBLIC_CATALOG_MAX_FILTER_VALUES_PER_FIELD,
+    ),
     status: capArray(query.status, PUBLIC_CATALOG_MAX_FILTER_VALUES_PER_FIELD),
     city: capArray(query.city, PUBLIC_CATALOG_MAX_FILTER_VALUES_PER_FIELD),
     brand: capArray(query.brand, PUBLIC_CATALOG_MAX_FILTER_VALUES_PER_FIELD),

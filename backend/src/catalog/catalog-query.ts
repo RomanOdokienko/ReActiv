@@ -88,6 +88,7 @@ const booleanField = z.preprocess(toOptionalBoolean, z.boolean().optional());
 const catalogQuerySchema = z.object({
   offerCode: arrayField,
   tenantId: arrayField,
+  excludedTenantId: arrayField,
   status: arrayField,
   city: arrayField,
   brand: arrayField,

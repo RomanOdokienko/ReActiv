@@ -555,6 +555,21 @@ function addInFilter(
   params.push(...values);
 }
 
+function addNotInFilter(
+  clauses: string[],
+  params: unknown[],
+  column: string,
+  values?: string[] | number[],
+): void {
+  if (!values || values.length === 0) {
+    return;
+  }
+
+  const placeholders = values.map(() => "?").join(", ");
+  clauses.push(`${column} NOT IN (${placeholders})`);
+  params.push(...values);
+}
+
 function normalizeComparableText(value: string): string {
   return value
     .normalize("NFKC")
@@ -1232,6 +1247,7 @@ function buildWhere(filters: CatalogQuery): { whereClause: string; params: unkno
 
   addInFilter(clauses, params, "offer_code", filters.offerCode);
   addInFilter(clauses, params, "tenant_id", filters.tenantId);
+  addNotInFilter(clauses, params, "tenant_id", filters.excludedTenantId);
   addInFilter(clauses, params, "status", filters.status);
   addUnicodeSafeTextInFilter(clauses, params, "brand", filters.brand);
   addUnicodeSafeTextInFilter(clauses, params, "model", filters.model);
