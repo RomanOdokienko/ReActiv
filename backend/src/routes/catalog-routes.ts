@@ -102,6 +102,8 @@ const PUBLIC_CATALOG_ITEM_DETAILS_MAX_REQUESTS = parsePositiveIntEnv(
   20_000,
 );
 const CATALOG_RESPONSE_SCHEMA_VERSION = "2026-03-26-admin-catalog-enrichment";
+const TEMP_PUBLIC_HIDDEN_TENANT_IDS = new Set(["carcade"]);
+const TEMP_PUBLIC_HIDDEN_TENANT_SENTINEL = "__hidden_public_tenant__";
 
 const publicCatalogRateLimitBuckets = new Map<string, number[]>();
 let lastPublicCatalogRateLimitCleanupMs = 0;
@@ -256,20 +258,136 @@ function sanitizeCatalogItemForRole<
 function sanitizeCatalogFiltersForRole(
   metadata: Record<string, unknown>,
   role: string | undefined,
+  isAuthenticated: boolean,
 ): Record<string, unknown> {
+  let nextMetadata = metadata;
+  if (!isAuthenticated) {
+    nextMetadata = sanitizeCatalogFiltersForPublicTenantVisibility(nextMetadata);
+  }
+
   if (role === "admin" || role === "stock_owner") {
-    return metadata;
+    return nextMetadata;
   }
 
   return {
+    ...nextMetadata,
+    ...(Object.prototype.hasOwnProperty.call(nextMetadata, "responsiblePerson")
+      ? { responsiblePerson: [] }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(nextMetadata, "websiteUrl")
+      ? { websiteUrl: [] }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(nextMetadata, "externalId")
+      ? { externalId: [] }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(nextMetadata, "crmRef")
+      ? { crmRef: [] }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(nextMetadata, "yandexDiskUrl")
+      ? { yandexDiskUrl: [] }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(nextMetadata, "daysOnSaleMin")
+      ? { daysOnSaleMin: null }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(nextMetadata, "daysOnSaleMax")
+      ? { daysOnSaleMax: null }
+      : {}),
+  };
+}
+
+function normalizeTenantId(value: string): string {
+  return value.trim().toLocaleLowerCase("ru-RU");
+}
+
+function isTenantHiddenForPublic(tenantId: string): boolean {
+  return TEMP_PUBLIC_HIDDEN_TENANT_IDS.has(normalizeTenantId(tenantId));
+}
+
+function sanitizeCatalogFiltersForPublicTenantVisibility(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> {
+  const nextMetadata = {
     ...metadata,
-    responsiblePerson: [],
-    websiteUrl: [],
-    externalId: [],
-    crmRef: [],
-    yandexDiskUrl: [],
-    daysOnSaleMin: null,
-    daysOnSaleMax: null,
+  };
+
+  if (Array.isArray(metadata.tenantId)) {
+    nextMetadata.tenantId = metadata.tenantId.filter(
+      (tenantId): tenantId is string =>
+        typeof tenantId === "string" && !isTenantHiddenForPublic(tenantId),
+    );
+  }
+
+  if (
+    typeof metadata.brandsByTenant === "object" &&
+    metadata.brandsByTenant !== null &&
+    !Array.isArray(metadata.brandsByTenant)
+  ) {
+    nextMetadata.brandsByTenant = Object.fromEntries(
+      Object.entries(metadata.brandsByTenant).filter(
+        ([tenantId]) => !isTenantHiddenForPublic(tenantId),
+      ),
+    );
+  }
+
+  if (
+    typeof metadata.modelsByBrandAndTenant === "object" &&
+    metadata.modelsByBrandAndTenant !== null &&
+    !Array.isArray(metadata.modelsByBrandAndTenant)
+  ) {
+    nextMetadata.modelsByBrandAndTenant = Object.fromEntries(
+      Object.entries(metadata.modelsByBrandAndTenant).filter(
+        ([tenantId]) => !isTenantHiddenForPublic(tenantId),
+      ),
+    );
+  }
+
+  return nextMetadata;
+}
+
+function resolveAllowedPublicTenantIds(): string[] {
+  const metadata = getCatalogFiltersMetadata();
+  if (!Array.isArray(metadata.tenantId)) {
+    return [];
+  }
+
+  return metadata.tenantId.filter(
+    (tenantId): tenantId is string =>
+      typeof tenantId === "string" && !isTenantHiddenForPublic(tenantId),
+  );
+}
+
+function applyPublicTenantVisibility(
+  query: ReturnType<typeof parseCatalogQuery>,
+  isAuthenticated: boolean,
+): ReturnType<typeof parseCatalogQuery> {
+  if (isAuthenticated) {
+    return query;
+  }
+
+  const allowedTenantIds = resolveAllowedPublicTenantIds();
+  if (allowedTenantIds.length === 0) {
+    return {
+      ...query,
+      tenantId: [TEMP_PUBLIC_HIDDEN_TENANT_SENTINEL],
+    };
+  }
+
+  const allowedByNormalized = new Set(allowedTenantIds.map((tenantId) => normalizeTenantId(tenantId)));
+  if (query.tenantId && query.tenantId.length > 0) {
+    const filteredTenantIds = query.tenantId.filter((tenantId) =>
+      allowedByNormalized.has(normalizeTenantId(tenantId)),
+    );
+
+    return {
+      ...query,
+      tenantId:
+        filteredTenantIds.length > 0 ? filteredTenantIds : [TEMP_PUBLIC_HIDDEN_TENANT_SENTINEL],
+    };
+  }
+
+  return {
+    ...query,
+    tenantId: allowedTenantIds,
   };
 }
 
@@ -417,7 +535,8 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
 
     try {
       const parsedQuery = parseCatalogQuery(request.query);
-      const query = applyPublicQueryCaps(parsedQuery, Boolean(request.authUser));
+      const queryWithPublicCaps = applyPublicQueryCaps(parsedQuery, Boolean(request.authUser));
+      const query = applyPublicTenantVisibility(queryWithPublicCaps, Boolean(request.authUser));
       const latestImportBatch = getLatestSuccessfulImportBatch();
       const roleBucket = request.authUser?.role ?? "public";
       const requestPath = request.raw.url?.split("#")[0] ?? "/api/catalog/items";
@@ -515,7 +634,13 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
       reply.header("ETag", etag);
       return reply
         .code(200)
-        .send(sanitizeCatalogFiltersForRole(metadata, request.authUser?.role));
+        .send(
+          sanitizeCatalogFiltersForRole(
+            metadata,
+            request.authUser?.role,
+            Boolean(request.authUser),
+          ),
+        );
     } catch {
       return reply.code(500).send({ message: "Failed to fetch filter metadata" });
     }
@@ -543,6 +668,9 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     try {
       const item = findCatalogItemById(parsedId);
       if (!item) {
+        return reply.code(404).send({ message: "Catalog item not found" });
+      }
+      if (!request.authUser && isTenantHiddenForPublic(item.tenantId)) {
         return reply.code(404).send({ message: "Catalog item not found" });
       }
 
