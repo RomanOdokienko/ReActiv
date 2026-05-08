@@ -22,6 +22,15 @@ function getHeaderAliasMatchScore(
   }
 
   if (!hasMultipleWords(alias)) {
+    // Allow single-word aliases to match multi-word headers (e.g. "стоимость" in
+    // "стоимость руб с ндс"), but keep this weaker than exact and multi-word matches.
+    // Very short aliases (like "id") stay exact-only to reduce false positives.
+    if (alias.length >= 4) {
+      const headerTokens = header.split(" ").filter(Boolean);
+      if (headerTokens.includes(alias)) {
+        return 10_000 + alias.length * 10 + aliasPriority;
+      }
+    }
     return 0;
   }
 
