@@ -17,6 +17,7 @@ import type {
   ImportErrorSummaryResponse,
   ImportMediaSyncJob,
   CatalogFiltersResponse,
+  CatalogStatusOptionsResponse,
   CatalogItemsResponse,
   CatalogSummaryResponse,
   ImportResponse,
@@ -1270,6 +1271,39 @@ export async function getAdminCatalogFilters(): Promise<CatalogFiltersResponse> 
       throw new Error("Не удалось загрузить фильтры");
     }
     return (await response.json()) as CatalogFiltersResponse;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw backendUnavailableError();
+    }
+    throw error;
+  }
+}
+
+export async function getAdminCatalogStatusOptions(
+  tenantId?: string,
+): Promise<CatalogStatusOptionsResponse> {
+  const params = new URLSearchParams();
+  if (tenantId && tenantId.trim().length > 0) {
+    params.set("tenantId", tenantId.trim());
+  }
+
+  const query = params.toString();
+  const path = query
+    ? `/admin/catalog/filters/statuses?${query}`
+    : "/admin/catalog/filters/statuses";
+
+  try {
+    const response = await fetch(buildUrl(path), {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (response.status === 403) {
+      throw new Error("FORBIDDEN");
+    }
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить статусы");
+    }
+    return (await response.json()) as CatalogStatusOptionsResponse;
   } catch (error) {
     if (error instanceof TypeError) {
       throw backendUnavailableError();

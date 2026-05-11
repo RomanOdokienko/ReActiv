@@ -2127,3 +2127,33 @@ export function getCatalogFiltersMetadata(): Record<string, unknown> {
 
   return metadata;
 }
+
+export function listCatalogStatusOptions(tenantId?: string): string[] {
+  const normalizedTenantId = tenantId?.trim();
+  const rows = normalizedTenantId
+    ? (db
+        .prepare(
+          `
+            SELECT DISTINCT status AS value
+            FROM vehicle_offers
+            WHERE tenant_id = ?
+              AND TRIM(COALESCE(status, '')) != ''
+            ORDER BY status ASC
+          `,
+        )
+        .all(normalizedTenantId) as Array<{ value: string }>)
+    : (db
+        .prepare(
+          `
+            SELECT DISTINCT status AS value
+            FROM vehicle_offers
+            WHERE TRIM(COALESCE(status, '')) != ''
+            ORDER BY status ASC
+          `,
+        )
+        .all() as Array<{ value: string }>);
+
+  return rows
+    .map((row) => row.value)
+    .filter((value) => value !== null && value !== undefined && value !== "");
+}

@@ -442,6 +442,10 @@ export interface CatalogFiltersResponse {
   daysOnSaleMax: number | null;
 }
 
+export interface CatalogStatusOptionsResponse {
+  items: string[];
+}
+
 export type ActivityEventType =
   | "login_open"
   | "login_success"
