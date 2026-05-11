@@ -41,6 +41,7 @@ type SortDirection = "asc" | "desc";
 
 interface ShowcaseUiState {
   bookingPreset: "" | BookingPreset;
+  status: string;
   tenantId: string;
   vin: string;
   city: string;
@@ -64,6 +65,7 @@ interface ShowcaseUiState {
 
 interface FilterTrackingSnapshot {
   bookingPreset: string | null;
+  status: string | null;
   tenantId: string | null;
   vin: string | null;
   city: string | null;
@@ -101,6 +103,7 @@ const SHOWCASE_ALLOWED_SORT_BY = new Set([
 ]);
 const SHOWCASE_URL_FILTER_KEYS = new Set([
   "bookingStatus",
+  "status",
   "tenantId",
   "offerCode",
   "city",
@@ -123,6 +126,7 @@ const SHOWCASE_URL_FILTER_KEYS = new Set([
 function createDefaultShowcaseUiState(): ShowcaseUiState {
   return {
     bookingPreset: "",
+    status: "",
     tenantId: "",
     vin: "",
     city: "",
@@ -227,6 +231,7 @@ function parseShowcaseUiStateFromSearchParams(params: URLSearchParams): Showcase
 
   return {
     bookingPreset,
+    status: (params.getAll("status")[0] ?? "").trim(),
     tenantId: (params.get("tenantId") ?? "").trim(),
     vin: normalizeVinInput((params.getAll("offerCode")[0] ?? "").trim()),
     city: (params.get("city") ?? "").trim(),
@@ -266,6 +271,7 @@ function sanitizeRestoredShowcaseUiState(restored: Partial<ShowcaseUiState>): Sh
       typeof restored.bookingPreset === "string" && isBookingPreset(restored.bookingPreset)
         ? restored.bookingPreset
         : "",
+    status: typeof restored.status === "string" ? restored.status : "",
     tenantId: typeof restored.tenantId === "string" ? restored.tenantId : "",
     vin: typeof restored.vin === "string" ? normalizeVinInput(restored.vin) : "",
     city: typeof restored.city === "string" ? restored.city : "",
@@ -301,6 +307,9 @@ function buildShowcaseFilterSearchParams(
 
   if (state.bookingPreset) {
     params.set("bookingStatus", state.bookingPreset);
+  }
+  if (state.status) {
+    params.set("status", state.status);
   }
   if (state.tenantId && !options.omitTenant) {
     params.set("tenantId", state.tenantId);
@@ -529,6 +538,7 @@ function toNullableNumber(value: string): number | null {
 
 function createFilterTrackingSnapshot(input: {
   bookingPreset: string;
+  status: string;
   tenantId: string;
   vin: string;
   city: string;
@@ -547,6 +557,7 @@ function createFilterTrackingSnapshot(input: {
 }): FilterTrackingSnapshot {
   return {
     bookingPreset: input.bookingPreset || null,
+    status: input.status || null,
     tenantId: input.tenantId || null,
     vin: input.vin || null,
     city: input.city || null,
@@ -639,6 +650,7 @@ export function ShowcasePage({
     null,
   );
   const [bookingPreset, setBookingPreset] = useState<"" | BookingPreset>(initialState.bookingPreset);
+  const [status, setStatus] = useState(initialState.status);
   const [tenantId, setTenantId] = useState(initialState.tenantId);
   const [vin, setVin] = useState(initialState.vin);
   const [city, setCity] = useState(initialState.city);
@@ -832,6 +844,12 @@ export function ShowcasePage({
     });
   }, []);
 
+  const effectiveTenantIdForFilters =
+    forcedTenantValue || (canFilterByTenant ? tenantId : "");
+  const shouldShowGpbStatusFilter =
+    canFilterByTenant &&
+    normalizeFilterValueForCompare(effectiveTenantIdForFilters) === "gpb";
+
   const shouldUseMainShowcaseRandomMix = useMemo(() => {
     if (!publicMode) {
       return false;
@@ -847,6 +865,7 @@ export function ShowcasePage({
 
     return !(
       bookingPreset ||
+      status ||
       tenantId ||
       (canFilterByTenant && vin) ||
       city ||
@@ -889,14 +908,14 @@ export function ShowcasePage({
       sortBy,
       sortDir,
     };
-    const effectiveTenantId =
-      forcedTenantValue || (canFilterByTenant ? tenantId : "");
-
     if (bookingPreset) {
       queryObject.bookingStatus = bookingPreset;
     }
-    if (effectiveTenantId) {
-      queryObject.tenantId = effectiveTenantId;
+    if (status && shouldShowGpbStatusFilter) {
+      queryObject.status = [status];
+    }
+    if (effectiveTenantIdForFilters) {
+      queryObject.tenantId = effectiveTenantIdForFilters;
     }
     if (canFilterByTenant && vin) {
       queryObject.offerCode = [vin];
@@ -945,10 +964,11 @@ export function ShowcasePage({
     return queryObject;
   }, [
     bookingPreset,
+    status,
     brand,
     canFilterByTenant,
     city,
-    forcedTenantValue,
+    effectiveTenantIdForFilters,
     priceMax,
     priceMin,
     mileageMax,
@@ -959,8 +979,8 @@ export function ShowcasePage({
     selectedVehicleTypes,
     sortBy,
     sortDir,
+    shouldShowGpbStatusFilter,
     shouldUseMainShowcaseRandomMix,
-    tenantId,
     vin,
     yearMax,
     yearMin,
@@ -969,6 +989,7 @@ export function ShowcasePage({
   const showcaseUiState = useMemo<ShowcaseUiState>(
     () => ({
       bookingPreset,
+      status,
       tenantId,
       vin,
       city,
@@ -991,6 +1012,7 @@ export function ShowcasePage({
     }),
     [
       bookingPreset,
+      status,
       tenantId,
       vin,
       city,
@@ -1070,6 +1092,7 @@ export function ShowcasePage({
 
     if (
       showcaseUiState.bookingPreset === parsedState.bookingPreset &&
+      showcaseUiState.status === parsedState.status &&
       showcaseUiState.tenantId === parsedState.tenantId &&
       showcaseUiState.vin === parsedState.vin &&
       showcaseUiState.city === parsedState.city &&
@@ -1095,6 +1118,7 @@ export function ShowcasePage({
     }
 
     setBookingPreset(parsedState.bookingPreset);
+    setStatus(parsedState.status);
     setTenantId(parsedState.tenantId);
     setVin(parsedState.vin);
     setCity(parsedState.city);
@@ -1193,6 +1217,7 @@ export function ShowcasePage({
 
     const handleResetFilters = () => {
       setBookingPreset("");
+      setStatus("");
       setTenantId(forcedTenantValue);
       setVin("");
       setCity("");
@@ -1222,10 +1247,17 @@ export function ShowcasePage({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const vehicleTypeOptions = filters?.vehicleType ?? [];
   const tenantOptions = filters?.tenantId ?? [];
+  const statusOptions = useMemo(
+    () => sortFilterValuesForUi(filters?.status ?? []),
+    [filters],
+  );
   const effectiveViewMode: ViewMode = isMobileViewport ? "list" : viewMode;
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (bookingPreset) {
+      count += 1;
+    }
+    if (status) {
       count += 1;
     }
     if (canFilterByTenant && tenantId) {
@@ -1270,6 +1302,7 @@ export function ShowcasePage({
     return count;
   }, [
     bookingPreset,
+    status,
     brand,
     canFilterByTenant,
     city,
@@ -1287,8 +1320,43 @@ export function ShowcasePage({
   ]);
 
   useEffect(() => {
+    if (shouldShowGpbStatusFilter) {
+      return;
+    }
+
+    if (!status) {
+      return;
+    }
+
+    setStatus("");
+    setPage(1);
+  }, [shouldShowGpbStatusFilter, status]);
+
+  useEffect(() => {
+    if (!status) {
+      return;
+    }
+
+    const matchedStatus = statusOptions.find(
+      (value) =>
+        normalizeFilterValueForCompare(value) === normalizeFilterValueForCompare(status),
+    );
+
+    if (!matchedStatus) {
+      setStatus("");
+      setPage(1);
+      return;
+    }
+
+    if (matchedStatus !== status) {
+      setStatus(matchedStatus);
+    }
+  }, [status, statusOptions]);
+
+  useEffect(() => {
     const nextSnapshot = createFilterTrackingSnapshot({
       bookingPreset,
+      status,
       tenantId,
       vin,
       city,
@@ -1357,6 +1425,7 @@ export function ShowcasePage({
     };
   }, [
     bookingPreset,
+    status,
     brand,
     city,
     mileageMax,
@@ -1954,6 +2023,7 @@ export function ShowcasePage({
     });
 
     setBookingPreset("");
+    setStatus("");
     setTenantId("");
     setVin("");
     setCity("");
@@ -2275,6 +2345,24 @@ export function ShowcasePage({
                     setVin(normalizeVinInput(event.target.value));
                   }}
                 />
+              )}
+
+              {shouldShowGpbStatusFilter && (
+                <select
+                  className={`${status ? "showcase-filter is-active" : "showcase-filter"} showcase-filter--select`}
+                  value={status}
+                  onChange={(event) => {
+                    setPage(1);
+                    setStatus(event.target.value);
+                  }}
+                >
+                  <option value="">Статус продажи</option>
+                  {statusOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
               )}
 
               <select
