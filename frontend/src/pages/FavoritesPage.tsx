@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import {
   getFavoriteItems,
@@ -8,18 +8,69 @@ import {
 import type { CatalogListItem, FavoriteItemsResponse } from "../types/api";
 
 const FAVORITES_PAGE_SIZE = 20;
+const EXPORT_PAGE_SIZE = 100;
+
+function escapeCsvValue(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  const text = String(value);
+  if (/[",\n\r]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function createFavoritesCsv(items: CatalogListItem[]): string {
+  const header = [
+    "ID",
+    "Title",
+    "Brand",
+    "Model",
+    "Modification",
+    "Year",
+    "MileageKm",
+    "PriceRub",
+    "Status",
+    "DaysOnSale",
+    "BookingStatus",
+    "StorageAddress",
+    "ResponsiblePerson",
+    "OfferCode",
+  ];
+
+  const rows = items.map((item) => [
+    item.id,
+    item.title,
+    item.brand,
+    item.model,
+    item.modification,
+    item.year,
+    item.mileageKm,
+    item.price,
+    item.status,
+    item.daysOnSale,
+    item.bookingStatus,
+    item.storageAddress,
+    item.responsiblePerson,
+    item.offerCode,
+  ]);
+
+  return [header, ...rows].map((row) => row.map(escapeCsvValue).join(",")).join("\n");
+}
 
 function formatPrice(price: number | null): string {
   if (price === null) {
-    return "—";
+    return "вЂ”";
   }
-  return `${price.toLocaleString("ru-RU")} ₽`;
+  return `${price.toLocaleString("ru-RU")} в‚Ѕ`;
 }
 
 function buildCardSubtitle(item: CatalogListItem): string {
-  const yearPart = item.year !== null ? `${item.year} г` : "";
+  const yearPart = item.year !== null ? `${item.year} Рі` : "";
   const mileagePart =
-    item.mileageKm !== null ? `${item.mileageKm.toLocaleString("ru-RU")} км` : "";
+    item.mileageKm !== null ? `${item.mileageKm.toLocaleString("ru-RU")} РєРј` : "";
   return [yearPart, mileagePart].filter(Boolean).join(", ");
 }
 
@@ -27,6 +78,7 @@ export function FavoritesPage() {
   const [itemsResponse, setItemsResponse] = useState<FavoriteItemsResponse | null>(null);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingItemIds, setPendingItemIds] = useState<Set<number>>(new Set());
 
@@ -45,7 +97,7 @@ export function FavoritesPage() {
         setPage(totalPages);
       }
     } catch {
-      setError("Не удалось загрузить избранное");
+      setError("РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РёР·Р±СЂР°РЅРЅРѕРµ");
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +113,43 @@ export function FavoritesPage() {
     const pageSize = itemsResponse?.pagination.pageSize ?? FAVORITES_PAGE_SIZE;
     return Math.max(1, Math.ceil(total / pageSize));
   }, [itemsResponse?.pagination.pageSize, total]);
+
+  async function handleExportCsv(): Promise<void> {
+    if (isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+    setError(null);
+    try {
+      const firstPage = await getFavoriteItems(1, EXPORT_PAGE_SIZE);
+      const allItems = [...firstPage.items];
+      const pages = Math.max(
+        1,
+        Math.ceil(firstPage.pagination.total / firstPage.pagination.pageSize),
+      );
+
+      for (let nextPage = 2; nextPage <= pages; nextPage += 1) {
+        const pageResponse = await getFavoriteItems(nextPage, EXPORT_PAGE_SIZE);
+        allItems.push(...pageResponse.items);
+      }
+
+      const csv = createFavoritesCsv(allItems);
+      const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "favorites-export.csv";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Failed to export favorites");
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   async function handleRemoveFavorite(
     event: MouseEvent<HTMLButtonElement>,
@@ -78,7 +167,7 @@ export function FavoritesPage() {
       await removeFavoriteItem(itemId);
       await loadFavorites(page);
     } catch {
-      setError("Не удалось обновить избранное");
+      setError("РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ РёР·Р±СЂР°РЅРЅРѕРµ");
     } finally {
       setPendingItemIds((current) => {
         const next = new Set(current);
@@ -90,19 +179,24 @@ export function FavoritesPage() {
 
   return (
     <section className="favorites-page">
-      <h1>Избранное</h1>
+      <h1>РР·Р±СЂР°РЅРЅРѕРµ</h1>
       {error && <p className="error">{error}</p>}
 
       {!isLoading && total > 0 && (
         <p className="favorites-page__meta">
-          Сохранено {total.toLocaleString("ru-RU")} позиций
+          РЎРѕС…СЂР°РЅРµРЅРѕ {total.toLocaleString("ru-RU")} РїРѕР·РёС†РёР№
+        </p>
+      )}`r`n`r`n      {!isLoading && total > 0 && (
+        <p>
+          <button type="button" onClick={() => void handleExportCsv()} disabled={isExporting}>
+            {isExporting ? "Exporting..." : "Export CSV"}
+          </button>
         </p>
       )}
-
-      {isLoading && <p>Загрузка избранного...</p>}
+      {isLoading && <p>Р—Р°РіСЂСѓР·РєР° РёР·Р±СЂР°РЅРЅРѕРіРѕ...</p>}
 
       {!isLoading && total === 0 && (
-        <p className="empty">Пока нет избранных позиций.</p>
+        <p className="empty">РџРѕРєР° РЅРµС‚ РёР·Р±СЂР°РЅРЅС‹С… РїРѕР·РёС†РёР№.</p>
       )}
 
       {!isLoading && items.length > 0 && (
@@ -137,14 +231,14 @@ export function FavoritesPage() {
                         />
                         <span className="vehicle-card__fallback">
                           <span className="vehicle-card__fallback-text">
-                            Фото пока нет. Но они скоро появятся
+                            Р¤РѕС‚Рѕ РїРѕРєР° РЅРµС‚. РќРѕ РѕРЅРё СЃРєРѕСЂРѕ РїРѕСЏРІСЏС‚СЃСЏ
                           </span>
                         </span>
                       </>
                     ) : (
                       <span className="vehicle-card__fallback vehicle-card__fallback--visible">
                         <span className="vehicle-card__fallback-text">
-                          Фото пока нет. Но они скоро появятся
+                          Р¤РѕС‚Рѕ РїРѕРєР° РЅРµС‚. РќРѕ РѕРЅРё СЃРєРѕСЂРѕ РїРѕСЏРІСЏС‚СЃСЏ
                         </span>
                       </span>
                     )}
@@ -156,8 +250,8 @@ export function FavoritesPage() {
                         void handleRemoveFavorite(event, item.id);
                       }}
                       disabled={isPending}
-                      aria-label="Убрать из избранного"
-                      title="Убрать из избранного"
+                      aria-label="РЈР±СЂР°С‚СЊ РёР· РёР·Р±СЂР°РЅРЅРѕРіРѕ"
+                      title="РЈР±СЂР°С‚СЊ РёР· РёР·Р±СЂР°РЅРЅРѕРіРѕ"
                     >
                       <svg viewBox="0 0 24 24" role="presentation" focusable="false">
                         <path d="M12 2.8l2.86 5.79 6.39.93-4.63 4.52 1.09 6.37L12 17.48 6.29 20.4l1.09-6.37L2.75 9.52l6.39-.93L12 2.8z" />
@@ -183,23 +277,23 @@ export function FavoritesPage() {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
-                aria-label="Предыдущая страница"
-                title="Предыдущая страница"
+                aria-label="РџСЂРµРґС‹РґСѓС‰Р°СЏ СЃС‚СЂР°РЅРёС†Р°"
+                title="РџСЂРµРґС‹РґСѓС‰Р°СЏ СЃС‚СЂР°РЅРёС†Р°"
               >
-                ←
+                в†ђ
               </button>
               <span className="pager-mobile-status">
-                Стр. {page} из {totalPages}
+                РЎС‚СЂ. {page} РёР· {totalPages}
               </span>
               <button
                 className="pager-button pager-button--nav"
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                aria-label="Следующая страница"
-                title="Следующая страница"
+                aria-label="РЎР»РµРґСѓСЋС‰Р°СЏ СЃС‚СЂР°РЅРёС†Р°"
+                title="РЎР»РµРґСѓСЋС‰Р°СЏ СЃС‚СЂР°РЅРёС†Р°"
               >
-                →
+                в†’
               </button>
             </div>
           )}
@@ -208,3 +302,7 @@ export function FavoritesPage() {
     </section>
   );
 }
+
+
+
+
