@@ -12,7 +12,6 @@ import {
   getCatalogFiltersMetadata,
   getCatalogStructureSummaryMetrics,
   getCatalogStockValueRub,
-  listCatalogStatusOptions,
   searchCatalogItems,
 } from "../repositories/catalog-repository";
 
@@ -30,21 +29,6 @@ function rejectIfNotAdmin(
 
 const updateCatalogItemCommentBodySchema = z.object({
   comment: z.string().max(5000),
-});
-
-const statusOptionsQuerySchema = z.object({
-  tenantId: z
-    .preprocess(
-      (value) => {
-        if (typeof value !== "string") {
-          return undefined;
-        }
-        const normalized = value.trim();
-        return normalized.length > 0 ? normalized : undefined;
-      },
-      z.string().max(64).optional(),
-    )
-    .optional(),
 });
 
 export async function registerAdminCatalogRoutes(
@@ -112,27 +96,6 @@ export async function registerAdminCatalogRoutes(
       return reply.code(200).send(getCatalogFiltersMetadata());
     } catch {
       return reply.code(500).send({ message: "Failed to fetch filter metadata" });
-    }
-  });
-
-  app.get("/api/admin/catalog/filters/statuses", async (request, reply) => {
-    if (rejectIfNotAdmin(request, reply)) {
-      return;
-    }
-
-    try {
-      const query = statusOptionsQuerySchema.parse(request.query);
-      const items = listCatalogStatusOptions(query.tenantId);
-      return reply.code(200).send({ items });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return reply.code(400).send({
-          message: "Invalid query params",
-          errors: error.flatten(),
-        });
-      }
-
-      return reply.code(500).send({ message: "Failed to fetch status filter options" });
     }
   });
 

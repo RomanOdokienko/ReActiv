@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import {
   addFavoriteItem,
-  getAdminCatalogStatusOptions,
   getCatalogFilters,
   getCatalogItems,
   getFavoriteItemIds,
@@ -685,7 +684,6 @@ export function ShowcasePage({
   const [copyFiltersLinkStatus, setCopyFiltersLinkStatus] = useState<
     "idle" | "success" | "error"
   >("idle");
-  const [scopedStatusOptions, setScopedStatusOptions] = useState<string[]>([]);
 
   useEffect(() => {
     if (!forcedTenantValue) {
@@ -851,45 +849,6 @@ export function ShowcasePage({
   const shouldShowGpbStatusFilter =
     canFilterByTenant &&
     normalizeFilterValueForCompare(effectiveTenantIdForFilters) === "gpb";
-
-  useEffect(() => {
-    if (!shouldShowGpbStatusFilter) {
-      setScopedStatusOptions([]);
-      return;
-    }
-
-    let isCancelled = false;
-    async function loadStatusOptions() {
-      try {
-        const response = await getAdminCatalogStatusOptions(
-          effectiveTenantIdForFilters || undefined,
-        );
-        if (isCancelled) {
-          return;
-        }
-        setScopedStatusOptions(sortFilterValuesForUi(response.items));
-      } catch (caughtError) {
-        if (isCancelled) {
-          return;
-        }
-        setScopedStatusOptions([]);
-        void logActivityEvent({
-          eventType: "api_error",
-          page: "/showcase",
-          payload: {
-            endpoint: "/admin/catalog/filters/statuses",
-            message:
-              caughtError instanceof Error ? caughtError.message : "unknown_error",
-          },
-        });
-      }
-    }
-
-    void loadStatusOptions();
-    return () => {
-      isCancelled = true;
-    };
-  }, [effectiveTenantIdForFilters, shouldShowGpbStatusFilter]);
 
   const shouldUseMainShowcaseRandomMix = useMemo(() => {
     if (!publicMode) {
@@ -1288,7 +1247,10 @@ export function ShowcasePage({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const vehicleTypeOptions = filters?.vehicleType ?? [];
   const tenantOptions = filters?.tenantId ?? [];
-  const statusOptions = scopedStatusOptions;
+  const statusOptions = useMemo(
+    () => sortFilterValuesForUi(filters?.status ?? []),
+    [filters],
+  );
   const effectiveViewMode: ViewMode = isMobileViewport ? "list" : viewMode;
   const activeFiltersCount = useMemo(() => {
     let count = 0;
